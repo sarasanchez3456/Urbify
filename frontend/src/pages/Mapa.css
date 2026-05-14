@@ -1,0 +1,146 @@
+.mapa-page {
+  min-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+}
+
+.mapa-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.mapa-controls label {
+  font-weight: 500;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.mapa-controls input[type="range"] {
+  flex: 1;
+  max-width: 300px;
+}
+
+.mapa-container {
+  display: flex;
+  flex: 1;
+  min-height: 500px;
+}
+
+.mapa-leaflet {
+  flex: 1;
+  height: 500px;
+  z-index: 0;
+}
+
+.mapa-sidebar {
+  width: 320px;
+  background: white;
+  padding: 1rem;
+  overflow-y: auto;
+  border-left: 1px solid #e2e8f0;
+}
+
+.mapa-sidebar h3 {
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  color: #1a1a2e;
+}
+
+.sin-proveedores {
+  color: #6b7280;
+  text-align: center;
+  padding: 2rem 0;
+  font-size: 0.9rem;
+}
+
+.proveedores-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.proveedor-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: #f8fafc;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.2s;
+}
+
+.proveedor-item:hover {
+  background: #eef2ff;
+}
+
+.proveedor-item-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #4361ee;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.proveedor-item strong {
+  font-size: 0.9rem;
+}
+
+.proveedor-item p {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.proveedor-item-distancia {
+  color: #4361ee !important;
+  font-weight: 500;
+}
+
+.popup-content {
+  min-width: 180px;
+}
+
+.popup-content strong {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.popup-content p {
+  margin: 0.25rem 0;
+  font-size: 0.85rem;
+}
+
+.popup-distancia {
+  color: #4361ee;
+  font-weight: 500;
+  margin-bottom: 0.5rem !important;
+}
+
+.popup-content .btn {
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .mapa-container {
+    flex-direction: column;
+  }
+
+  .mapa-leaflet {
+    height: 400px;
+  }
+
+  .mapa-sidebar {
+    width: 100%;
+    max-height: 300px;
+    border-left: none;
+    border-top: 1px solid #e2e8f0;
+  }
+}

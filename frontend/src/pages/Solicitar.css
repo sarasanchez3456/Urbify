@@ -1,0 +1,12 @@
+.solicitar-resumen {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.solicitar-resumen p {
+  margin: 0.25rem 0;
+  font-size: 0.95rem;
+  color: #374151;
+}
