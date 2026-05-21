@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const { query } = require('../config/db');
 const resend = require('../config/resend');
 require('dotenv').config();
 
@@ -6,7 +6,7 @@ exports.crearSolicitud = async (req, res) => {
   try {
     const { proveedor_id, servicio_id, descripcion, fecha_servicio } = req.body;
 
-    const [proveedor] = await pool.query(
+    const [proveedor] = await query(
       'SELECT id, nombre, apellido, correo FROM usuarios WHERE id = ? AND rol = "proveedor" AND activo = 1',
       [proveedor_id]
     );
@@ -14,21 +14,24 @@ exports.crearSolicitud = async (req, res) => {
       return res.status(404).json({ error: 'Proveedor no encontrado' });
     }
 
-    const [servicio] = await pool.query('SELECT * FROM servicios WHERE id = ? AND proveedor_id = ?', [servicio_id, proveedor_id]);
+    const [servicio] = await query('SELECT * FROM servicios WHERE id = ? AND proveedor_id = ?', [servicio_id, proveedor_id]);
     if (servicio.length === 0) {
       return res.status(404).json({ error: 'Servicio no encontrado' });
     }
 
-    const [cliente] = await pool.query(
+    const [cliente] = await query(
       'SELECT nombre, apellido, correo, direccion FROM usuarios WHERE id = ?',
       [req.usuarioId]
     );
 
-    const [result] = await pool.query(
+    const [result] = await query(
       `INSERT INTO solicitudes (cliente_id, proveedor_id, servicio_id, descripcion, fecha_servicio)
+       OUTPUT INSERTED.id
        VALUES (?, ?, ?, ?, ?)`,
       [req.usuarioId, proveedor_id, servicio_id, descripcion, fecha_servicio || null]
     );
+
+    const solicitudId = result[0].id;
 
     try {
       await resend.emails.send({
@@ -62,14 +65,14 @@ exports.crearSolicitud = async (req, res) => {
         `,
       });
 
-      await pool.query('UPDATE solicitudes SET correo_enviado = 1 WHERE id = ?', [result.insertId]);
+      await query('UPDATE solicitudes SET correo_enviado = 1 WHERE id = ?', [solicitudId]);
     } catch (emailErr) {
       console.error('Error al enviar correo:', emailErr);
     }
 
     res.status(201).json({
       mensaje: 'Solicitud creada exitosamente',
-      solicitud: { id: result.insertId },
+      solicitud: { id: solicitudId },
     });
   } catch (err) {
     console.error('Error al crear solicitud:', err);
@@ -79,7 +82,7 @@ exports.crearSolicitud = async (req, res) => {
 
 exports.misSolicitudesComoCliente = async (req, res) => {
   try {
-    const [solicitudes] = await pool.query(
+    const [solicitudes] = await query(
       `SELECT sol.*, s.titulo AS servicio_titulo, s.tarifa,
        u.nombre AS proveedor_nombre, u.apellido AS proveedor_apellido, u.foto_url AS proveedor_foto
        FROM solicitudes sol
@@ -98,7 +101,7 @@ exports.misSolicitudesComoCliente = async (req, res) => {
 
 exports.misSolicitudesComoProveedor = async (req, res) => {
   try {
-    const [solicitudes] = await pool.query(
+    const [solicitudes] = await query(
       `SELECT sol.*, s.titulo AS servicio_titulo, s.tarifa,
        u.nombre AS cliente_nombre, u.apellido AS cliente_apellido, u.foto_url AS cliente_foto,
        u.direccion AS cliente_direccion, u.telefono AS cliente_telefono
@@ -126,7 +129,7 @@ exports.actualizarEstadoSolicitud = async (req, res) => {
       return res.status(400).json({ error: 'Estado inválido' });
     }
 
-    const [solicitud] = await pool.query(
+    const [solicitud] = await query(
       'SELECT * FROM solicitudes WHERE id = ? AND proveedor_id = ?',
       [id, req.usuarioId]
     );
@@ -134,7 +137,7 @@ exports.actualizarEstadoSolicitud = async (req, res) => {
       return res.status(404).json({ error: 'Solicitud no encontrada o no autorizada' });
     }
 
-    await pool.query('UPDATE solicitudes SET estado = ? WHERE id = ?', [estado, id]);
+    await query('UPDATE solicitudes SET estado = ? WHERE id = ?', [estado, id]);
     res.json({ mensaje: 'Estado actualizado exitosamente' });
   } catch (err) {
     console.error('Error al actualizar estado:', err);

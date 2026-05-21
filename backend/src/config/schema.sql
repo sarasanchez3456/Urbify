@@ -1,95 +1,108 @@
-CREATE DATABASE IF NOT EXISTS urbify_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE urbify_db;
+GO
+
 USE urbify_db;
+GO
 
 CREATE TABLE usuarios (
-  id            INT AUTO_INCREMENT PRIMARY KEY,
-  nombre        VARCHAR(100) NOT NULL,
-  apellido      VARCHAR(100) NOT NULL,
-  correo        VARCHAR(150) NOT NULL UNIQUE,
-  contrasena    VARCHAR(255) NOT NULL,
-  telefono      VARCHAR(20),
-  rol           ENUM('cliente','proveedor') NOT NULL,
-  foto_url      VARCHAR(255),
+  id            INT IDENTITY(1,1) PRIMARY KEY,
+  nombre        NVARCHAR(100) NOT NULL,
+  apellido      NVARCHAR(100) NOT NULL,
+  correo        NVARCHAR(150) NOT NULL,
+  contrasena    NVARCHAR(255) NOT NULL,
+  telefono      NVARCHAR(20),
+  rol           NVARCHAR(20) NOT NULL CHECK (rol IN ('cliente', 'proveedor')),
+  foto_url      NVARCHAR(255),
   latitud       DECIMAL(10,8),
   longitud      DECIMAL(11,8),
-  direccion     VARCHAR(255),
-  activo        TINYINT(1) DEFAULT 1,
-  creado_en     DATETIME DEFAULT CURRENT_TIMESTAMP
+  direccion     NVARCHAR(255),
+  activo        BIT DEFAULT 1,
+  creado_en     DATETIME2 DEFAULT GETDATE(),
+  CONSTRAINT UQ_usuarios_correo UNIQUE (correo)
 );
+GO
 
 CREATE TABLE categorias (
-  id            INT AUTO_INCREMENT PRIMARY KEY,
-  nombre        VARCHAR(100) NOT NULL,
-  icono_url     VARCHAR(255),
-  descripcion   TEXT
+  id            INT IDENTITY(1,1) PRIMARY KEY,
+  nombre        NVARCHAR(100) NOT NULL,
+  icono_url     NVARCHAR(255),
+  descripcion   NVARCHAR(MAX)
 );
+GO
 
 CREATE TABLE servicios (
-  id               INT AUTO_INCREMENT PRIMARY KEY,
+  id               INT IDENTITY(1,1) PRIMARY KEY,
   proveedor_id     INT NOT NULL,
   categoria_id     INT NOT NULL,
-  titulo           VARCHAR(150) NOT NULL,
-  descripcion      TEXT,
+  titulo           NVARCHAR(150) NOT NULL,
+  descripcion      NVARCHAR(MAX),
   tarifa           DECIMAL(10,2) NOT NULL,
-  tipo_tarifa      ENUM('hora','fijo') DEFAULT 'hora',
-  disponible       TINYINT(1) DEFAULT 1,
-  creado_en        DATETIME DEFAULT CURRENT_TIMESTAMP,
+  tipo_tarifa      NVARCHAR(10) DEFAULT 'hora' CHECK (tipo_tarifa IN ('hora', 'fijo')),
+  disponible       BIT DEFAULT 1,
+  creado_en        DATETIME2 DEFAULT GETDATE(),
   FOREIGN KEY (proveedor_id) REFERENCES usuarios(id) ON DELETE CASCADE,
   FOREIGN KEY (categoria_id) REFERENCES categorias(id)
 );
+GO
 
 CREATE TABLE solicitudes (
-  id               INT AUTO_INCREMENT PRIMARY KEY,
+  id               INT IDENTITY(1,1) PRIMARY KEY,
   cliente_id       INT NOT NULL,
   proveedor_id     INT NOT NULL,
   servicio_id      INT NOT NULL,
-  descripcion      TEXT,
-  fecha_solicitud  DATETIME DEFAULT CURRENT_TIMESTAMP,
-  fecha_servicio   DATETIME,
-  estado           ENUM('pendiente','aceptada','en_proceso','completada','cancelada') DEFAULT 'pendiente',
-  correo_enviado   TINYINT(1) DEFAULT 0,
+  descripcion      NVARCHAR(MAX),
+  fecha_solicitud  DATETIME2 DEFAULT GETDATE(),
+  fecha_servicio   DATETIME2,
+  estado           NVARCHAR(20) DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'aceptada', 'en_proceso', 'completada', 'cancelada')),
+  correo_enviado   BIT DEFAULT 0,
   FOREIGN KEY (cliente_id)   REFERENCES usuarios(id),
   FOREIGN KEY (proveedor_id) REFERENCES usuarios(id),
   FOREIGN KEY (servicio_id)  REFERENCES servicios(id)
 );
+GO
 
 CREATE TABLE calificaciones (
-  id               INT AUTO_INCREMENT PRIMARY KEY,
-  solicitud_id     INT NOT NULL UNIQUE,
+  id               INT IDENTITY(1,1) PRIMARY KEY,
+  solicitud_id     INT NOT NULL,
   cliente_id       INT NOT NULL,
   proveedor_id     INT NOT NULL,
   puntuacion       TINYINT NOT NULL CHECK (puntuacion BETWEEN 1 AND 5),
-  comentario       TEXT,
-  creado_en        DATETIME DEFAULT CURRENT_TIMESTAMP,
+  comentario       NVARCHAR(MAX),
+  creado_en        DATETIME2 DEFAULT GETDATE(),
   FOREIGN KEY (solicitud_id)  REFERENCES solicitudes(id),
   FOREIGN KEY (cliente_id)    REFERENCES usuarios(id),
-  FOREIGN KEY (proveedor_id)  REFERENCES usuarios(id)
+  FOREIGN KEY (proveedor_id)  REFERENCES usuarios(id),
+  CONSTRAINT UQ_calificaciones_solicitud UNIQUE (solicitud_id)
 );
+GO
 
 CREATE TABLE tokens_sesion (
-  id               INT AUTO_INCREMENT PRIMARY KEY,
+  id               INT IDENTITY(1,1) PRIMARY KEY,
   usuario_id       INT NOT NULL,
-  token            VARCHAR(512) NOT NULL,
-  expira_en        DATETIME NOT NULL,
-  creado_en        DATETIME DEFAULT CURRENT_TIMESTAMP,
+  token            NVARCHAR(512) NOT NULL,
+  expira_en        DATETIME2 NOT NULL,
+  creado_en        DATETIME2 DEFAULT GETDATE(),
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 );
+GO
 
 CREATE TABLE notificaciones (
-  id               INT AUTO_INCREMENT PRIMARY KEY,
+  id               INT IDENTITY(1,1) PRIMARY KEY,
   usuario_id       INT NOT NULL,
-  mensaje          TEXT NOT NULL,
-  leida            TINYINT(1) DEFAULT 0,
-  creado_en        DATETIME DEFAULT CURRENT_TIMESTAMP,
+  mensaje          NVARCHAR(MAX) NOT NULL,
+  leida            BIT DEFAULT 0,
+  creado_en        DATETIME2 DEFAULT GETDATE(),
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 );
+GO
 
 INSERT INTO categorias (nombre, descripcion) VALUES
-  ('Electricidad',  'Instalaciones eléctricas, reparaciones y mantenimiento'),
-  ('Plomería',      'Reparación de tuberías, sanitarios y sistemas de agua'),
-  ('Mecánica',      'Reparación y mantenimiento de vehículos'),
-  ('Carpintería',   'Fabricación y reparación de muebles y estructuras en madera'),
-  ('Pintura',       'Pintura interior y exterior de inmuebles'),
-  ('Cerrajería',    'Instalación y reparación de cerraduras'),
-  ('Jardinería',    'Mantenimiento de jardines y zonas verdes'),
-  ('Limpieza',      'Servicios de aseo residencial y comercial');
+  (N'Electricidad',  N'Instalaciones eléctricas, reparaciones y mantenimiento'),
+  (N'Plomería',      N'Reparación de tuberías, sanitarios y sistemas de agua'),
+  (N'Mecánica',      N'Reparación y mantenimiento de vehículos'),
+  (N'Carpintería',   N'Fabricación y reparación de muebles y estructuras en madera'),
+  (N'Pintura',       N'Pintura interior y exterior de inmuebles'),
+  (N'Cerrajería',    N'Instalación y reparación de cerraduras'),
+  (N'Jardinería',    N'Mantenimiento de jardines y zonas verdes'),
+  (N'Limpieza',      N'Servicios de aseo residencial y comercial');
+GO

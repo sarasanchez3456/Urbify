@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const { query } = require('../config/db');
 
 exports.crearServicio = async (req, res) => {
   try {
@@ -8,15 +8,16 @@ exports.crearServicio = async (req, res) => {
 
     const { categoria_id, titulo, descripcion, tarifa, tipo_tarifa } = req.body;
 
-    const [result] = await pool.query(
+    const [result] = await query(
       `INSERT INTO servicios (proveedor_id, categoria_id, titulo, descripcion, tarifa, tipo_tarifa)
+       OUTPUT INSERTED.id
        VALUES (?, ?, ?, ?, ?, ?)`,
       [req.usuarioId, categoria_id, titulo, descripcion, tarifa, tipo_tarifa || 'hora']
     );
 
     res.status(201).json({
       mensaje: 'Servicio creado exitosamente',
-      servicio: { id: result.insertId, proveedor_id: req.usuarioId, categoria_id, titulo, descripcion, tarifa },
+      servicio: { id: result[0].id, proveedor_id: req.usuarioId, categoria_id, titulo, descripcion, tarifa },
     });
   } catch (err) {
     console.error('Error al crear servicio:', err);
@@ -26,7 +27,7 @@ exports.crearServicio = async (req, res) => {
 
 exports.misServicios = async (req, res) => {
   try {
-    const [servicios] = await pool.query(
+    const [servicios] = await query(
       `SELECT s.*, c.nombre AS categoria_nombre
        FROM servicios s
        JOIN categorias c ON s.categoria_id = c.id
@@ -44,7 +45,7 @@ exports.misServicios = async (req, res) => {
 exports.serviciosPorCategoria = async (req, res) => {
   try {
     const { categoria_id } = req.params;
-    const [servicios] = await pool.query(
+    const [servicios] = await query(
       `SELECT s.*, c.nombre AS categoria_nombre,
        u.id AS proveedor_id, u.nombre, u.apellido, u.foto_url, u.direccion, u.latitud, u.longitud,
        COALESCE(AVG(cal.puntuacion), 0) AS calificacion_promedio,
@@ -95,7 +96,7 @@ exports.buscarServicios = async (req, res) => {
 
     sql += ` GROUP BY s.id ORDER BY s.creado_en DESC`;
 
-    const [servicios] = await pool.query(sql, params);
+    const [servicios] = await query(sql, params);
     res.json(servicios);
   } catch (err) {
     console.error('Error en búsqueda:', err);
@@ -108,12 +109,12 @@ exports.actualizarServicio = async (req, res) => {
     const { id } = req.params;
     const { titulo, descripcion, tarifa, tipo_tarifa, disponible } = req.body;
 
-    const [servicio] = await pool.query('SELECT * FROM servicios WHERE id = ? AND proveedor_id = ?', [id, req.usuarioId]);
+    const [servicio] = await query('SELECT * FROM servicios WHERE id = ? AND proveedor_id = ?', [id, req.usuarioId]);
     if (servicio.length === 0) {
       return res.status(404).json({ error: 'Servicio no encontrado o no autorizado' });
     }
 
-    await pool.query(
+    await query(
       `UPDATE servicios SET titulo = COALESCE(?, titulo), descripcion = COALESCE(?, descripcion),
        tarifa = COALESCE(?, tarifa), tipo_tarifa = COALESCE(?, tipo_tarifa),
        disponible = COALESCE(?, disponible)
@@ -132,12 +133,12 @@ exports.eliminarServicio = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [servicio] = await pool.query('SELECT * FROM servicios WHERE id = ? AND proveedor_id = ?', [id, req.usuarioId]);
+    const [servicio] = await query('SELECT * FROM servicios WHERE id = ? AND proveedor_id = ?', [id, req.usuarioId]);
     if (servicio.length === 0) {
       return res.status(404).json({ error: 'Servicio no encontrado o no autorizado' });
     }
 
-    await pool.query('DELETE FROM servicios WHERE id = ?', [id]);
+    await query('DELETE FROM servicios WHERE id = ?', [id]);
     res.json({ mensaje: 'Servicio eliminado exitosamente' });
   } catch (err) {
     console.error('Error al eliminar servicio:', err);
@@ -149,7 +150,7 @@ exports.detalleServicio = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [servicios] = await pool.query(
+    const [servicios] = await query(
       `SELECT s.*, c.nombre AS categoria_nombre,
        u.id AS proveedor_id, u.nombre, u.apellido, u.foto_url, u.direccion, u.telefono, u.latitud, u.longitud,
        COALESCE(AVG(cal.puntuacion), 0) AS calificacion_promedio,
@@ -167,14 +168,13 @@ exports.detalleServicio = async (req, res) => {
       return res.status(404).json({ error: 'Servicio no encontrado' });
     }
 
-    const [comentarios] = await pool.query(
-      `SELECT cal.puntuacion, cal.comentario, cal.creado_en,
+    const [comentarios] = await query(
+      `SELECT TOP 10 cal.puntuacion, cal.comentario, cal.creado_en,
        u.nombre, u.apellido, u.foto_url
        FROM calificaciones cal
        JOIN usuarios u ON cal.cliente_id = u.id
        WHERE cal.proveedor_id = ?
-       ORDER BY cal.creado_en DESC
-       LIMIT 10`,
+       ORDER BY cal.creado_en DESC`,
       [servicios[0].proveedor_id]
     );
 

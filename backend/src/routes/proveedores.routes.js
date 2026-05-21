@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const pool = require('../config/db');
+const { query } = require('../config/db');
 
 router.get('/cercanos', async (req, res) => {
   try {
@@ -11,13 +11,13 @@ router.get('/cercanos', async (req, res) => {
 
     const radioKm = parseFloat(radio);
 
-    const [proveedores] = await pool.query(
+    const [proveedores] = await query(
       `SELECT u.id, u.nombre, u.apellido, u.foto_url, u.direccion, u.latitud, u.longitud, u.telefono,
        COALESCE(AVG(cal.puntuacion), 0) AS calificacion_promedio,
        COUNT(cal.id) AS total_calificaciones,
-       (6371 * ACOS(COS(RADIANS(?)) * COS(RADIANS(u.latitud)) *
-        COS(RADIANS(u.longitud) - RADIANS(?)) + SIN(RADIANS(?)) *
-        SIN(RADIANS(u.latitud)))) AS distancia_km
+       (6371 * ACOS(COS(? * PI() / 180) * COS(u.latitud * PI() / 180) *
+        COS(u.longitud * PI() / 180 - ? * PI() / 180) + SIN(? * PI() / 180) *
+        SIN(u.latitud * PI() / 180))) AS distancia_km
        FROM usuarios u
        LEFT JOIN calificaciones cal ON cal.proveedor_id = u.id
        WHERE u.rol = 'proveedor' AND u.activo = 1
@@ -29,7 +29,7 @@ router.get('/cercanos', async (req, res) => {
     );
 
     for (const proveedor of proveedores) {
-      const [servicios] = await pool.query(
+      const [servicios] = await query(
         `SELECT s.id, s.titulo, s.tarifa, s.tipo_tarifa, c.nombre AS categoria_nombre
          FROM servicios s
          JOIN categorias c ON s.categoria_id = c.id

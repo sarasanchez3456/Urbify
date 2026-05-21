@@ -1,40 +1,43 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const pool = require('../config/db');
+const { query } = require('../config/db');
 require('dotenv').config();
 
 exports.registrar = async (req, res) => {
   try {
     const { nombre, apellido, correo, contrasena, telefono, rol, direccion, latitud, longitud } = req.body;
 
-    const [existe] = await pool.query('SELECT id FROM usuarios WHERE correo = ?', [correo]);
+    const [existe] = await query('SELECT id FROM usuarios WHERE correo = ?', [correo]);
     if (existe.length > 0) {
       return res.status(400).json({ error: 'El correo ya está registrado' });
     }
 
     const hashedPassword = await bcrypt.hash(contrasena, 10);
 
-    const [result] = await pool.query(
+    const [result] = await query(
       `INSERT INTO usuarios (nombre, apellido, correo, contrasena, telefono, rol, direccion, latitud, longitud)
+       OUTPUT INSERTED.id
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [nombre, apellido, correo, hashedPassword, telefono || null, rol, direccion || null, latitud || null, longitud || null]
     );
 
+    const usuarioId = result[0].id;
+
     const token = jwt.sign(
-      { id: result.insertId, rol },
+      { id: usuarioId, rol },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
 
-    await pool.query(
-      'INSERT INTO tokens_sesion (usuario_id, token, expira_en) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))',
-      [result.insertId, token]
+    await query(
+      'INSERT INTO tokens_sesion (usuario_id, token, expira_en) VALUES (?, ?, DATEADD(DAY, 7, GETDATE()))',
+      [usuarioId, token]
     );
 
     res.status(201).json({
       mensaje: 'Usuario registrado exitosamente',
       token,
-      usuario: { id: result.insertId, nombre, apellido, correo, rol },
+      usuario: { id: usuarioId, nombre, apellido, correo, rol },
     });
   } catch (err) {
     console.error('Error en registro:', err);
@@ -46,7 +49,7 @@ exports.login = async (req, res) => {
   try {
     const { correo, contrasena } = req.body;
 
-    const [usuarios] = await pool.query('SELECT * FROM usuarios WHERE correo = ? AND activo = 1', [correo]);
+    const [usuarios] = await query('SELECT * FROM usuarios WHERE correo = ? AND activo = 1', [correo]);
     if (usuarios.length === 0) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
@@ -63,8 +66,8 @@ exports.login = async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
 
-    await pool.query(
-      'INSERT INTO tokens_sesion (usuario_id, token, expira_en) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))',
+    await query(
+      'INSERT INTO tokens_sesion (usuario_id, token, expira_en) VALUES (?, ?, DATEADD(DAY, 7, GETDATE()))',
       [usuario.id, token]
     );
 
@@ -92,7 +95,7 @@ exports.login = async (req, res) => {
 
 exports.perfil = async (req, res) => {
   try {
-    const [usuarios] = await pool.query(
+    const [usuarios] = await query(
       `SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, latitud, longitud, creado_en
        FROM usuarios WHERE id = ?`,
       [req.usuarioId]
@@ -113,7 +116,7 @@ exports.actualizarPerfil = async (req, res) => {
   try {
     const { nombre, apellido, telefono, direccion, latitud, longitud, foto_url } = req.body;
 
-    await pool.query(
+    await query(
       `UPDATE usuarios SET nombre = COALESCE(?, nombre), apellido = COALESCE(?, apellido),
        telefono = COALESCE(?, telefono), direccion = COALESCE(?, direccion),
        latitud = COALESCE(?, latitud), longitud = COALESCE(?, longitud),

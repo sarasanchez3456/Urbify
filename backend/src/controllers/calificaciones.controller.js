@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const { query } = require('../config/db');
 
 exports.crearCalificacion = async (req, res) => {
   try {
@@ -8,7 +8,7 @@ exports.crearCalificacion = async (req, res) => {
       return res.status(400).json({ error: 'La puntuación debe ser entre 1 y 5' });
     }
 
-    const [solicitud] = await pool.query(
+    const [solicitud] = await query(
       'SELECT * FROM solicitudes WHERE id = ? AND cliente_id = ? AND estado = "completada"',
       [solicitud_id, req.usuarioId]
     );
@@ -16,20 +16,21 @@ exports.crearCalificacion = async (req, res) => {
       return res.status(404).json({ error: 'Solicitud no encontrada, no autorizada o no completada' });
     }
 
-    const [existente] = await pool.query('SELECT id FROM calificaciones WHERE solicitud_id = ?', [solicitud_id]);
+    const [existente] = await query('SELECT id FROM calificaciones WHERE solicitud_id = ?', [solicitud_id]);
     if (existente.length > 0) {
       return res.status(400).json({ error: 'Esta solicitud ya ha sido calificada' });
     }
 
-    const [result] = await pool.query(
+    const [result] = await query(
       `INSERT INTO calificaciones (solicitud_id, cliente_id, proveedor_id, puntuacion, comentario)
+       OUTPUT INSERTED.id
        VALUES (?, ?, ?, ?, ?)`,
       [solicitud_id, req.usuarioId, solicitud[0].proveedor_id, puntuacion, comentario || null]
     );
 
     res.status(201).json({
       mensaje: 'Calificación creada exitosamente',
-      calificacion: { id: result.insertId },
+      calificacion: { id: result[0].id },
     });
   } catch (err) {
     console.error('Error al crear calificación:', err);
@@ -41,7 +42,7 @@ exports.calificacionesProveedor = async (req, res) => {
   try {
     const { proveedor_id } = req.params;
 
-    const [calificaciones] = await pool.query(
+    const [calificaciones] = await query(
       `SELECT cal.puntuacion, cal.comentario, cal.creado_en,
        u.nombre, u.apellido, u.foto_url, s.titulo AS servicio_titulo
        FROM calificaciones cal
@@ -53,7 +54,7 @@ exports.calificacionesProveedor = async (req, res) => {
       [proveedor_id]
     );
 
-    const [promedio] = await pool.query(
+    const [promedio] = await query(
       `SELECT COALESCE(AVG(puntuacion), 0) AS promedio, COUNT(*) AS total
        FROM calificaciones WHERE proveedor_id = ?`,
       [proveedor_id]

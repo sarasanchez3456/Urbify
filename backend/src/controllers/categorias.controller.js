@@ -1,8 +1,8 @@
-const pool = require('../config/db');
+const { query } = require('../config/db');
 
 exports.listarCategorias = async (req, res) => {
   try {
-    const [categorias] = await pool.query('SELECT * FROM categorias ORDER BY nombre');
+    const [categorias] = await query('SELECT * FROM categorias ORDER BY nombre');
     res.json(categorias);
   } catch (err) {
     console.error('Error al listar categorías:', err);

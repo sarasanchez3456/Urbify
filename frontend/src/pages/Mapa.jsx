@@ -78,22 +78,22 @@ export default function Mapa() {
         </div>
       </div>
 
-      <div className="mapa-container">
+      <div className="mapa-container bg-[#020617]/50 backdrop-blur-xl border border-cyan-500/20 rounded-3xl overflow-hidden">
         <MapContainer center={[19.4326, -99.1332]} zoom={12} className="mapa-leaflet">
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
           />
           <LocationMarker onLocationFound={handleLocationFound} />
           {proveedores.map((p) => (
             <Marker key={p.id} position={[parseFloat(p.latitud), parseFloat(p.longitud)]}>
               <Popup>
-                <div className="popup-content">
-                  <strong>{p.nombre} {p.apellido}</strong>
+                <div className="popup-content bg-[#020617] text-white p-2">
+                  <strong className="text-cyan-400">{p.nombre} {p.apellido}</strong>
                   <p>⭐ {parseFloat(p.calificacion_promedio).toFixed(1)} ({p.total_calificaciones})</p>
-                  <p>{p.servicios?.map((s) => s.titulo).join(', ')}</p>
-                  <p className="popup-distancia">{parseFloat(p.distancia_km).toFixed(2)} km</p>
-                  <Link to={`/servicio/${p.servicios?.[0]?.id}`} className="btn btn-primary btn-sm">
+                  <p className="text-xs text-gray-400">{p.servicios?.map((s) => s.titulo).join(', ')}</p>
+                  <p className="popup-distancia text-magenta-400 font-bold">{parseFloat(p.distancia_km).toFixed(2)} km</p>
+                  <Link to={`/servicio/${p.servicios?.[0]?.id}`} className="btn-premium-sm">
                     Ver Perfil
                   </Link>
                 </div>
@@ -102,23 +102,23 @@ export default function Mapa() {
           ))}
         </MapContainer>
 
-        <div className="mapa-sidebar">
-          <h3>Proveedores Cercanos ({proveedores.length})</h3>
+        <div className="mapa-sidebar bg-[#020617]/80 backdrop-blur-md border-l border-cyan-500/20 text-white p-6">
+          <h3 className="font-['Orbitron'] text-cyan-400 mb-4">Proveedores Cercanos ({proveedores.length})</h3>
           {cargando ? (
-            <p className="loading">Cargando...</p>
+            <p className="loading text-cyan-500">Cargando...</p>
           ) : proveedores.length === 0 ? (
-            <p className="sin-proveedores">No se encontraron proveedores cercanos. Aumenta el radio de búsqueda.</p>
+            <p className="sin-proveedores text-gray-400">No se encontraron proveedores cercanos. Aumenta el radio de búsqueda.</p>
           ) : (
-            <div className="proveedores-lista">
+            <div className="proveedores-lista flex flex-col gap-3">
               {proveedores.map((p) => (
-                <Link key={p.id} to={`/servicio/${p.servicios?.[0]?.id}`} className="proveedor-item">
-                  <div className="proveedor-item-avatar">
+                <Link key={p.id} to={`/servicio/${p.servicios?.[0]?.id}`} className="proveedor-item bg-white/5 hover:bg-white/10 p-3 rounded-xl border border-white/10 transition-all">
+                  <div className="proveedor-item-avatar bg-gradient-to-br from-cyan-500 to-magenta-500 text-black font-bold">
                     {p.nombre[0]}{p.apellido[0]}
                   </div>
                   <div>
-                    <strong>{p.nombre} {p.apellido}</strong>
-                    <p>⭐ {parseFloat(p.calificacion_promedio).toFixed(1)}</p>
-                    <p className="proveedor-item-distancia">{parseFloat(p.distancia_km).toFixed(2)} km</p>
+                    <strong className="text-white">{p.nombre} {p.apellido}</strong>
+                    <p className="text-yellow-400">⭐ {parseFloat(p.calificacion_promedio).toFixed(1)}</p>
+                    <p className="proveedor-item-distancia text-cyan-400 text-xs">{parseFloat(p.distancia_km).toFixed(2)} km</p>
                   </div>
                 </Link>
               ))}
