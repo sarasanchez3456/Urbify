@@ -1,5 +1,5 @@
-@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap');
+@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 
 @theme inline {
@@ -98,18 +98,30 @@
   * {
     border-color: var(--border);
   }
+
   body {
     background-color: var(--dark);
     color: #e0eeff;
     font-family: 'Rajdhani', sans-serif;
-    cursor: none; /* Required for custom cursor */
+    cursor: none;
+    /* Required for custom cursor */
   }
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: 'Orbitron', sans-serif;
   }
 }
 
 /* Typography Utilities */
-.font-orbitron { font-family: 'Orbitron', sans-serif; }
-.font-rajdhani { font-family: 'Rajdhani', sans-serif; }
+.font-orbitron {
+  font-family: 'Orbitron', sans-serif;
+}
 
+.font-rajdhani {
+  font-family: 'Rajdhani', sans-serif;
+}
