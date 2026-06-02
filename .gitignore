@@ -2,3 +2,4 @@ node_modules/
 .env
 dist/
 .DS_Store
+stitch_urbify_interactive_service_marketplace/
