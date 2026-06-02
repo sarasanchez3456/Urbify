@@ -1,8 +1,9 @@
 .perfil-rol {
   text-align: center;
-  color: #6b7280;
+  color: rgba(193, 200, 193, 0.5);
   margin-bottom: 1.5rem;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.15em;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }

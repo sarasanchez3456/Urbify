@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
+import DashboardLayout from '../components/DashboardLayout';
 import './Mapa.css';
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -25,41 +27,51 @@ function LocationMarker({ onLocationFound }) {
 
   useEffect(() => {
     map.locate({ setView: true, maxZoom: 14 });
-    map.on('locationfound', (e) => {
+    const handleLocationFound = (e) => {
       const { lat, lng } = e.latlng;
       onLocationFound(lat, lng);
       L.marker([lat, lng], { icon: userIcon }).addTo(map)
         .bindPopup('Tu ubicación').openPopup();
-    });
+    };
+    map.on('locationfound', handleLocationFound);
+    return () => {
+      map.stop();
+      map.off('locationfound', handleLocationFound);
+    };
   }, [map, onLocationFound]);
 
   return null;
 }
 
-export default function Mapa() {
+function MapaContent() {
   const [proveedores, setProveedores] = useState([]);
   const [coords, setCoords] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [radio, setRadio] = useState(5);
+  const radioRef = useRef(radio);
 
-  const handleLocationFound = async (lat, lng) => {
+  useEffect(() => {
+    radioRef.current = radio;
+  }, [radio]);
+
+  const handleLocationFound = useCallback(async (lat, lng) => {
     setCoords({ lat, lng });
     setCargando(true);
     try {
-      const res = await api.get(`/proveedores/cercanos?lat=${lat}&lng=${lng}&radio=${radio}`);
+      const res = await api.get(`/proveedores/cercanos?lat=${lat}&lng=${lng}&radio=${radioRef.current}`);
       setProveedores(res.data);
     } catch (err) {
       console.error('Error al cargar proveedores:', err);
     } finally {
       setCargando(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (coords) {
       handleLocationFound(coords.lat, coords.lng);
     }
-  }, [radio]);
+  }, [radio, coords, handleLocationFound]);
 
   return (
     <div className="mapa-page">
@@ -90,10 +102,10 @@ export default function Mapa() {
               <Popup>
                 <div className="popup-content bg-[#020617] text-white p-2">
                   <strong className="text-cyan-400">{p.nombre} {p.apellido}</strong>
-                  <p>⭐ {parseFloat(p.calificacion_promedio).toFixed(1)} ({p.total_calificaciones})</p>
+                  <p>⭐ {parseFloat(p.calificacion_promedio || 0).toFixed(1)} ({p.total_calificaciones})</p>
                   <p className="text-xs text-gray-400">{p.servicios?.map((s) => s.titulo).join(', ')}</p>
-                  <p className="popup-distancia text-magenta-400 font-bold">{parseFloat(p.distancia_km).toFixed(2)} km</p>
-                  <Link to={`/servicio/${p.servicios?.[0]?.id}`} className="btn-premium-sm">
+                  <p className="popup-distancia text-fuchsia-400 font-bold">{parseFloat(p.distancia_km || 0).toFixed(2)} km</p>
+                  <Link to={p.servicios?.[0]?.id ? `/servicio/${p.servicios[0].id}` : '#'} className="btn-premium-sm">
                     Ver Perfil
                   </Link>
                 </div>
@@ -111,14 +123,14 @@ export default function Mapa() {
           ) : (
             <div className="proveedores-lista flex flex-col gap-3">
               {proveedores.map((p) => (
-                <Link key={p.id} to={`/servicio/${p.servicios?.[0]?.id}`} className="proveedor-item bg-white/5 hover:bg-white/10 p-3 rounded-xl border border-white/10 transition-all">
-                  <div className="proveedor-item-avatar bg-gradient-to-br from-cyan-500 to-magenta-500 text-black font-bold">
-                    {p.nombre[0]}{p.apellido[0]}
+                <Link key={p.id} to={p.servicios?.[0]?.id ? `/servicio/${p.servicios[0].id}` : '#'} className="proveedor-item bg-white/5 hover:bg-white/10 p-3 rounded-xl border border-white/10 transition-all">
+                  <div className="proveedor-item-avatar bg-gradient-to-br from-cyan-500 to-fuchsia-500 text-black font-bold">
+                    {p.nombre?.[0]}{p.apellido?.[0]}
                   </div>
                   <div>
                     <strong className="text-white">{p.nombre} {p.apellido}</strong>
-                    <p className="text-yellow-400">⭐ {parseFloat(p.calificacion_promedio).toFixed(1)}</p>
-                    <p className="proveedor-item-distancia text-cyan-400 text-xs">{parseFloat(p.distancia_km).toFixed(2)} km</p>
+                    <p className="text-yellow-400">⭐ {parseFloat(p.calificacion_promedio || 0).toFixed(1)}</p>
+                    <p className="proveedor-item-distancia text-cyan-400 text-xs">{parseFloat(p.distancia_km || 0).toFixed(2)} km</p>
                   </div>
                 </Link>
               ))}
@@ -128,4 +140,18 @@ export default function Mapa() {
       </div>
     </div>
   );
+}
+
+export default function Mapa() {
+  const { usuario } = useAuth();
+
+  if (usuario) {
+    return (
+      <DashboardLayout titulo="Mapa de Proveedores" subtitulo="Encuentra profesionales cerca de ti">
+        <MapaContent />
+      </DashboardLayout>
+    );
+  }
+
+  return <MapaContent />;
 }

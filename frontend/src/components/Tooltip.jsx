@@ -14,20 +14,22 @@ export function Tooltip() {
   const [showTooltip, setShowTooltip] = useState(false);
 
   useEffect(() => {
-    const updateMousePosition = (e: MouseEvent) => {
+    let lastTarget = null;
+
+    const handleMouseMove = (e) => {
       setMousePosition({ x: e.clientX, y: e.clientY });
-    };
 
-    const handleMouseMove = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
+      const target = e.target;
+      if (target === lastTarget) return;
+      lastTarget = target;
 
-      // Mostrar tooltip en elementos interactivos
-      if (
+      const isInteractive =
         target.tagName === "BUTTON" ||
         target.tagName === "A" ||
         target.closest("button") ||
-        target.closest("a")
-      ) {
+        target.closest("a");
+
+      if (isInteractive) {
         setMessage(tooltipMessages[Math.floor(Math.random() * tooltipMessages.length)]);
         setShowTooltip(true);
       } else {
@@ -35,12 +37,10 @@ export function Tooltip() {
       }
     };
 
-    window.addEventListener("mousemove", updateMousePosition);
-    window.addEventListener("mouseover", handleMouseMove);
+    window.addEventListener("mousemove", handleMouseMove);
 
     return () => {
-      window.removeEventListener("mousemove", updateMousePosition);
-      window.removeEventListener("mouseover", handleMouseMove);
+      window.removeEventListener("mousemove", handleMouseMove);
     };
   }, []);
 

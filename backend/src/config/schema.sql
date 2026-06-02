@@ -1,9 +1,11 @@
-CREATE DATABASE urbify_db;
+IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'urbify_db')
+  CREATE DATABASE urbify_db;
 GO
 
 USE urbify_db;
 GO
 
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[usuarios]') AND type in (N'U'))
 CREATE TABLE usuarios (
   id            INT IDENTITY(1,1) PRIMARY KEY,
   nombre        NVARCHAR(100) NOT NULL,
@@ -15,13 +17,17 @@ CREATE TABLE usuarios (
   foto_url      NVARCHAR(255),
   latitud       DECIMAL(10,8),
   longitud      DECIMAL(11,8),
+  oficio        NVARCHAR(100),
   direccion     NVARCHAR(255),
   activo        BIT DEFAULT 1,
+  intentos_fallidos INT DEFAULT 0,
+  bloqueado_hasta   DATETIME2 NULL,
   creado_en     DATETIME2 DEFAULT GETDATE(),
   CONSTRAINT UQ_usuarios_correo UNIQUE (correo)
 );
 GO
 
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[categorias]') AND type in (N'U'))
 CREATE TABLE categorias (
   id            INT IDENTITY(1,1) PRIMARY KEY,
   nombre        NVARCHAR(100) NOT NULL,
@@ -30,6 +36,7 @@ CREATE TABLE categorias (
 );
 GO
 
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[servicios]') AND type in (N'U'))
 CREATE TABLE servicios (
   id               INT IDENTITY(1,1) PRIMARY KEY,
   proveedor_id     INT NOT NULL,
@@ -45,6 +52,7 @@ CREATE TABLE servicios (
 );
 GO
 
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[solicitudes]') AND type in (N'U'))
 CREATE TABLE solicitudes (
   id               INT IDENTITY(1,1) PRIMARY KEY,
   cliente_id       INT NOT NULL,
@@ -61,6 +69,7 @@ CREATE TABLE solicitudes (
 );
 GO
 
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[calificaciones]') AND type in (N'U'))
 CREATE TABLE calificaciones (
   id               INT IDENTITY(1,1) PRIMARY KEY,
   solicitud_id     INT NOT NULL,
@@ -76,6 +85,7 @@ CREATE TABLE calificaciones (
 );
 GO
 
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[tokens_sesion]') AND type in (N'U'))
 CREATE TABLE tokens_sesion (
   id               INT IDENTITY(1,1) PRIMARY KEY,
   usuario_id       INT NOT NULL,
@@ -86,6 +96,7 @@ CREATE TABLE tokens_sesion (
 );
 GO
 
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[notificaciones]') AND type in (N'U'))
 CREATE TABLE notificaciones (
   id               INT IDENTITY(1,1) PRIMARY KEY,
   usuario_id       INT NOT NULL,
@@ -96,13 +107,14 @@ CREATE TABLE notificaciones (
 );
 GO
 
-INSERT INTO categorias (nombre, descripcion) VALUES
-  (N'Electricidad',  N'Instalaciones eléctricas, reparaciones y mantenimiento'),
-  (N'Plomería',      N'Reparación de tuberías, sanitarios y sistemas de agua'),
-  (N'Mecánica',      N'Reparación y mantenimiento de vehículos'),
-  (N'Carpintería',   N'Fabricación y reparación de muebles y estructuras en madera'),
-  (N'Pintura',       N'Pintura interior y exterior de inmuebles'),
-  (N'Cerrajería',    N'Instalación y reparación de cerraduras'),
-  (N'Jardinería',    N'Mantenimiento de jardines y zonas verdes'),
-  (N'Limpieza',      N'Servicios de aseo residencial y comercial');
+IF NOT EXISTS (SELECT 1 FROM categorias)
+  INSERT INTO categorias (nombre, descripcion) VALUES
+    (N'Electricidad',  N'Instalaciones eléctricas, reparaciones y mantenimiento'),
+    (N'Plomería',      N'Reparación de tuberías, sanitarios y sistemas de agua'),
+    (N'Mecánica',      N'Reparación y mantenimiento de vehículos'),
+    (N'Carpintería',   N'Fabricación y reparación de muebles y estructuras en madera'),
+    (N'Pintura',       N'Pintura interior y exterior de inmuebles'),
+    (N'Cerrajería',    N'Instalación y reparación de cerraduras'),
+    (N'Jardinería',    N'Mantenimiento de jardines y zonas verdes'),
+    (N'Limpieza',      N'Servicios de aseo residencial y comercial');
 GO

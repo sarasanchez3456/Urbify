@@ -2,8 +2,25 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
-import './Auth.css';
-import './Solicitar.css';
+import DashboardLayout from '../components/DashboardLayout';
+import { Send, ArrowLeft, Calendar, DollarSign, User, Briefcase } from 'lucide-react';
+
+const glassCard = {
+  backgroundColor: 'rgba(9, 35, 36, 0.4)',
+  backdropFilter: 'blur(16px)',
+  border: '1px solid rgba(169, 210, 182, 0.12)',
+};
+
+const glassInner = {
+  backgroundColor: 'rgba(0, 17, 18, 0.4)',
+  backdropFilter: 'blur(12px)',
+  border: '1px solid rgba(169, 210, 182, 0.08)',
+};
+
+const btnGradient = {
+  color: '#001718',
+  background: 'linear-gradient(135deg, #a9d2b6, #1e4f43)',
+};
 
 export default function SolicitarServicio() {
   const { id } = useParams();
@@ -18,16 +35,16 @@ export default function SolicitarServicio() {
   const [exito, setExito] = useState(false);
 
   useEffect(() => {
+    if (!usuario) return;
+    if (usuario.rol !== 'cliente') {
+      navigate('/login');
+      return;
+    }
     api.get(`/servicios/${id}`)
       .then((res) => setServicio(res.data))
       .catch(() => navigate('/buscar'))
       .finally(() => setCargando(false));
-  }, [id, navigate]);
-
-  if (!usuario || usuario.rol !== 'cliente') {
-    navigate('/login');
-    return null;
-  }
+  }, [id, navigate, usuario]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -48,53 +65,118 @@ export default function SolicitarServicio() {
     }
   };
 
-  if (cargando) return <div className="loading container">Cargando...</div>;
+  if (cargando) {
+    return (
+      <DashboardLayout titulo="Solicitar Servicio">
+        <div className="flex items-center justify-center h-64" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>Cargando...</div>
+      </DashboardLayout>
+    );
+  }
+
   if (exito) {
     return (
-      <div className="auth-page container">
-        <div className="auth-card card">
-          <div className="alert alert-success">
-            <h2>¡Solicitud enviada con éxito!</h2>
-            <p>El proveedor recibirá una notificación por correo electrónico y se pondrá en contacto contigo pronto.</p>
+      <DashboardLayout titulo="Solicitar Servicio">
+        <div className="max-w-lg mx-auto mt-12 text-center rounded-xl p-8" style={glassCard}>
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}>
+            <Send size={32} style={{ color: '#4ade80' }} />
           </div>
-          <button onClick={() => navigate('/buscar')} className="btn btn-primary btn-block">
-            Volver a Buscar
+          <h2 className="text-xl font-semibold mb-2" style={{ fontFamily: "'Playfair Display', serif", color: '#cde8e8' }}>¡Solicitud enviada con éxito!</h2>
+          <p className="text-sm mb-6" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>
+            El proveedor recibirá una notificación y se pondrá en contacto contigo pronto.
+          </p>
+          <button
+            onClick={() => navigate('/mis-solicitudes')}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg transition-all text-sm font-semibold"
+            style={btnGradient}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, #bde2ca, #256f5a)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, #a9d2b6, #1e4f43)'; }}
+          >
+            <ArrowLeft size={16} />
+            Ver Mis Solicitudes
           </button>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="auth-page container">
-      <div className="auth-card card">
-        <h1>Solicitar Servicio</h1>
-        <div className="solicitar-resumen">
-          <p><strong>Servicio:</strong> {servicio?.titulo}</p>
-          <p><strong>Proveedor:</strong> {servicio?.nombre} {servicio?.apellido}</p>
-          <p><strong>Tarifa:</strong> ${parseFloat(servicio?.tarifa || 0).toFixed(2)} / {servicio?.tipo_tarifa}</p>
+    <DashboardLayout titulo="Solicitar Servicio" subtitulo="Describe lo que necesitas">
+      <div className="max-w-2xl mx-auto">
+        <div className="rounded-xl p-6 lg:p-8" style={glassCard}>
+          <div className="mb-6 p-4 rounded-lg space-y-2" style={glassInner}>
+            <div className="flex items-center gap-2 text-sm">
+              <Briefcase size={14} style={{ color: '#a9d2b6' }} />
+              <span style={{ color: 'rgba(193, 200, 193, 0.5)' }}>Servicio:</span>
+              <span className="font-medium" style={{ color: '#cde8e8' }}>{servicio?.titulo}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <User size={14} style={{ color: '#a9d2b6' }} />
+              <span style={{ color: 'rgba(193, 200, 193, 0.5)' }}>Proveedor:</span>
+              <span style={{ color: '#cde8e8' }}>{servicio?.nombre} {servicio?.apellido}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <DollarSign size={14} style={{ color: '#a9d2b6' }} />
+              <span style={{ color: 'rgba(193, 200, 193, 0.5)' }}>Tarifa:</span>
+              <span className="font-medium" style={{ color: '#cde8e8' }}>${parseFloat(servicio?.tarifa || 0).toFixed(2)} / {servicio?.tipo_tarifa}</span>
+            </div>
+          </div>
+
+          {error && (
+            <div className="mb-4 px-4 py-3 rounded-lg text-sm" style={{
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              color: '#f87171',
+            }}>
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm mb-1.5" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>Describe tu problema o necesidad</label>
+              <textarea
+                rows="5"
+                value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
+                placeholder="Describe qué necesitas, la dirección exacta, y cualquier detalle relevante..."
+                required
+                className="w-full px-4 py-2.5 rounded-lg transition-colors resize-none"
+                style={{ ...glassInner, color: '#cde8e8', outline: 'none' }}
+                onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.5)'; }}
+                onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.08)'; }}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm mb-1.5" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>
+                <Calendar size={14} className="inline mr-1" />
+                Fecha preferida (opcional)
+              </label>
+              <input
+                type="datetime-local"
+                value={fecha}
+                onChange={(e) => setFecha(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg transition-colors"
+                style={{ ...glassInner, color: '#cde8e8', outline: 'none' }}
+                onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.5)'; }}
+                onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.08)'; }}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={enviando}
+              className="w-full flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg transition-all disabled:opacity-50 text-sm font-semibold"
+              style={btnGradient}
+              onMouseEnter={(e) => { if (!enviando) e.currentTarget.style.background = 'linear-gradient(135deg, #bde2ca, #256f5a)'; }}
+              onMouseLeave={(e) => { if (!enviando) e.currentTarget.style.background = 'linear-gradient(135deg, #a9d2b6, #1e4f43)'; }}
+            >
+              <Send size={16} />
+              {enviando ? 'Enviando solicitud...' : 'Enviar Solicitud'}
+            </button>
+          </form>
         </div>
-        {error && <div className="alert alert-error">{error}</div>}
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Describe tu problema o necesidad</label>
-            <textarea
-              rows="5"
-              value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-              placeholder="Describe qué necesitas, la dirección exacta, y cualquier detalle relevante..."
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label>Fecha preferida (opcional)</label>
-            <input type="datetime-local" value={fecha} onChange={(e) => setFecha(e.target.value)} />
-          </div>
-          <button type="submit" className="btn btn-primary btn-block" disabled={enviando}>
-            {enviando ? 'Enviando solicitud...' : 'Enviar Solicitud'}
-          </button>
-        </form>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

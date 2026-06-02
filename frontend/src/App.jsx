@@ -1,11 +1,12 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Background } from './components/Background';
-import { CustomCursor } from './components/CustomCursor';
+import api, { setOnUnauthorized } from './api/axios';
+
 import Home from './pages/Home';
-import Login from './pages/Login';
-import Register from './pages/Register';
+import Auth from './pages/Auth';
 import Buscar from './pages/Buscar';
 import Mapa from './pages/Mapa';
 import ServicioDetalle from './pages/ServicioDetalle';
@@ -14,6 +15,7 @@ import Perfil from './pages/Perfil';
 import MisServicios from './pages/MisServicios';
 import MisSolicitudes from './pages/MisSolicitudes';
 import Calificar from './pages/Calificar';
+import Dashboard from './pages/Dashboard';
 
 function RutaProtegida({ children, rol }) {
   const { usuario, cargando } = useAuth();
@@ -23,19 +25,28 @@ function RutaProtegida({ children, rol }) {
   return children;
 }
 
-export default function App() {
-  return (
-    <div className="dark min-h-screen bg-[#04060f] text-[#e0eeff] relative overflow-x-hidden">
-      <Background />
-      
-      <Navbar />
-      <CustomCursor />
+const rutasDashboard = ['/dashboard', '/perfil', '/mis-servicios', '/mis-solicitudes', '/solicitar', '/calificar'];
 
-      <main className="relative z-10 pt-20">
+export default function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const esDashboard = rutasDashboard.some((r) => location.pathname.startsWith(r));
+
+  useEffect(() => {
+    setOnUnauthorized(() => navigate('/login'));
+  }, [navigate]);
+
+  return (
+    <div className="dark min-h-screen bg-[#001718] text-[#cde8e8] relative overflow-x-hidden">
+      <Background />
+
+      {!esDashboard && <Navbar />}
+
+      <main className={`relative z-10 ${!esDashboard ? 'pt-20' : ''}`}>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/registro" element={<Register />} />
+          <Route path="/login" element={<Auth />} />
+          <Route path="/registro" element={<Auth />} />
           <Route path="/buscar" element={<Buscar />} />
           <Route path="/mapa" element={<Mapa />} />
           <Route path="/servicio/:id" element={<ServicioDetalle />} />
@@ -44,6 +55,14 @@ export default function App() {
             element={
               <RutaProtegida rol="cliente">
                 <SolicitarServicio />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <RutaProtegida>
+                <Dashboard />
               </RutaProtegida>
             }
           />

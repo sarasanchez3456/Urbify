@@ -1,17 +1,20 @@
 .detalle-page {
-  padding: 2rem 0;
+  padding: 2rem 52px;
 }
 
 .btn-back {
   display: inline-block;
-  color: #4361ee;
+  color: #a9d2b6;
   text-decoration: none;
   font-weight: 500;
   margin-bottom: 1.5rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.85rem;
+  transition: color 0.2s;
 }
 
 .btn-back:hover {
-  text-decoration: underline;
+  color: #c3eccf;
 }
 
 .detalle-grid {
@@ -27,18 +30,21 @@
 
 .detalle-categoria {
   display: inline-block;
-  background: #eef2ff;
-  color: #4361ee;
+  background: rgba(169, 210, 182, 0.1);
+  color: #a9d2b6;
   padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.85rem;
+  border-radius: 100px;
+  font-size: 0.8rem;
   font-weight: 500;
   margin-bottom: 0.75rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  border: 1px solid rgba(169, 210, 182, 0.15);
 }
 
 .detalle-header h1 {
+  font-family: 'Playfair Display', serif;
   font-size: 1.75rem;
-  color: #1a1a2e;
+  color: #cde8e8;
   margin-bottom: 0.5rem;
 }
 
@@ -46,46 +52,51 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  color: #f59e0b;
+  color: #ff6b35;
   font-weight: 600;
 }
 
 .detalle-rating span:last-child {
-  color: #9ca3af;
+  color: rgba(193, 200, 193, 0.3);
   font-weight: 400;
 }
 
 .detalle-body h3 {
+  font-family: 'Playfair Display', serif;
   font-size: 1.1rem;
   margin-bottom: 0.75rem;
-  color: #1a1a2e;
+  color: #cde8e8;
 }
 
 .detalle-body p {
-  color: #4a5568;
+  color: rgba(193, 200, 193, 0.5);
   line-height: 1.7;
   margin-bottom: 1.5rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .detalle-precio-box {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  border-radius: 8px;
+  background: rgba(9, 35, 36, 0.4);
+  border: 1px solid rgba(169, 210, 182, 0.15);
+  border-radius: 10px;
   padding: 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  backdrop-filter: blur(8px);
 }
 
 .detalle-precio-label {
   font-weight: 500;
-  color: #374151;
+  color: rgba(205, 232, 232, 0.6);
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .detalle-precio-valor {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #16a34a;
+  color: #a9d2b6;
+  font-family: 'Playfair Display', serif;
 }
 
 .detalle-comentarios {
@@ -93,19 +104,21 @@
 }
 
 .detalle-comentarios h3 {
+  font-family: 'Playfair Display', serif;
   font-size: 1.1rem;
   margin-bottom: 1rem;
+  color: #cde8e8;
 }
 
 .sin-comentarios {
-  color: #9ca3af;
+  color: rgba(193, 200, 193, 0.3);
   text-align: center;
   padding: 2rem;
 }
 
 .comentario-item {
   padding: 1rem 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid rgba(169, 210, 182, 0.06);
 }
 
 .comentario-item:last-child {
@@ -120,26 +133,29 @@
 
 .comentario-header strong {
   font-size: 0.95rem;
+  color: #cde8e8;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .comentario-estrellas {
-  color: #f59e0b;
+  color: #ff6b35;
 }
 
 .comentario-item p {
-  color: #4a5568;
+  color: rgba(193, 200, 193, 0.5);
   font-size: 0.9rem;
   margin-bottom: 0.25rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .comentario-fecha {
   font-size: 0.8rem;
-  color: #9ca3af;
+  color: rgba(193, 200, 193, 0.25);
 }
 
 .detalle-sidebar .card {
   position: sticky;
-  top: 80px;
+  top: 100px;
 }
 
 .proveedor-info {
@@ -151,33 +167,39 @@
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background: #4361ee;
-  color: white;
+  background: linear-gradient(135deg, #a9d2b6, #8eb69b);
+  color: #001718;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.75rem;
   font-weight: 700;
   margin: 0 auto 1rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .proveedor-info h3 {
+  font-family: 'Playfair Display', serif;
   font-size: 1.15rem;
   margin-bottom: 0.5rem;
+  color: #cde8e8;
 }
 
 .proveedor-direccion,
 .proveedor-telefono {
-  color: #6b7280;
+  color: rgba(193, 200, 193, 0.4);
   font-size: 0.9rem;
   margin: 0.25rem 0;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 @media (max-width: 768px) {
+  .detalle-page {
+    padding: 1rem;
+  }
   .detalle-grid {
     grid-template-columns: 1fr;
   }
-
   .detalle-header h1 {
     font-size: 1.35rem;
   }

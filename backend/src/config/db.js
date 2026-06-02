@@ -5,7 +5,7 @@ const config = {
   server: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT) || 1433,
   user: process.env.DB_USER || 'sa',
-  password: process.env.DB_PASSWORD || 'Urbify2024!',
+  password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME || 'urbify_db',
   options: {
     encrypt: false,
@@ -18,21 +18,31 @@ const config = {
   },
 };
 
-const pool = new sql.ConnectionPool(config);
+let pool;
+let poolPromise;
 
-pool.connect().then(() => {
-  console.log('Conectado a SQL Server');
-}).catch(err => {
-  console.error('Error al conectar a SQL Server:', err);
-});
+function createPool() {
+  pool = new sql.ConnectionPool(config);
+  poolPromise = pool.connect();
 
-pool.on('error', err => {
-  console.error('Error en el pool de SQL Server:', err);
-});
+  poolPromise.then(() => {
+    console.log('Conectado a SQL Server');
+  }).catch(err => {
+    console.error('Error al conectar a SQL Server:', err);
+  });
+
+  pool.on('error', err => {
+    console.error('Error en el pool de SQL Server, reconectando...', err);
+    createPool();
+  });
+}
+
+createPool();
 
 const MAX = sql.NVarChar(sql.MAX);
 
 async function query(sqlText, params = []) {
+  await poolPromise;
   const request = pool.request();
   let idx = 0;
   const parsedSql = sqlText.replace(/\?/g, () => `@p${idx++}`);

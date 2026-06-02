@@ -1,313 +1,361 @@
-import React, { useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ScrollGlobe } from '../components/ui/landing-page';
+import api from '../api/axios';
 import './Home.css';
 
 export default function Home() {
-  const { usuario } = useAuth();
-  const hero3dRef = useRef(null);
+  const navigate = useNavigate();
+  const [stats, setStats] = useState(null);
+  const [destacados, setDestacados] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/buscar?q=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      navigate('/buscar');
+    }
+  };
 
   useEffect(() => {
-    const hc = hero3dRef.current;
-    if (!hc) return;
-    const W = hc.offsetWidth, H = hc.offsetHeight;
-    hc.width = W; hc.height = H;
-    const hx = hc.getContext('2d');
-    let t = 0;
-    let animationId;
-
-    function proj(x, y, z, cx, cy, fov = 380) {
-      const s = fov / (fov + z); return { x: cx + x * s, y: cy + y * s, s };
-    }
-
-    function building(bx, h, w, clr) {
-      const bz = 0;
-      const gnd = H * 0.76;
-      const p = proj(bx, 0, bz, W / 2, gnd);
-      const left = W / 2 + (bx - w / 2) * p.s;
-      const right = W / 2 + (bx + w / 2) * p.s;
-      const top = gnd - h * p.s;
-
-      hx.fillStyle = 'rgba(8,13,26,.96)';
-      hx.strokeStyle = `rgba(${clr},.13)`;
-      hx.lineWidth = 1;
-      hx.beginPath(); hx.rect(left, top, right - left, gnd - top);
-      hx.fill(); hx.stroke();
-
-      const cols = Math.max(1, Math.floor((right - left) / 10));
-      const rows = Math.max(1, Math.floor((gnd - top) / 14));
-      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-        const lit = Math.sin(t * 0.018 + bx * 0.08 + r * 0.6 + c * 0.4) > 0.05;
-        if (lit) {
-          hx.fillStyle = `rgba(${clr},.22)`;
-          hx.fillRect(left + 2 + c * (right - left) / cols, top + 2 + r * (gnd - top) / rows,
-            (right - left) / cols - 3, (gnd - top) / rows - 3);
-        }
-      }
-    }
-
-    function ring3d(cx, cy, rx, ry, ang, clr, a) {
-      hx.save(); hx.translate(cx, cy); hx.rotate(ang);
-      hx.beginPath(); hx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
-      hx.strokeStyle = clr; hx.globalAlpha = a; hx.lineWidth = 1.5; hx.stroke();
-      hx.globalAlpha = 1; hx.restore();
-    }
-
-    function cube(cx, cy, sz, ang) {
-      const ca = Math.cos(ang), sa = Math.sin(ang);
-      const vraw = [[-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1], [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]];
-      const v = vraw.map(([x, y, z]) => {
-        const rx = x * ca - z * sa, rz = x * sa + z * ca;
-        return proj(rx * sz, y * sz, rz * sz + 320, cx, cy);
-      });
-      [[0, 1, 2, 3], [4, 5, 6, 7], [0, 1, 5, 4], [2, 3, 7, 6], [0, 3, 7, 4], [1, 2, 6, 5]].forEach((f, i) => {
-        hx.beginPath(); hx.moveTo(v[f[0]].x, v[f[0]].y);
-        f.slice(1).forEach(j => hx.lineTo(v[j].x, v[j].y)); hx.closePath();
-        hx.fillStyle = `rgba(0,245,255,${[.07, .06, .05, .04, .04, .03][i]})`; hx.fill();
-        hx.strokeStyle = 'rgba(0,245,255,.28)'; hx.lineWidth = 0.8; hx.stroke();
-      });
-    }
-
-    const blds = [
-      { bx: -130, h: 200, w: 52, c: '0,245,255' },
-      { bx: -72, h: 300, w: 36, c: '180,79,255' },
-      { bx: -8, h: 390, w: 62, c: '0,245,255' },
-      { bx: 65, h: 260, w: 42, c: '180,79,255' },
-      { bx: 135, h: 185, w: 46, c: '0,245,255' },
-      { bx: -185, h: 140, w: 30, c: '0,245,255' },
-      { bx: 192, h: 160, w: 30, c: '180,79,255' },
-    ];
-
-    function renderHero() {
-      t++;
-      hx.clearRect(0, 0, W, H);
-      const g = hx.createRadialGradient(W / 2, H * 0.55, 0, W / 2, H * 0.55, W * 0.5);
-      g.addColorStop(0, 'rgba(0,245,255,.05)'); g.addColorStop(1, 'transparent');
-      hx.fillStyle = g; hx.fillRect(0, 0, W, H);
-
-      for (let i = -6; i <= 6; i++) {
-        const px = proj(i * 55, 0, 0, W / 2, H * 0.76);
-        hx.beginPath(); hx.moveTo(W / 2 + (i * 55) * px.s, H * 0.76);
-        hx.lineTo(W / 2 + (i * 55) * proj(i * 55, 0, 500, W / 2, H * 0.76).s, H);
-        hx.strokeStyle = 'rgba(0,245,255,.04)'; hx.lineWidth = 1; hx.stroke();
-      }
-
-      blds.forEach(b => building(b.bx, b.h, b.w, b.c));
-
-      hx.beginPath(); hx.moveTo(0, H * 0.76); hx.lineTo(W, H * 0.76);
-      const gl = hx.createLinearGradient(0, 0, W, 0);
-      gl.addColorStop(0, 'transparent'); gl.addColorStop(.5, 'rgba(0,245,255,.35)'); gl.addColorStop(1, 'transparent');
-      hx.strokeStyle = gl; hx.lineWidth = 1; hx.stroke();
-
-      const cx = W / 2, cy = H * 0.38;
-      ring3d(cx, cy, 88, 22, t * 0.011, 'rgba(0,245,255,.55)', .5);
-      ring3d(cx, cy, 64, 16, -t * 0.016 + 1, 'rgba(180,79,255,.55)', .4);
-      ring3d(cx, cy, 108, 30, t * 0.008 + 2, 'rgba(0,245,255,.28)', .22);
-
-      cube(cx + Math.sin(t * 0.021) * 115, cy + Math.cos(t * 0.014) * 42 - 22, 14, t * 0.022);
-      cube(cx + Math.sin(t * 0.016 + 2) * -92, cy + Math.cos(t * 0.011 + 1) * 52 + 8, 10, -t * 0.026);
-      cube(cx + Math.sin(t * 0.019 + 4) * 65, cy + Math.cos(t * 0.022 + 3) * 68 - 48, 8, t * 0.032);
-
-      const ng = hx.createRadialGradient(cx, cy, 0, cx, cy, 32);
-      ng.addColorStop(0, 'rgba(0,245,255,.45)'); ng.addColorStop(1, 'transparent');
-      hx.fillStyle = ng; hx.fillRect(cx - 32, cy - 32, 64, 64);
-      hx.beginPath(); hx.arc(cx, cy, 4, 0, Math.PI * 2);
-      hx.fillStyle = '#00f5ff';
-      hx.shadowBlur = 18; hx.shadowColor = '#00f5ff'; hx.fill(); hx.shadowBlur = 0;
-
-      animationId = requestAnimationFrame(renderHero);
-    }
-    renderHero();
-
-    return () => cancelAnimationFrame(animationId);
+    api.get('/stats').then(res => setStats(res.data)).catch(() => {});
+    api.get('/servicios/destacados').then(res => setDestacados(res.data)).catch(() => {});
   }, []);
 
+  const demoSections = [
+    {
+      id: "hero",
+      badge: "Información de Urbify",
+      title: "Urbify",
+      subtitle: "Servicios para el hogar",
+      description: "La plataforma que conecta a profesionales verificados con clientes que necesitan servicios para el hogar. Electricistas, plomeros, mecánicos y más, cerca de ti.",
+      align: "left",
+      actions: [
+        { label: "Buscar Servicios", variant: "primary", onClick: () => navigate('/buscar') },
+        { label: "Ver Mapa en Vivo", variant: "secondary", onClick: () => navigate('/mapa') },
+      ]
+    },
+    {
+      id: "innovation",
+      badge: "Profesionales",
+      title: "Verificados",
+      subtitle: "y Confiables",
+      description: "Todos nuestros proveedores pasan por un proceso de verificación. Revisa sus calificaciones, experiencia y tarifas antes de contratar con total confianza.",
+      align: "center",
+    },
+    {
+      id: "discovery",
+      badge: "Servicios",
+      title: "Categorías",
+      subtitle: "Disponibles",
+      description: "Encuentra el profesional ideal para cada necesidad: electricidad, plomería, mecánica, carpintería, pintura, jardinería y más.",
+      align: "left",
+      features: [
+        { title: "Cobertura en toda la ciudad", description: "Profesionales disponibles en múltiples zonas y horarios" },
+        { title: "Disponibilidad en tiempo real", description: "Ve quién está disponible ahora y contrata al instante" },
+        { title: "Calificaciones transparentes", description: "Cada servicio tiene reseñas reales de la comunidad Urbify" }
+      ]
+    },
+    {
+      id: "future",
+      badge: "Comunidad",
+      title: "Únete a",
+      subtitle: "Urbify",
+      description: "Forma parte de la comunidad de servicios urbanos más confiable. Ofrece tus servicios o encuentra al profesional perfecto para tu hogar.",
+      align: "center",
+      actions: [
+        { label: "Registrarse Gratis", variant: "primary", onClick: () => navigate('/registro') },
+        { label: "Explorar Servicios", variant: "secondary", onClick: () => navigate('/buscar') }
+      ]
+    }
+  ];
+
   return (
-    <div className="wrap">
-      {/* HERO */}
-      <section className="hero">
-        <div className="hero-left">
-          <div className="badge">Plataforma de Servicios Urbanos</div>
-          <h1>
-            <span className="h1-plain">Conectamos tu hogar</span>
-            <span className="h1-grad">con el futuro.</span>
-          </h1>
-          <p>Encuentra electricistas, plomeros, mecánicos y más — verificados, calificados y disponibles en tu ciudad en tiempo real.</p>
-          <div className="hero-btns">
-            <Link to="/buscar">
-              <button className="hbtn-p">Buscar Servicios</button>
-            </Link>
-            <Link to="/mapa">
-              <button className="hbtn-g">Ver Mapa en Vivo →</button>
-            </Link>
+    <div className="home-wrapper">
+      {/* ScrollGlobe immersive sections */}
+      <ScrollGlobe sections={demoSections} />
+
+      {/* STATS BAND */}
+      <div className="stats-band">
+        <div className="stats-inner">
+          <div className="stat-item">
+            <span className="stat-number">{stats ? stats.proveedores_activos : '—'}</span>
+            <span className="stat-label">Proveedores Activos</span>
           </div>
-          <div className="hero-stats">
-            <div><span className="stat-n">2.4K</span><span className="stat-l">Proveedores Activos</span></div>
-            <div><span className="stat-n">18K</span><span className="stat-l">Servicios Completados</span></div>
-            <div><span className="stat-n">4.9★</span><span className="stat-l">Calificación Media</span></div>
+          <div className="stat-divider" />
+          <div className="stat-item">
+            <span className="stat-number">{stats ? stats.servicios_realizados : '—'}</span>
+            <span className="stat-label">Servicios Realizados</span>
+          </div>
+          <div className="stat-divider" />
+          <div className="stat-item">
+            <span className="stat-number">{stats ? `${stats.calificacion_media}★` : '—'}</span>
+            <span className="stat-label">Calificación Media</span>
           </div>
         </div>
-        <div className="hero-right">
-          <canvas ref={hero3dRef} id="hero3d"></canvas>
-        </div>
-      </section>
+      </div>
 
       {/* TICKER */}
       <div className="ticker-wrap">
         <div className="ticker">
-          <span className="tick-item">Electricidad</span><span className="tick-item">Plomería</span><span className="tick-item">Mecánica</span><span className="tick-item">Carpintería</span><span className="tick-item">Pintura</span><span className="tick-item">Jardinería</span><span className="tick-item">Cerrajería</span><span className="tick-item">Climatización</span><span className="tick-item">Electricidad</span><span className="tick-item">Plomería</span><span className="tick-item">Mecánica</span><span className="tick-item">Carpintería</span><span className="tick-item">Pintura</span><span className="tick-item">Jardinería</span><span className="tick-item">Cerrajería</span><span className="tick-item">Climatización</span>
+          <span className="tick-item">Electricidad</span>
+          <span className="tick-divider" />
+          <span className="tick-item">Plomería</span>
+          <span className="tick-divider" />
+          <span className="tick-item">Mecánica</span>
+          <span className="tick-divider" />
+          <span className="tick-item">Carpintería</span>
+          <span className="tick-divider" />
+          <span className="tick-item">Pintura</span>
+          <span className="tick-divider" />
+          <span className="tick-item">Jardinería</span>
+          <span className="tick-divider" />
+          <span className="tick-item">Cerrajería</span>
+          <span className="tick-divider" />
+          <span className="tick-item">Climatización</span>
+          <span className="tick-divider" />
+          <span className="tick-item">Electricidad</span>
+          <span className="tick-divider" />
+          <span className="tick-item">Plomería</span>
+          <span className="tick-divider" />
+          <span className="tick-item">Mecánica</span>
+          <span className="tick-divider" />
+          <span className="tick-item">Carpintería</span>
+          <span className="tick-divider" />
+          <span className="tick-item">Pintura</span>
+          <span className="tick-divider" />
+          <span className="tick-item">Jardinería</span>
+          <span className="tick-divider" />
+          <span className="tick-item">Cerrajería</span>
+          <span className="tick-divider" />
+          <span className="tick-item">Climatización</span>
         </div>
       </div>
 
       {/* CATEGORIES */}
-      <section className="sec-cats">
+      <section className="sec-categories">
         <div className="sec-head">
           <div className="sec-tag">// Categorías</div>
           <h2 className="sec-title">¿Qué necesitas hoy?</h2>
+          <p className="sec-subtitle">Explora nuestras categorías de servicios profesionales</p>
         </div>
         <div className="cats-grid">
-          <div className="cat-card">
-            <div className="cat-icon"><span>⚡</span><div className="cat-ring"></div></div>
+          <Link to="/buscar" className="cat-card" tabIndex={0} aria-label="Electricidad">
+            <div className="cat-icon-wrap">
+              <span className="cat-icon">⚡</span>
+              <div className="cat-ring" />
+            </div>
             <div className="cat-name">Electricidad</div>
-            <div className="cglow"></div>
-          </div>
-          <div className="cat-card" style={{ '--cyan': '#b44fff' }}>
-            <div className="cat-icon"><span>🔧</span><div className="cat-ring" style={{ borderColor: 'rgba(180,79,255,.28)' }}></div></div>
+            <div className="cat-glow" />
+          </Link>
+          <Link to="/buscar" className="cat-card" tabIndex={0} aria-label="Plomería" data-accent="tertiary">
+            <div className="cat-icon-wrap">
+              <span className="cat-icon">🔧</span>
+              <div className="cat-ring" />
+            </div>
             <div className="cat-name">Plomería</div>
-            <div className="cglow" style={{ background: '#b44fff' }}></div>
-          </div>
-          <div className="cat-card" style={{ '--cyan': '#ff6b35' }}>
-            <div className="cat-icon"><span>🔩</span><div className="cat-ring" style={{ borderColor: 'rgba(255,107,53,.28)' }}></div></div>
+            <div className="cat-glow" />
+          </Link>
+          <Link to="/buscar" className="cat-card" tabIndex={0} aria-label="Mecánica" data-accent="accent">
+            <div className="cat-icon-wrap">
+              <span className="cat-icon">🔩</span>
+              <div className="cat-ring" />
+            </div>
             <div className="cat-name">Mecánica</div>
-            <div className="cglow" style={{ background: '#ff6b35' }}></div>
-          </div>
-          <div className="cat-card">
-            <div className="cat-icon"><span>🪚</span><div className="cat-ring"></div></div>
+            <div className="cat-glow" />
+          </Link>
+          <Link to="/buscar" className="cat-card" tabIndex={0} aria-label="Carpintería">
+            <div className="cat-icon-wrap">
+              <span className="cat-icon">🪚</span>
+              <div className="cat-ring" />
+            </div>
             <div className="cat-name">Carpintería</div>
-            <div className="cglow"></div>
-          </div>
-          <div className="cat-card" style={{ '--cyan': '#b44fff' }}>
-            <div className="cat-icon"><span>🎨</span><div className="cat-ring" style={{ borderColor: 'rgba(180,79,255,.28)' }}></div></div>
+            <div className="cat-glow" />
+          </Link>
+          <Link to="/buscar" className="cat-card" tabIndex={0} aria-label="Pintura" data-accent="tertiary">
+            <div className="cat-icon-wrap">
+              <span className="cat-icon">🎨</span>
+              <div className="cat-ring" />
+            </div>
             <div className="cat-name">Pintura</div>
-            <div className="cglow" style={{ background: '#b44fff' }}></div>
-          </div>
-          <div className="cat-card" style={{ '--cyan': '#00ff88' }}>
-            <div className="cat-icon"><span>🌿</span><div className="cat-ring" style={{ borderColor: 'rgba(0,255,136,.28)' }}></div></div>
+            <div className="cat-glow" />
+          </Link>
+          <Link to="/buscar" className="cat-card" tabIndex={0} aria-label="Jardinería" data-accent="secondary">
+            <div className="cat-icon-wrap">
+              <span className="cat-icon">🌿</span>
+              <div className="cat-ring" />
+            </div>
             <div className="cat-name">Jardinería</div>
-            <div className="cglow" style={{ background: '#00ff88' }}></div>
-          </div>
+            <div className="cat-glow" />
+          </Link>
         </div>
       </section>
 
       {/* SEARCH */}
       <section className="sec-search">
-        <div className="search-box">
-          <h3 className="search-title">BUSCAR SERVICIOS</h3>
-          <div className="search-bar">
-            <input className="search-input" placeholder="Ej: instalación eléctrica, reparación de tuberías..." />
-            <button className="search-btn">Buscar</button>
-          </div>
+        <div className="search-box glass-card">
+          <h3 className="search-title">Buscar Servicios</h3>
+          <form onSubmit={handleSearch} className="search-bar">
+            <input
+              className="search-input"
+              placeholder="Ej: instalación eléctrica, reparación de tuberías..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <button type="submit" className="search-btn">Buscar</button>
+          </form>
         </div>
       </section>
 
       {/* SERVICES */}
       <section className="sec-services">
         <div className="sec-head">
-          <div className="sec-tag">// Servicios Destacados</div>
-          <h2 className="sec-title">Profesionales Verificados</h2>
+          <div className="sec-tag">// Profesionales</div>
+          <h2 className="sec-title">Servicios Destacados</h2>
+          <p className="sec-subtitle">Profesionales verificados con las mejores calificaciones</p>
         </div>
         <div className="services-grid">
-          <div className="svc-card">
-            <div className="svc-avatar">JR</div>
-            <span className="svc-cat">⚡ Electricidad</span>
-            <h3 className="svc-title">Instalaciones Eléctricas Residenciales</h3>
-            <p className="svc-desc">Especialista en instalaciones, revisiones y mantenimiento eléctrico para hogares y locales comerciales en toda la ciudad.</p>
-            <div className="svc-foot">
-              <span className="svc-price">$45,000 / hora</span>
-              <span className="svc-rating">★ 4.9 <span>(128)</span></span>
-            </div>
-          </div>
-          <div className="svc-card">
-            <div className="svc-avatar" style={{ background: 'linear-gradient(135deg,var(--violet),#ff44aa)' }}>ML</div>
-            <span className="svc-cat" style={{ color: 'var(--violet)' }}>🔧 Plomería</span>
-            <h3 className="svc-title">Reparación y Mantenimiento de Tuberías</h3>
-            <p className="svc-desc">Detección de fugas, reparación de tuberías, instalación de sanitarios y sistemas de agua residencial y comercial.</p>
-            <div className="svc-foot">
-              <span className="svc-price" style={{ color: 'var(--violet)' }}>$38,000 / hora</span>
-              <span className="svc-rating">★ 4.8 <span>(94)</span></span>
-            </div>
-          </div>
-          <div className="svc-card">
-            <div className="svc-avatar" style={{ background: 'linear-gradient(135deg,var(--orange),#ffb020)' }}>CA</div>
-            <span className="svc-cat" style={{ color: 'var(--orange)' }}>🔩 Mecánica</span>
-            <h3 className="svc-title">Mecánica a Domicilio y Diagnóstico</h3>
-            <p className="svc-desc">Revisión, diagnóstico y reparación de vehículos livianos en la comodidad de tu hogar o lugar de trabajo.</p>
-            <div className="svc-foot">
-              <span className="svc-price" style={{ color: 'var(--orange)' }}>$55,000 / hora</span>
-              <span className="svc-rating">★ 4.7 <span>(67)</span></span>
-            </div>
-          </div>
+          {destacados.map((svc, i) => {
+            const initials = (svc.nombre?.[0] || '') + (svc.apellido?.[0] || '');
+            const nombreCorto = svc.nombre ? svc.nombre + ' ' + (svc.apellido?.[0] || '') + '.' : 'Proveedor';
+            const catIcon = {
+              'Electricidad': '⚡',
+              'Plomería': '🔧',
+              'Mecánica': '🔩',
+              'Carpintería': '🪚',
+              'Pintura': '🎨',
+              'Jardinería': '🌿',
+              'Cerrajería': '🔒',
+              'Limpieza': '🧹',
+            }[svc.categoria_nombre] || '⭐';
+            const palettes = [
+              { back: 'fc-back--green', frontBg: 'linear-gradient(160deg, #071e1f 0%, #0e3530 55%, #1a4a3a 100%)', avatarBg: 'linear-gradient(135deg, #a9d2b6, #1e4f43)', accent: '#a9d2b6', tagBorder: 'rgba(169,210,182,0.3)' },
+              { back: 'fc-back--teal', frontBg: 'linear-gradient(160deg, #071e20 0%, #0d3530 55%, #3a8a7a 100%)', avatarBg: 'linear-gradient(135deg, #9fd1c1, #4a9e8a)', accent: '#9fd1c1', tagBorder: 'rgba(159,209,193,0.3)' },
+              { back: 'fc-back--orange', frontBg: 'linear-gradient(160deg, #1a0e08 0%, #2e1a0d 55%, #7a3010 100%)', avatarBg: 'linear-gradient(135deg, #ff9966, #c0392b)', accent: '#ff9966', tagBorder: 'rgba(255,153,102,0.3)' },
+            ];
+            const p = palettes[i % palettes.length];
+            return (
+              <div className="fc-card" key={svc.id}>
+                <div className="fc-content">
+                  <div className={'fc-back ' + p.back}>
+                    <div className="fc-back-content fc-svc-body">
+                      <span className="fc-svc-icon">{catIcon}</span>
+                      <div className="fc-svc-info">
+                        <h4 className="fc-svc-title">{svc.titulo}</h4>
+                        <p className="fc-svc-desc">{svc.descripcion}</p>
+                      </div>
+                      <span className="fc-svc-tag" style={{ color: p.accent, borderColor: p.tagBorder }}>{svc.categoria_nombre}</span>
+                    </div>
+                  </div>
+                  <div className="fc-front" style={{ background: p.frontBg }}>
+                    <div className="fc-front-content fc-prov-body">
+                      <div className="fc-prov-top">
+                        <div className="fc-avatar" style={{ background: p.avatarBg }}>{initials}</div>
+                        <div className="fc-prov-meta">
+                          <span className="fc-prov-name">{nombreCorto}</span>
+                          <span className="fc-prov-cat">{catIcon} {svc.categoria_nombre}</span>
+                        </div>
+                      </div>
+                      <div className="fc-prov-stats">
+                        <div className="fc-prov-stat">
+                          <span className="fc-prov-val">★ {parseFloat(svc.calificacion_promedio || 0).toFixed(1)}</span>
+                          <span className="fc-prov-lbl">{svc.total_calificaciones} reseñas</span>
+                        </div>
+                        <div className="fc-prov-divider" />
+                        <div className="fc-prov-stat">
+                          <span className="fc-prov-val" style={p.accent !== '#a9d2b6' ? { color: p.accent } : undefined}>${Number(svc.tarifa || 0).toLocaleString()}</span>
+                          <span className="fc-prov-lbl">por {svc.tipo_tarifa || 'hora'}</span>
+                        </div>
+                      </div>
+                      <Link to={'/servicio/' + svc.id} className="fc-prov-btn" style={p.accent !== '#a9d2b6' ? { background: 'rgba(' + (p.accent === '#9fd1c1' ? '159,209,193' : '255,153,102') + ',0.15)', borderColor: p.tagBorder, color: p.accent } : undefined}>Ver servicio →</Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
 
       {/* MAP */}
       <section className="sec-map">
         <div className="map-wrap">
-          <div className="map-info">
-            <div className="sec-tag">// Cobertura en Tiempo Real</div>
+          <div className="map-info glass-card">
+            <div className="sec-tag">// Cobertura en Vivo</div>
             <h3>Profesionales cerca<br />de ti, ahora mismo.</h3>
             <p>Visualiza en el mapa interactivo dónde están los proveedores disponibles en tu zona. Filtra por categoría, calificación y disponibilidad.</p>
             <Link to="/mapa">
-              <button className="hbtn-p">Abrir Mapa →</button>
+              <button className="hbtn-primary">Abrir Mapa →</button>
             </Link>
           </div>
           <div className="map-vis">
-            <div className="map-grid-bg"></div>
-            <div className="mdot c" style={{ top: '35%', left: '45%' }}><span className="mlabel">Electricista</span></div>
-            <div className="mdot v" style={{ top: '55%', left: '63%' }}><span className="mlabel">Plomero</span></div>
-            <div className="mdot o" style={{ top: '27%', left: '71%' }}><span className="mlabel">Mecánico</span></div>
-            <div className="mdot c" style={{ top: '67%', left: '30%' }}><span className="mlabel">Carpintero</span></div>
-            <div className="mdot v" style={{ top: '40%', left: '22%' }}><span className="mlabel">Pintor</span></div>
-            <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: .14 }}>
-              <line x1="45%" y1="35%" x2="63%" y2="55%" stroke="#00f5ff" strokeWidth="1" strokeDasharray="5,5" />
-              <line x1="63%" y1="55%" x2="71%" y2="27%" stroke="#b44fff" strokeWidth="1" strokeDasharray="5,5" />
-              <line x1="45%" y1="35%" x2="30%" y2="67%" stroke="#00f5ff" strokeWidth="1" strokeDasharray="5,5" />
-              <line x1="30%" y1="67%" x2="22%" y2="40%" stroke="#b44fff" strokeWidth="1" strokeDasharray="5,5" />
+            <div className="map-grid-bg" />
+            <div className="map-dot" style={{ top: '35%', left: '45%', '--dot-color': '#a9d2b6' }}>
+              <span className="map-label">Electricista</span>
+            </div>
+            <div className="map-dot" style={{ top: '55%', left: '63%', '--dot-color': '#9fd1c1' }}>
+              <span className="map-label">Plomero</span>
+            </div>
+            <div className="map-dot" style={{ top: '27%', left: '71%', '--dot-color': '#ff6b35' }}>
+              <span className="map-label">Mecánico</span>
+            </div>
+            <div className="map-dot" style={{ top: '67%', left: '30%', '--dot-color': '#a9d2b6' }}>
+              <span className="map-label">Carpintero</span>
+            </div>
+            <div className="map-dot" style={{ top: '40%', left: '22%', '--dot-color': '#9fd1c1' }}>
+              <span className="map-label">Pintor</span>
+            </div>
+            <svg className="map-lines">
+              <line x1="45%" y1="35%" x2="63%" y2="55%" stroke="#a9d2b6" strokeWidth="1" strokeDasharray="4,4" opacity="0.3" />
+              <line x1="63%" y1="55%" x2="71%" y2="27%" stroke="#9fd1c1" strokeWidth="1" strokeDasharray="4,4" opacity="0.3" />
+              <line x1="45%" y1="35%" x2="30%" y2="67%" stroke="#a9d2b6" strokeWidth="1" strokeDasharray="4,4" opacity="0.3" />
+              <line x1="30%" y1="67%" x2="22%" y2="40%" stroke="#9fd1c1" strokeWidth="1" strokeDasharray="4,4" opacity="0.3" />
             </svg>
-            <div className="map-city">MEDELLÍN — COL</div>
+            <div className="map-city-label">MEDELLÍN — COL</div>
           </div>
         </div>
       </section>
 
       {/* HOW IT WORKS */}
-      <section id="como-funciona" className="sec-how">
+      <section id="como-funciona" className="sec-how" style={{ scrollMarginTop: '100px' }}>
         <div className="sec-head">
           <div className="sec-tag">// Proceso</div>
           <h2 className="sec-title">Así de Simple</h2>
+          <p className="sec-subtitle">Cuatro pasos para conectar con el profesional ideal</p>
         </div>
         <div className="steps">
-          <div className="step-card">
-            <div className="step-num">01</div>
-            <div className="step-icon">🔍</div>
-            <div className="step-title">Busca el Servicio</div>
+          <div className="step-card glass-card">
+            <div className="step-number">01</div>
+            <div className="step-icon-wrap">
+              <span className="step-icon">🔍</span>
+            </div>
+            <h4 className="step-title">Busca el Servicio</h4>
             <p className="step-desc">Usa el buscador o el mapa para encontrar el profesional ideal cerca de ti.</p>
           </div>
-          <div className="step-card">
-            <div className="step-num">02</div>
-            <div className="step-icon">👤</div>
-            <div className="step-title">Revisa el Perfil</div>
+          <div className="step-card glass-card">
+            <div className="step-number">02</div>
+            <div className="step-icon-wrap">
+              <span className="step-icon">👤</span>
+            </div>
+            <h4 className="step-title">Revisa el Perfil</h4>
             <p className="step-desc">Lee calificaciones, experiencia y tarifas antes de tomar una decisión.</p>
           </div>
-          <div className="step-card">
-            <div className="step-num">03</div>
-            <div className="step-icon">📋</div>
-            <div className="step-title">Solicita el Servicio</div>
+          <div className="step-card glass-card">
+            <div className="step-number">03</div>
+            <div className="step-icon-wrap">
+              <span className="step-icon">📋</span>
+            </div>
+            <h4 className="step-title">Solicita el Servicio</h4>
             <p className="step-desc">Envía tu solicitud con detalles del trabajo y recibe confirmación rápida.</p>
           </div>
-          <div className="step-card">
-            <div className="step-num">04</div>
-            <div className="step-icon">⭐</div>
-            <div className="step-title">Califica y Listo</div>
+          <div className="step-card glass-card">
+            <div className="step-number">04</div>
+            <div className="step-icon-wrap">
+              <span className="step-icon">⭐</span>
+            </div>
+            <h4 className="step-title">Califica y Listo</h4>
             <p className="step-desc">Tras el servicio, deja tu calificación y ayuda a la comunidad Urbify.</p>
           </div>
         </div>
@@ -315,28 +363,38 @@ export default function Home() {
 
       {/* CTA */}
       <div className="cta-band">
-        <div className="cta-text">
-          <h2>¿Eres un profesional?<br />Ofrece tus servicios en Urbify.</h2>
-          <p>Únete a miles de proveedores y consigue más clientes hoy mismo.</p>
-        </div>
-        <div className="cta-btns">
-          <Link to="/registro">
-            <button className="nbtn nbtn-outline">Saber más</button>
-          </Link>
-          <Link to="/registro">
-            <button className="nbtn nbtn-fill">Registrarse Gratis</button>
-          </Link>
+        <div className="cta-glow" />
+        <div className="cta-content">
+          <div className="cta-text">
+            <h2>¿Eres un profesional?</h2>
+            <p>Únete a miles de proveedores y ofrece tus servicios en Urbify.</p>
+          </div>
+          <div className="cta-btns">
+            <Link to="/registro">
+              <button className="hbtn-ghost">Saber más</button>
+            </Link>
+            <Link to="/registro">
+              <button className="hbtn-primary">Registrarse Gratis</button>
+            </Link>
+          </div>
         </div>
       </div>
 
       {/* FOOTER */}
-      <footer>
-        <div className="foot-logo">URBIFY</div>
-        <div className="foot-copy">© 2025 Urbify · Servicios Urbanos del Futuro</div>
-        <div className="foot-links">
-          <Link to="/">Términos</Link>
-          <Link to="/">Privacidad</Link>
-          <Link to="/">Contacto</Link>
+      <footer className="site-footer">
+        <div className="footer-inner">
+          <div className="footer-brand">
+            <div className="footer-logo">URBIFY</div>
+            <p className="footer-desc">La plataforma de servicios urbanos del futuro.</p>
+          </div>
+          <div className="footer-links">
+            <span style={{ color: 'rgba(193,200,193,0.4)', fontSize: '0.85rem' }}>Términos</span>
+            <span style={{ color: 'rgba(193,200,193,0.4)', fontSize: '0.85rem' }}>Privacidad</span>
+            <span style={{ color: 'rgba(193,200,193,0.4)', fontSize: '0.85rem' }}>Contacto</span>
+          </div>
+          <div className="footer-copy">
+            © 2026 Urbify · Servicios Urbanos del Futuro
+          </div>
         </div>
       </footer>
     </div>

@@ -1,7 +1,8 @@
 .mapa-page {
-  min-height: calc(100vh - 64px);
+  min-height: calc(100vh - 80px);
   display: flex;
   flex-direction: column;
+  padding: 1rem 52px;
 }
 
 .mapa-controls {
@@ -13,43 +14,53 @@
 
 .mapa-controls label {
   font-weight: 500;
-  color: #374151;
+  color: rgba(205, 232, 232, 0.6);
   white-space: nowrap;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.85rem;
 }
 
 .mapa-controls input[type="range"] {
   flex: 1;
   max-width: 300px;
+  accent-color: #a9d2b6;
 }
 
 .mapa-container {
   display: flex;
   flex: 1;
   min-height: 500px;
+  gap: 1rem;
 }
 
 .mapa-leaflet {
   flex: 1;
   height: 500px;
   z-index: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(169, 210, 182, 0.1);
 }
 
 .mapa-sidebar {
   width: 320px;
-  background: white;
-  padding: 1rem;
+  background: rgba(9, 35, 36, 0.4);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(169, 210, 182, 0.1);
+  border-radius: 12px;
+  padding: 1.25rem;
   overflow-y: auto;
-  border-left: 1px solid #e2e8f0;
 }
 
 .mapa-sidebar h3 {
+  font-family: 'Playfair Display', serif;
   font-size: 1rem;
   margin-bottom: 1rem;
-  color: #1a1a2e;
+  color: #cde8e8;
 }
 
 .sin-proveedores {
-  color: #6b7280;
+  color: rgba(193, 200, 193, 0.5);
   text-align: center;
   padding: 2rem 0;
   font-size: 0.9rem;
@@ -66,41 +77,46 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem;
-  border-radius: 8px;
-  background: #f8fafc;
+  border-radius: 10px;
+  background: rgba(5, 31, 32, 0.5);
+  border: 1px solid rgba(169, 210, 182, 0.06);
   text-decoration: none;
   color: inherit;
-  transition: background 0.2s;
+  transition: all 0.25s;
 }
 
 .proveedor-item:hover {
-  background: #eef2ff;
+  border-color: rgba(169, 210, 182, 0.2);
+  transform: translateX(4px);
 }
 
 .proveedor-item-avatar {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: #4361ee;
-  color: white;
+  background: linear-gradient(135deg, #a9d2b6, #8eb69b);
+  color: #001718;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
+  font-weight: 700;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   flex-shrink: 0;
 }
 
 .proveedor-item strong {
   font-size: 0.9rem;
+  color: #cde8e8;
+  font-family: 'Playfair Display', serif;
 }
 
 .proveedor-item p {
   font-size: 0.8rem;
-  color: #6b7280;
+  color: rgba(193, 200, 193, 0.4);
 }
 
 .proveedor-item-distancia {
-  color: #4361ee !important;
+  color: #a9d2b6 !important;
   font-weight: 500;
 }
 
@@ -111,6 +127,7 @@
 .popup-content strong {
   display: block;
   margin-bottom: 0.25rem;
+  font-family: 'Playfair Display', serif;
 }
 
 .popup-content p {
@@ -119,7 +136,7 @@
 }
 
 .popup-distancia {
-  color: #4361ee;
+  color: #a9d2b6;
   font-weight: 500;
   margin-bottom: 0.5rem !important;
 }
@@ -129,18 +146,17 @@
 }
 
 @media (max-width: 768px) {
+  .mapa-page {
+    padding: 0.5rem;
+  }
   .mapa-container {
     flex-direction: column;
   }
-
   .mapa-leaflet {
     height: 400px;
   }
-
   .mapa-sidebar {
     width: 100%;
     max-height: 300px;
-    border-left: none;
-    border-top: 1px solid #e2e8f0;
   }
 }

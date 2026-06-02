@@ -8,6 +8,7 @@ const serviciosRoutes = require('./routes/servicios.routes');
 const solicitudesRoutes = require('./routes/solicitudes.routes');
 const calificacionesRoutes = require('./routes/calificaciones.routes');
 const proveedoresRoutes = require('./routes/proveedores.routes');
+const statsRoutes = require('./routes/stats.routes');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -25,6 +26,11 @@ app.use('/api/servicios', serviciosRoutes);
 app.use('/api/solicitudes', solicitudesRoutes);
 app.use('/api/calificaciones', calificacionesRoutes);
 app.use('/api/proveedores', proveedoresRoutes);
+app.use('/api/stats', statsRoutes);
+
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: `Ruta ${req.originalUrl} no encontrada` });
+});
 
 app.use((err, req, res, next) => {
   console.error('Error no manejado:', err);

@@ -5,7 +5,14 @@ require('dotenv').config();
 
 exports.registrar = async (req, res) => {
   try {
-    const { nombre, apellido, correo, contrasena, telefono, rol, direccion, latitud, longitud } = req.body;
+    const { nombre, apellido, correo, contrasena, telefono, rol, direccion, latitud, longitud, oficio } = req.body;
+
+    if (!nombre || !apellido || !correo || !contrasena) {
+      return res.status(400).json({ error: 'nombre, apellido, correo y contrasena son requeridos' });
+    }
+    if (!rol || !['cliente', 'proveedor'].includes(rol)) {
+      return res.status(400).json({ error: 'rol debe ser cliente o proveedor' });
+    }
 
     const [existe] = await query('SELECT id FROM usuarios WHERE correo = ?', [correo]);
     if (existe.length > 0) {
@@ -15,10 +22,10 @@ exports.registrar = async (req, res) => {
     const hashedPassword = await bcrypt.hash(contrasena, 10);
 
     const [result] = await query(
-      `INSERT INTO usuarios (nombre, apellido, correo, contrasena, telefono, rol, direccion, latitud, longitud)
+      `INSERT INTO usuarios (nombre, apellido, correo, contrasena, telefono, rol, direccion, latitud, longitud, oficio)
        OUTPUT INSERTED.id
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [nombre, apellido, correo, hashedPassword, telefono || null, rol, direccion || null, latitud || null, longitud || null]
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [nombre, apellido, correo, hashedPassword, telefono || null, rol, direccion || null, latitud || null, longitud || null, oficio || null]
     );
 
     const usuarioId = result[0].id;
@@ -30,6 +37,10 @@ exports.registrar = async (req, res) => {
     );
 
     await query(
+      'DELETE FROM tokens_sesion WHERE usuario_id = ? AND expira_en < GETDATE()',
+      [usuarioId]
+    );
+    await query(
       'INSERT INTO tokens_sesion (usuario_id, token, expira_en) VALUES (?, ?, DATEADD(DAY, 7, GETDATE()))',
       [usuarioId, token]
     );
@@ -37,7 +48,7 @@ exports.registrar = async (req, res) => {
     res.status(201).json({
       mensaje: 'Usuario registrado exitosamente',
       token,
-      usuario: { id: usuarioId, nombre, apellido, correo, rol },
+      usuario: { id: usuarioId, nombre, apellido, correo, rol, oficio },
     });
   } catch (err) {
     console.error('Error en registro:', err);
@@ -49,16 +60,56 @@ exports.login = async (req, res) => {
   try {
     const { correo, contrasena } = req.body;
 
+    if (!correo || !contrasena) {
+      return res.status(400).json({ error: 'correo y contrasena son requeridos' });
+    }
+
     const [usuarios] = await query('SELECT * FROM usuarios WHERE correo = ? AND activo = 1', [correo]);
     if (usuarios.length === 0) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
     const usuario = usuarios[0];
+
+    if (usuario.bloqueado_hasta && new Date(usuario.bloqueado_hasta) > new Date()) {
+      const restante = Math.ceil((new Date(usuario.bloqueado_hasta) - new Date()) / 60000);
+      return res.status(429).json({
+        error: `Demasiados intentos fallidos. Intenta de nuevo en ${restante} minuto${restante !== 1 ? 's' : ''}.`,
+        bloqueado: true,
+        minutos_restantes: restante,
+      });
+    }
+
     const valido = await bcrypt.compare(contrasena, usuario.contrasena);
     if (!valido) {
-      return res.status(401).json({ error: 'Credenciales inválidas' });
+      const [updateResult] = await query(
+        `UPDATE usuarios SET intentos_fallidos = intentos_fallidos + 1
+         OUTPUT INSERTED.intentos_fallidos
+         WHERE id = ?`,
+        [usuario.id]
+      );
+      const nuevosIntentos = updateResult[0].intentos_fallidos;
+
+      if (nuevosIntentos >= 3) {
+        await query(
+          'UPDATE usuarios SET intentos_fallidos = 0, bloqueado_hasta = DATEADD(MINUTE, 5, GETDATE()) WHERE id = ?',
+          [usuario.id]
+        );
+        return res.status(429).json({
+          error: 'Demasiados intentos fallidos. Cuenta bloqueada por 5 minutos.',
+          bloqueado: true,
+          minutos_restantes: 5,
+          intentos_restantes: 0,
+        });
+      }
+
+      return res.status(401).json({
+        error: `Credenciales inválidas. Te quedan ${3 - nuevosIntentos} intento${3 - nuevosIntentos !== 1 ? 's' : ''}.`,
+        intentos_restantes: 3 - nuevosIntentos,
+      });
     }
+
+    await query('UPDATE usuarios SET intentos_fallidos = 0, bloqueado_hasta = NULL WHERE id = ?', [usuario.id]);
 
     const token = jwt.sign(
       { id: usuario.id, rol: usuario.rol },
@@ -66,6 +117,10 @@ exports.login = async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
 
+    await query(
+      'DELETE FROM tokens_sesion WHERE usuario_id = ? AND expira_en < GETDATE()',
+      [usuario.id]
+    );
     await query(
       'INSERT INTO tokens_sesion (usuario_id, token, expira_en) VALUES (?, ?, DATEADD(DAY, 7, GETDATE()))',
       [usuario.id, token]

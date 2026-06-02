@@ -9,7 +9,7 @@ exports.crearCalificacion = async (req, res) => {
     }
 
     const [solicitud] = await query(
-      'SELECT * FROM solicitudes WHERE id = ? AND cliente_id = ? AND estado = "completada"',
+      "SELECT * FROM solicitudes WHERE id = ? AND cliente_id = ? AND estado = 'completada'",
       [solicitud_id, req.usuarioId]
     );
     if (solicitud.length === 0) {

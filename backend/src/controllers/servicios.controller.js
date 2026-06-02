@@ -48,14 +48,17 @@ exports.serviciosPorCategoria = async (req, res) => {
     const [servicios] = await query(
       `SELECT s.*, c.nombre AS categoria_nombre,
        u.id AS proveedor_id, u.nombre, u.apellido, u.foto_url, u.direccion, u.latitud, u.longitud,
-       COALESCE(AVG(cal.puntuacion), 0) AS calificacion_promedio,
-       COUNT(cal.id) AS total_calificaciones
+       COALESCE(cal_stats.promedio, 0) AS calificacion_promedio,
+       COALESCE(cal_stats.total, 0) AS total_calificaciones
        FROM servicios s
        JOIN categorias c ON s.categoria_id = c.id
        JOIN usuarios u ON s.proveedor_id = u.id
-       LEFT JOIN calificaciones cal ON cal.proveedor_id = u.id
+       OUTER APPLY (
+         SELECT AVG(cal.puntuacion) AS promedio, COUNT(cal.id) AS total
+         FROM calificaciones cal
+         WHERE cal.proveedor_id = u.id
+       ) cal_stats
        WHERE s.categoria_id = ? AND s.disponible = 1 AND u.activo = 1
-       GROUP BY s.id
        ORDER BY s.creado_en DESC`,
       [categoria_id]
     );
@@ -72,35 +75,70 @@ exports.buscarServicios = async (req, res) => {
 
     let sql = `SELECT s.*, c.nombre AS categoria_nombre,
                u.id AS proveedor_id, u.nombre, u.apellido, u.foto_url, u.direccion, u.latitud, u.longitud,
-               COALESCE(AVG(cal.puntuacion), 0) AS calificacion_promedio,
-               COUNT(cal.id) AS total_calificaciones
+               COALESCE(cal_stats.promedio, 0) AS calificacion_promedio,
+               COALESCE(cal_stats.total, 0) AS total_calificaciones
                FROM servicios s
                JOIN categorias c ON s.categoria_id = c.id
                JOIN usuarios u ON s.proveedor_id = u.id
-               LEFT JOIN calificaciones cal ON cal.proveedor_id = u.id
+               OUTER APPLY (
+                 SELECT AVG(cal.puntuacion) AS promedio, COUNT(cal.id) AS total
+                 FROM calificaciones cal
+                 WHERE cal.proveedor_id = u.id
+               ) cal_stats
                WHERE u.activo = 1`;
     const params = [];
 
     if (q) {
+      const escaped = q.replace(/[%_[\]]/g, '\\$&');
       sql += ` AND (s.titulo LIKE ? OR s.descripcion LIKE ? OR c.nombre LIKE ?)`;
-      params.push(`%${q}%`, `%${q}%`, `%${q}%`);
+      params.push(`%${escaped}%`, `%${escaped}%`, `%${escaped}%`);
     }
     if (categoria_id) {
       sql += ` AND s.categoria_id = ?`;
       params.push(categoria_id);
     }
     if (disponible !== undefined) {
+      const dispNum = Number(disponible);
+      if (!Number.isInteger(dispNum) || (dispNum !== 0 && dispNum !== 1)) {
+        return res.status(400).json({ error: 'disponible debe ser 0 o 1' });
+      }
       sql += ` AND s.disponible = ?`;
-      params.push(disponible);
+      params.push(dispNum);
     }
 
-    sql += ` GROUP BY s.id ORDER BY s.creado_en DESC`;
+    sql += ` ORDER BY s.creado_en DESC`;
 
     const [servicios] = await query(sql, params);
     res.json(servicios);
   } catch (err) {
     console.error('Error en búsqueda:', err);
     res.status(500).json({ error: 'Error al buscar servicios' });
+  }
+};
+
+exports.destacados = async (req, res) => {
+  try {
+    const [servicios] = await query(
+      `SELECT TOP 3 s.id, s.titulo, s.descripcion, s.tarifa, s.tipo_tarifa,
+       c.nombre AS categoria_nombre,
+       u.id AS proveedor_id, u.nombre, u.apellido, u.foto_url,
+       COALESCE(cal_stats.promedio, 0) AS calificacion_promedio,
+       COALESCE(cal_stats.total, 0) AS total_calificaciones
+       FROM servicios s
+       JOIN categorias c ON s.categoria_id = c.id
+       JOIN usuarios u ON s.proveedor_id = u.id
+       OUTER APPLY (
+         SELECT AVG(cal.puntuacion) AS promedio, COUNT(cal.id) AS total
+         FROM calificaciones cal
+         WHERE cal.proveedor_id = u.id
+       ) cal_stats
+       WHERE s.disponible = 1 AND u.activo = 1
+       ORDER BY calificacion_promedio DESC, total_calificaciones DESC`
+    );
+    res.json(servicios);
+  } catch (err) {
+    console.error('Error al obtener destacados:', err);
+    res.status(500).json({ error: 'Error al obtener servicios destacados' });
   }
 };
 
@@ -142,6 +180,9 @@ exports.eliminarServicio = async (req, res) => {
     res.json({ mensaje: 'Servicio eliminado exitosamente' });
   } catch (err) {
     console.error('Error al eliminar servicio:', err);
+    if (err.number === 547) {
+      return res.status(409).json({ error: 'No se puede eliminar el servicio porque tiene solicitudes asociadas. Desmárcale como no disponible en su lugar.' });
+    }
     res.status(500).json({ error: 'Error al eliminar servicio' });
   }
 };
@@ -153,14 +194,17 @@ exports.detalleServicio = async (req, res) => {
     const [servicios] = await query(
       `SELECT s.*, c.nombre AS categoria_nombre,
        u.id AS proveedor_id, u.nombre, u.apellido, u.foto_url, u.direccion, u.telefono, u.latitud, u.longitud,
-       COALESCE(AVG(cal.puntuacion), 0) AS calificacion_promedio,
-       COUNT(cal.id) AS total_calificaciones
+       COALESCE(cal_stats.promedio, 0) AS calificacion_promedio,
+       COALESCE(cal_stats.total, 0) AS total_calificaciones
        FROM servicios s
        JOIN categorias c ON s.categoria_id = c.id
        JOIN usuarios u ON s.proveedor_id = u.id
-       LEFT JOIN calificaciones cal ON cal.proveedor_id = u.id
-       WHERE s.id = ?
-       GROUP BY s.id`,
+       OUTER APPLY (
+         SELECT AVG(cal.puntuacion) AS promedio, COUNT(cal.id) AS total
+         FROM calificaciones cal
+         WHERE cal.proveedor_id = u.id
+       ) cal_stats
+       WHERE s.id = ?`,
       [id]
     );
 
@@ -169,7 +213,7 @@ exports.detalleServicio = async (req, res) => {
     }
 
     const [comentarios] = await query(
-      `SELECT TOP 10 cal.puntuacion, cal.comentario, cal.creado_en,
+      `SELECT TOP 10 cal.id, cal.puntuacion, cal.comentario, cal.creado_en,
        u.nombre, u.apellido, u.foto_url
        FROM calificaciones cal
        JOIN usuarios u ON cal.cliente_id = u.id

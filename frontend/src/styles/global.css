@@ -1,6 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400;1,800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 
 @theme inline {
   --color-background: var(--background);
@@ -36,39 +35,64 @@
 }
 
 :root {
-  /* Existing Tailwind/App variables */
-  --font-size: 16px;
-  --background: #ffffff;
-  --foreground: oklch(0.145 0 0);
-  --card: #ffffff;
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #030213;
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.0058 264.53);
+  --background: #001718;
+  --foreground: #cde8e8;
+  --card: #092324;
+  --card-foreground: #cde8e8;
+  --popover: #001112;
+  --popover-foreground: #cde8e8;
+  --primary-foreground: #113723;
+  --secondary: #9fd1c1;
   --secondary-foreground: #030213;
-  --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #e9ebef;
-  --accent-foreground: #030213;
-  --destructive: #d4183d;
-  --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.1);
-  --input: transparent;
-  --input-background: #f3f3f5;
-  --switch-background: #cbced4;
+  --muted: #20393a;
+  --muted-foreground: #c1c8c1;
+  --accent: #20393a;
+  --accent-foreground: #cde8e8;
+  --destructive: #93000a;
+  --destructive-foreground: #ffb4ab;
+  --border: rgba(169, 210, 182, 0.12);
+  --input: rgba(0, 17, 18, 0.4);
+  --input-background: rgba(0, 17, 18, 0.4);
+  --switch-background: #414843;
   --radius: 0.625rem;
 
-  /* Premium Design Variables */
-  --cyan: #00f5ff;
-  --violet: #b44fff;
-  --orange: #ff6b35;
-  --green: #00ff88;
-  --dark: #04060f;
-  --dark2: #080d1a;
-  --glass: rgba(255, 255, 255, 0.035);
-  --gborder: rgba(0, 245, 255, 0.12);
+  --primary: #a9d2b6;
+  --on-primary: #113723;
+  --primary-container: #8eb69b;
+  --on-primary-container: #234833;
+  --secondary: #9fd1c1;
+  --secondary-container: #1e4f43;
+  --tertiary: #acd0c7;
+  --background: #001718;
+  --surface: #001718;
+  --surface-dim: #001718;
+  --surface-bright: #253d3e;
+  --surface-container-lowest: #001112;
+  --surface-container-low: #051f20;
+  --surface-container: #092324;
+  --surface-container-high: #152e2f;
+  --surface-container-highest: #20393a;
+  --surface-variant: #20393a;
+  --on-surface: #cde8e8;
+  --on-surface-variant: #c1c8c1;
+  --inverse-surface: #cde8e8;
+  --inverse-on-surface: #1c3435;
+  --outline: #8b938c;
+  --outline-variant: #414843;
+  --surface-tint: #a7d0b4;
+  --error: #ffb4ab;
+  --on-error: #690005;
+  --error-container: #93000a;
+  --on-error-container: #ffdad6;
+
+  --emerald: #a9d2b6;
+  --emerald-dark: #1e4f43;
+  --emerald-light: #c3eccf;
+  --jade: #051f20;
+  --mint: #daf1de;
+  --glass-bg: rgba(9, 35, 36, 0.4);
+  --glass-border: rgba(169, 210, 182, 0.15);
+  --amber: #ff6b35;
 }
 
 .dark {
@@ -93,35 +117,230 @@
   --ring: oklch(0.439 0 0);
 }
 
-/* Base styles */
 @layer base {
   * {
     border-color: var(--border);
   }
 
   body {
-    background-color: var(--dark);
-    color: #e0eeff;
-    font-family: 'Rajdhani', sans-serif;
-    cursor: none;
-    /* Required for custom cursor */
+    background-color: #001718;
+    color: #cde8e8;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    overflow-x: hidden;
+    cursor: auto;
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    font-family: 'Orbitron', sans-serif;
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Playfair Display', serif;
   }
 }
 
-/* Typography Utilities */
-.font-orbitron {
-  font-family: 'Orbitron', sans-serif;
+.font-display-lg {
+  font-family: 'Playfair Display', serif;
 }
 
-.font-rajdhani {
-  font-family: 'Rajdhani', sans-serif;
+.font-headline-md {
+  font-family: 'Playfair Display', serif;
+}
+
+.font-title-sm {
+  font-family: 'Playfair Display', serif;
+}
+
+.font-body-base {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.font-body-sm {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.font-label-caps {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+}
+
+/* Navigation Buttons */
+.nav-btn-outline {
+  padding: 9px 22px;
+  background: transparent;
+  border: 1px solid rgba(169, 210, 182, 0.2);
+  color: rgba(205, 232, 232, 0.6);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+
+.nav-btn-outline:hover {
+  border-color: rgba(169, 210, 182, 0.5);
+  color: #a9d2b6;
+}
+
+.nav-btn-primary {
+  padding: 9px 22px;
+  background: linear-gradient(135deg, #a9d2b6, #1e4f43);
+  border: none;
+  color: #001718;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+
+.nav-btn-primary:hover {
+  box-shadow: 0 0 20px rgba(169, 210, 182, 0.35);
+}
+
+/* Base utility classes */
+.card {
+  background: rgba(9, 35, 36, 0.4);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(169, 210, 182, 0.12);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 22px;
+  border-radius: 8px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s;
+  text-decoration: none;
+  line-height: 1.4;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #a9d2b6, #1e4f43);
+  color: #001718;
+}
+
+.btn-primary:hover {
+  box-shadow: 0 0 24px rgba(169, 210, 182, 0.3);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 0.72rem;
+}
+
+.btn-danger {
+  background: rgba(147, 0, 10, 0.6);
+  color: #ffb4ab;
+  border: 1px solid rgba(255, 180, 171, 0.15);
+}
+
+.btn-danger:hover {
+  background: rgba(147, 0, 10, 0.8);
+}
+
+.btn-premium-sm {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #001718;
+  background: linear-gradient(135deg, #a9d2b6, #1e4f43);
+  text-decoration: none;
+  transition: all 0.25s;
+}
+
+.btn-premium-sm:hover {
+  box-shadow: 0 0 16px rgba(169, 210, 182, 0.3);
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: rgba(205, 232, 232, 0.7);
+  margin-bottom: 0.35rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(5, 31, 32, 0.6);
+  border: 1px solid rgba(169, 210, 182, 0.12);
+  border-radius: 8px;
+  color: #cde8e8;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: rgba(169, 210, 182, 0.4);
+}
+
+.form-group input::placeholder {
+  color: rgba(193, 200, 193, 0.25);
+}
+
+.alert {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.alert-error {
+  background: rgba(147, 0, 10, 0.2);
+  border: 1px solid rgba(255, 180, 171, 0.15);
+  color: #ffb4ab;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.animate-fadeOut {
+  animation: fadeOutLabel 1.2s ease-out forwards;
+}
+
+@keyframes fadeOutLabel {
+  0% { opacity: 1; transform: translateX(0) scale(1); }
+  70% { opacity: 1; transform: translateX(0) scale(1); }
+  100% { opacity: 0; transform: translateX(0.5rem) scale(0.95); }
 }

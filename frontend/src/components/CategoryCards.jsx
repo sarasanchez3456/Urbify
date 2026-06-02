@@ -21,7 +21,7 @@ export function CategoryCards() {
         const Icon = category.icon;
 
         return (
-          <Link key={category.name} to={`/buscar?categoria=${category.name}`}>
+          <Link key={category.name} to={`/buscar?q=${encodeURIComponent(category.name)}`}>
             <motion.div
               className="relative group cursor-pointer"
               initial={{ opacity: 0, y: 20 }}

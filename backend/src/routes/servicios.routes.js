@@ -2,6 +2,7 @@ const router = require('express').Router();
 const serviciosController = require('../controllers/servicios.controller');
 const { authenticate, authorize } = require('../middleware/auth');
 
+router.get('/destacados', serviciosController.destacados);
 router.get('/buscar', serviciosController.buscarServicios);
 router.get('/categoria/:categoria_id', serviciosController.serviciosPorCategoria);
 router.get('/mios', authenticate, authorize('proveedor'), serviciosController.misServicios);

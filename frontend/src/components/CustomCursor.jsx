@@ -40,13 +40,13 @@ export function CustomCursor() {
       <div 
         ref={curRef} 
         id="cur"
-        className="fixed w-[10px] h-[10px] bg-[var(--cyan)] rounded-full pointer-events-none z-[9999] -translate-x-1/2 -translate-y-1/2 transition-[transform] duration-[0.08s]"
-        style={{ boxShadow: '0 0 10px var(--cyan), 0 0 22px var(--cyan)' }}
+        className="fixed w-[10px] h-[10px] bg-[#a9d2b6] rounded-full pointer-events-none z-[9999] -translate-x-1/2 -translate-y-1/2 transition-[transform] duration-[0.08s]"
+        style={{ boxShadow: '0 0 10px #a9d2b6, 0 0 22px #a9d2b6' }}
       />
       <div 
         ref={ringRef} 
         id="cur-ring"
-        className="fixed w-[34px] h-[34px] border border-[rgba(0,245,255,0.45)] rounded-full pointer-events-none z-[9998] -translate-x-1/2 -translate-y-1/2 transition-[left,top] duration-[0.12s] ease-in-out"
+        className="fixed w-[34px] h-[34px] border border-[rgba(169,210,182,0.45)] rounded-full pointer-events-none z-[9998] -translate-x-1/2 -translate-y-1/2 transition-[left,top] duration-[0.12s] ease-in-out"
       />
     </>
   );

@@ -13,7 +13,7 @@ export default function ServicioDetalle() {
   useEffect(() => {
     api.get(`/servicios/${id}`)
       .then((res) => setServicio(res.data))
-      .catch(() => {})
+      .catch((err) => console.error('Error al cargar servicio:', err))
       .finally(() => setCargando(false));
   }, [id]);
 
@@ -31,7 +31,7 @@ export default function ServicioDetalle() {
             <h1>{servicio.titulo}</h1>
             <div className="detalle-rating">
               <span>★</span>
-              <span>{parseFloat(servicio.calificacion_promedio).toFixed(1)}</span>
+              <span>{parseFloat(servicio.calificacion_promedio || 0).toFixed(1)}</span>
               <span>({servicio.total_calificaciones} calificaciones)</span>
             </div>
           </div>
@@ -43,7 +43,7 @@ export default function ServicioDetalle() {
             <div className="detalle-precio-box">
               <span className="detalle-precio-label">Tarifa</span>
               <span className="detalle-precio-valor">
-                ${parseFloat(servicio.tarifa).toFixed(2)} / {servicio.tipo_tarifa}
+                ${parseFloat(servicio.tarifa || 0).toFixed(2)} / {servicio.tipo_tarifa}
               </span>
             </div>
           </div>
@@ -53,17 +53,17 @@ export default function ServicioDetalle() {
             {servicio.comentarios?.length === 0 ? (
               <p className="sin-comentarios">Aún no hay calificaciones</p>
             ) : (
-              servicio.comentarios?.map((c, i) => (
-                <div key={i} className="comentario-item">
+              servicio.comentarios?.map((c) => (
+                <div key={c.id} className="comentario-item">
                   <div className="comentario-header">
                     <strong>{c.nombre} {c.apellido}</strong>
                     <span className="comentario-estrellas">
-                      {'★'.repeat(c.puntuacion)}{'☆'.repeat(5 - c.puntuacion)}
+                      {'★'.repeat(c.puntuacion || 0)}{'☆'.repeat(5 - (c.puntuacion || 0))}
                     </span>
                   </div>
                   {c.comentario && <p>{c.comentario}</p>}
                   <span className="comentario-fecha">
-                    {new Date(c.creado_en).toLocaleDateString()}
+                    {c.creado_en ? new Date(c.creado_en).toLocaleDateString() : ''}
                   </span>
                 </div>
               ))

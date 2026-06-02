@@ -1,7 +1,13 @@
 const jwt = require('jsonwebtoken');
+const { query } = require('../config/db');
 require('dotenv').config();
 
 const authenticate = (req, res, next) => {
+  if (!process.env.JWT_SECRET) {
+    console.error('JWT_SECRET no configurado');
+    return res.status(500).json({ error: 'Error de configuración del servidor' });
+  }
+
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Token requerido' });
@@ -13,7 +19,18 @@ const authenticate = (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.usuarioId = decoded.id;
     req.usuarioRol = decoded.rol;
-    next();
+
+    query(
+      'SELECT id FROM tokens_sesion WHERE token = ? AND usuario_id = ? AND expira_en > GETDATE()',
+      [token, decoded.id]
+    ).then(([rows]) => {
+      if (rows.length === 0) {
+        return res.status(401).json({ error: 'Token inválido o expirado' });
+      }
+      next();
+    }).catch(() => {
+      next();
+    });
   } catch (err) {
     return res.status(401).json({ error: 'Token inválido o expirado' });
   }

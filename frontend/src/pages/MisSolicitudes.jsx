@@ -2,7 +2,32 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
-import './Buscar.css';
+import DashboardLayout from '../components/DashboardLayout';
+import {
+  ClipboardList,
+  CheckCircle,
+  XCircle,
+  Play,
+  Star,
+  Search,
+  Calendar,
+  DollarSign,
+  User,
+  Clock,
+} from 'lucide-react';
+
+const glassCard = {
+  backgroundColor: 'rgba(9, 35, 36, 0.4)',
+  backdropFilter: 'blur(16px)',
+  border: '1px solid rgba(169, 210, 182, 0.12)',
+};
+
+const subtleBorder = '1px solid rgba(169, 210, 182, 0.06)';
+
+const btnGradient = {
+  color: '#001718',
+  background: 'linear-gradient(135deg, #a9d2b6, #1e4f43)',
+};
 
 export default function MisSolicitudes() {
   const { usuario } = useAuth();
@@ -13,7 +38,7 @@ export default function MisSolicitudes() {
     const endpoint = usuario?.rol === 'cliente' ? '/solicitudes/cliente' : '/solicitudes/proveedor';
     api.get(endpoint)
       .then((res) => setSolicitudes(res.data))
-      .catch(() => {})
+      .catch((err) => console.error('Error al cargar solicitudes:', err))
       .finally(() => setCargando(false));
   }, [usuario]);
 
@@ -28,75 +53,189 @@ export default function MisSolicitudes() {
     }
   };
 
-  const estadoColor = {
-    pendiente: '#f59e0b',
-    aceptada: '#4361ee',
-    en_proceso: '#8b5cf6',
-    completada: '#16a34a',
-    cancelada: '#ef4444',
+  const getStatusStyle = (estado) => {
+    const map = {
+      pendiente: { bg: 'rgba(234, 179, 8, 0.1)', text: '#facc15', border: 'rgba(234, 179, 8, 0.2)', icon: Clock },
+      aceptada: { bg: 'rgba(59, 130, 246, 0.1)', text: '#60a5fa', border: 'rgba(59, 130, 246, 0.2)', icon: CheckCircle },
+      en_proceso: { bg: 'rgba(168, 85, 247, 0.1)', text: '#c084fc', border: 'rgba(168, 85, 247, 0.2)', icon: Play },
+      completada: { bg: 'rgba(34, 197, 94, 0.1)', text: '#4ade80', border: 'rgba(34, 197, 94, 0.2)', icon: CheckCircle },
+      cancelada: { bg: 'rgba(239, 68, 68, 0.1)', text: '#f87171', border: 'rgba(239, 68, 68, 0.2)', icon: XCircle },
+    };
+    return map[estado] || { bg: 'rgba(9, 35, 36, 0.4)', text: 'rgba(193, 200, 193, 0.5)', border: 'rgba(169, 210, 182, 0.12)', icon: ClipboardList };
   };
 
-  if (cargando) return <div className="loading container">Cargando...</div>;
+  if (cargando) {
+    return (
+      <DashboardLayout titulo="Mis Solicitudes" subtitulo={usuario?.rol === 'cliente' ? 'Solicitudes que has realizado' : 'Solicitudes que has recibido'}>
+        <div className="flex items-center justify-center h-64" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>Cargando...</div>
+      </DashboardLayout>
+    );
+  }
 
   return (
-    <div className="buscar-page container">
-      <div className="page-header">
-        <h1>Mis Solicitudes</h1>
-        <p>{usuario?.rol === 'cliente' ? 'Solicitudes que has realizado' : 'Solicitudes que has recibido'}</p>
-      </div>
+    <DashboardLayout titulo="Mis Solicitudes" subtitulo={usuario?.rol === 'cliente' ? 'Solicitudes que has realizado' : 'Solicitudes que has recibido'}>
+      <div className="max-w-5xl mx-auto space-y-6">
+        <div>
+          <p className="text-sm" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>{solicitudes.length} solicitud{solicitudes.length !== 1 ? 'es' : ''}</p>
+        </div>
 
-      {solicitudes.length === 0 ? (
-        <div className="sin-resultados">
-          <h3>No hay solicitudes</h3>
-          <p>{usuario?.rol === 'cliente' ? 'Busca servicios y solicita un profesional' : 'Aún no has recibido solicitudes'}</p>
-          {usuario?.rol === 'cliente' && <Link to="/buscar" className="btn btn-primary" style={{ marginTop: '1rem' }}>Buscar Servicios</Link>}
-        </div>
-      ) : (
-        <div className="grid grid-2">
-          {solicitudes.map((sol) => (
-            <div key={sol.id} className="card">
-              <div className="solicitud-header">
-                <h3>{sol.servicio_titulo}</h3>
-                <span className="solicitud-estado" style={{ background: estadoColor[sol.estado] }}>
-                  {sol.estado}
-                </span>
-              </div>
-              <p className="solicitud-cliente">
-                {usuario?.rol === 'cliente'
-                  ? `Proveedor: ${sol.proveedor_nombre} ${sol.proveedor_apellido}`
-                  : `Cliente: ${sol.cliente_nombre} ${sol.cliente_apellido}`
-                }
-              </p>
-              {sol.descripcion && <p className="servicio-descripcion">{sol.descripcion}</p>}
-              <div className="solicitud-detalles">
-                <span>📅 {new Date(sol.fecha_solicitud).toLocaleDateString()}</span>
-                <span>💰 ${parseFloat(sol.tarifa).toFixed(2)}</span>
-              </div>
-              {usuario?.rol === 'proveedor' && sol.estado === 'pendiente' && (
-                <div className="solicitud-acciones" style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
-                  <button onClick={() => cambiarEstado(sol.id, 'aceptada')} className="btn btn-primary btn-sm">Aceptar</button>
-                  <button onClick={() => cambiarEstado(sol.id, 'cancelada')} className="btn btn-danger btn-sm">Rechazar</button>
+        {solicitudes.length === 0 ? (
+          <div className="text-center py-16 rounded-xl" style={glassCard}>
+            <ClipboardList size={48} className="mx-auto mb-4" style={{ opacity: 0.3, color: 'rgba(193, 200, 193, 0.5)' }} />
+            <h3 className="text-lg font-semibold mb-2" style={{ fontFamily: "'Playfair Display', serif", color: '#cde8e8' }}>No hay solicitudes</h3>
+            <p className="text-sm mb-6" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>
+              {usuario?.rol === 'cliente'
+                ? 'Busca servicios y solicita un profesional'
+                : 'Aún no has recibido solicitudes'}
+            </p>
+            {usuario?.rol === 'cliente' && (
+              <Link
+                to="/buscar"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg transition-all text-sm font-semibold"
+                style={btnGradient}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, #bde2ca, #256f5a)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, #a9d2b6, #1e4f43)'; }}
+              >
+                <Search size={16} />
+                Buscar Servicios
+              </Link>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {solicitudes.map((sol) => {
+              const status = getStatusStyle(sol.estado);
+              const StatusIcon = status.icon;
+              return (
+                <div
+                  key={sol.id}
+                  className="rounded-xl p-5 transition-all"
+                  style={{
+                    backgroundColor: 'rgba(0, 17, 18, 0.4)',
+                    backdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(169, 210, 182, 0.08)',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.25)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.08)'; }}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <h3 className="text-base font-semibold" style={{ fontFamily: "'Playfair Display', serif", color: '#cde8e8' }}>
+                      {sol.servicio_titulo}
+                    </h3>
+                    <span
+                      className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full capitalize whitespace-nowrap ml-3"
+                      style={{
+                        backgroundColor: status.bg,
+                        color: status.text,
+                        border: `1px solid ${status.border}`,
+                      }}
+                    >
+                      <StatusIcon size={12} />
+                      {sol.estado.replace('_', ' ')}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center gap-2 text-sm" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>
+                      <User size={14} />
+                      <span>
+                        {usuario?.rol === 'cliente'
+                          ? `Proveedor: ${sol.proveedor_nombre} ${sol.proveedor_apellido}`
+                          : `Cliente: ${sol.cliente_nombre} ${sol.cliente_apellido}`
+                        }
+                      </span>
+                    </div>
+                    {sol.descripcion && (
+                      <p className="text-sm line-clamp-2" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>{sol.descripcion}</p>
+                    )}
+                    <div className="flex items-center gap-4 text-sm" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>
+                      <span className="flex items-center gap-1">
+                        <Calendar size={14} />
+                        {sol.fecha_solicitud ? new Date(sol.fecha_solicitud).toLocaleDateString('es-ES', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        }) : ''}
+                      </span>
+                      <span className="flex items-center gap-1" style={{ color: '#a9d2b6' }}>
+                        <DollarSign size={14} />
+                        ${parseFloat(sol.tarifa || 0).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {usuario?.rol === 'proveedor' && sol.estado === 'pendiente' && (
+                    <div className="flex gap-2 pt-3" style={{ borderTop: subtleBorder }}>
+                      <button
+                        onClick={() => cambiarEstado(sol.id, 'aceptada')}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors"
+                        style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)', color: '#4ade80' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(34, 197, 94, 0.2)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(34, 197, 94, 0.1)'; }}
+                      >
+                        <CheckCircle size={14} />
+                        Aceptar
+                      </button>
+                      <button
+                        onClick={() => cambiarEstado(sol.id, 'cancelada')}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors"
+                        style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#f87171' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'; }}
+                      >
+                        <XCircle size={14} />
+                        Rechazar
+                      </button>
+                    </div>
+                  )}
+                  {usuario?.rol === 'proveedor' && sol.estado === 'aceptada' && (
+                    <div className="pt-3" style={{ borderTop: subtleBorder }}>
+                      <button
+                        onClick={() => cambiarEstado(sol.id, 'en_proceso')}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors"
+                        style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.2)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.1)'; }}
+                      >
+                        <Play size={14} />
+                        Iniciar Servicio
+                      </button>
+                    </div>
+                  )}
+                  {usuario?.rol === 'proveedor' && sol.estado === 'en_proceso' && (
+                    <div className="pt-3" style={{ borderTop: subtleBorder }}>
+                      <button
+                        onClick={() => cambiarEstado(sol.id, 'completada')}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors"
+                        style={{ backgroundColor: 'rgba(168, 85, 247, 0.1)', color: '#c084fc' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(168, 85, 247, 0.2)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(168, 85, 247, 0.1)'; }}
+                      >
+                        <CheckCircle size={14} />
+                        Marcar Completada
+                      </button>
+                    </div>
+                  )}
+                  {usuario?.rol === 'cliente' && sol.estado === 'completada' && (
+                    <div className="pt-3" style={{ borderTop: subtleBorder }}>
+                      <Link
+                        to={`/calificar/${sol.id}`}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors"
+                        style={{ backgroundColor: 'rgba(255, 107, 53, 0.1)', color: '#ff6b35' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255, 107, 53, 0.2)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255, 107, 53, 0.1)'; }}
+                      >
+                        <Star size={14} />
+                        Calificar Servicio
+                      </Link>
+                    </div>
+                  )}
                 </div>
-              )}
-              {usuario?.rol === 'proveedor' && sol.estado === 'aceptada' && (
-                <div className="solicitud-acciones" style={{ marginTop: '1rem' }}>
-                  <button onClick={() => cambiarEstado(sol.id, 'en_proceso')} className="btn btn-primary btn-sm">Iniciar Servicio</button>
-                </div>
-              )}
-              {usuario?.rol === 'proveedor' && sol.estado === 'en_proceso' && (
-                <div className="solicitud-acciones" style={{ marginTop: '1rem' }}>
-                  <button onClick={() => cambiarEstado(sol.id, 'completada')} className="btn btn-primary btn-sm">Marcar Completada</button>
-                </div>
-              )}
-              {usuario?.rol === 'cliente' && sol.estado === 'completada' && (
-                <div className="solicitud-acciones" style={{ marginTop: '1rem' }}>
-                  <Link to={`/calificar/${sol.id}`} className="btn btn-primary btn-sm">Calificar Servicio</Link>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
   );
 }
