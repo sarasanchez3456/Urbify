@@ -194,3 +194,25 @@ exports.actualizarEstadoSolicitud = async (req, res) => {
     res.status(500).json({ error: 'Error al actualizar estado' });
   }
 };
+
+exports.eliminarSolicitud = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [solicitud] = await query('SELECT * FROM solicitudes WHERE id = ?', [id]);
+    if (solicitud.length === 0) {
+      return res.status(404).json({ error: 'Solicitud no encontrada' });
+    }
+    const s = solicitud[0];
+    if (s.cliente_id !== req.usuarioId && s.proveedor_id !== req.usuarioId) {
+      return res.status(403).json({ error: 'No autorizado para eliminar esta solicitud' });
+    }
+    if (s.estado !== 'cancelada' && s.estado !== 'pendiente') {
+      return res.status(400).json({ error: 'Solo se pueden eliminar solicitudes en estado pendiente o cancelada' });
+    }
+    await query('DELETE FROM solicitudes WHERE id = ?', [id]);
+    res.json({ mensaje: 'Solicitud eliminada exitosamente' });
+  } catch (err) {
+    console.error('Error al eliminar solicitud:', err);
+    res.status(500).json({ error: 'Error al eliminar solicitud' });
+  }
+};

@@ -66,3 +66,40 @@ exports.calificacionesProveedor = async (req, res) => {
     res.status(500).json({ error: 'Error al obtener calificaciones' });
   }
 };
+
+exports.actualizarCalificacion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { puntuacion, comentario } = req.body;
+    if (puntuacion && (puntuacion < 1 || puntuacion > 5)) {
+      return res.status(400).json({ error: 'La puntuación debe ser entre 1 y 5' });
+    }
+    const [existe] = await query('SELECT * FROM calificaciones WHERE id = ? AND cliente_id = ?', [id, req.usuarioId]);
+    if (existe.length === 0) {
+      return res.status(404).json({ error: 'Calificación no encontrada o no autorizada' });
+    }
+    await query(
+      'UPDATE calificaciones SET puntuacion = COALESCE(?, puntuacion), comentario = COALESCE(?, comentario) WHERE id = ?',
+      [puntuacion || null, comentario || null, id]
+    );
+    res.json({ mensaje: 'Calificación actualizada exitosamente' });
+  } catch (err) {
+    console.error('Error al actualizar calificación:', err);
+    res.status(500).json({ error: 'Error al actualizar calificación' });
+  }
+};
+
+exports.eliminarCalificacion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [existe] = await query('SELECT * FROM calificaciones WHERE id = ? AND cliente_id = ?', [id, req.usuarioId]);
+    if (existe.length === 0) {
+      return res.status(404).json({ error: 'Calificación no encontrada o no autorizada' });
+    }
+    await query('DELETE FROM calificaciones WHERE id = ?', [id]);
+    res.json({ mensaje: 'Calificación eliminada exitosamente' });
+  } catch (err) {
+    console.error('Error al eliminar calificación:', err);
+    res.status(500).json({ error: 'Error al eliminar calificación' });
+  }
+};

@@ -186,3 +186,50 @@ exports.actualizarPerfil = async (req, res) => {
     res.status(500).json({ error: 'Error al actualizar perfil' });
   }
 };
+
+exports.listarUsuarios = async (req, res) => {
+  try {
+    const [usuarios] = await query(
+      `SELECT id, nombre, apellido, correo, telefono, rol, activo, creado_en FROM usuarios ORDER BY creado_en DESC`
+    );
+    res.json(usuarios);
+  } catch (err) {
+    console.error('Error al listar usuarios:', err);
+    res.status(500).json({ error: 'Error al listar usuarios' });
+  }
+};
+
+exports.usuarioPorId = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [usuarios] = await query(
+      `SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, latitud, longitud, oficio, activo, creado_en FROM usuarios WHERE id = ?`,
+      [id]
+    );
+    if (usuarios.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    res.json(usuarios[0]);
+  } catch (err) {
+    console.error('Error al obtener usuario:', err);
+    res.status(500).json({ error: 'Error al obtener usuario' });
+  }
+};
+
+exports.eliminarUsuario = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (Number(id) === req.usuarioId) {
+      return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta' });
+    }
+    const [existe] = await query('SELECT id FROM usuarios WHERE id = ?', [id]);
+    if (existe.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    await query('DELETE FROM usuarios WHERE id = ?', [id]);
+    res.json({ mensaje: 'Usuario eliminado exitosamente' });
+  } catch (err) {
+    console.error('Error al eliminar usuario:', err);
+    res.status(500).json({ error: 'Error al eliminar usuario' });
+  }
+};
