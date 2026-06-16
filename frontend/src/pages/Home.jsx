@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ScrollGlobe } from '../components/ui/landing-page';
+import HeroUrbify from '../components/HeroUrbify';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import './Home.css';
@@ -61,18 +62,6 @@ export default function Home() {
 
   const demoSections = [
     {
-      id: "hero",
-      badge: "Información de Urbify",
-      title: "Urbify",
-      subtitle: "Servicios para el hogar",
-      description: "La plataforma que conecta a profesionales verificados con clientes que necesitan servicios para el hogar. Electricistas, plomeros, mecánicos y más, cerca de ti.",
-      align: "left",
-      actions: [
-        { label: "Buscar Servicios", variant: "primary", onClick: () => navigate('/buscar') },
-        { label: "Ver Mapa en Vivo", variant: "secondary", onClick: () => navigate('/mapa') },
-      ]
-    },
-    {
       id: "cta",
       badge: "Profesionales",
       title: "¿Eres un profesional?",
@@ -108,6 +97,9 @@ export default function Home() {
 
   return (
     <div className="home-wrapper">
+      {/* Hero Urbify with spotlight effect */}
+      <HeroUrbify />
+
       {/* ScrollGlobe immersive sections */}
       <ScrollGlobe sections={demoSections} />
 
