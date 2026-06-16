@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, Navigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import './ServicioDetalle.css';
@@ -18,6 +18,7 @@ export default function ServicioDetalle() {
   }, [id]);
 
   if (cargando) return <div className="loading container">Cargando servicio...</div>;
+  if (!usuario) return <Navigate to="/login" />;
   if (!servicio) return <div className="loading container">Servicio no encontrado</div>;
 
   return (
@@ -63,7 +64,7 @@ export default function ServicioDetalle() {
                   </div>
                   {c.comentario && <p>{c.comentario}</p>}
                   <span className="comentario-fecha">
-                    {c.creado_en ? new Date(c.creado_en).toLocaleDateString() : ''}
+                    {c.creado_eldia ? new Date(c.creado_eldia).toLocaleDateString() : ''}
                   </span>
                 </div>
               ))
@@ -85,12 +86,6 @@ export default function ServicioDetalle() {
             {usuario?.rol === 'cliente' && (
               <Link to={`/solicitar/${servicio.id}`} className="btn btn-primary btn-block">
                 Solicitar Servicio
-              </Link>
-            )}
-
-            {!usuario && (
-              <Link to="/login" className="btn btn-primary btn-block">
-                Inicia sesión para solicitar
               </Link>
             )}
           </div>

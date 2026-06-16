@@ -35,7 +35,7 @@ function LocationMarker({ onLocationFound }) {
     };
     map.on('locationfound', handleLocationFound);
     return () => {
-      map.stop();
+      try { map.stop(); } catch (_) {}
       map.off('locationfound', handleLocationFound);
     };
   }, [map, onLocationFound]);

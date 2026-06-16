@@ -115,9 +115,8 @@ export default function Dashboard() {
   const quickActions = usuario?.rol === 'proveedor'
     ? [
         { label: 'Publicar Servicio', icon: Wrench, path: '/mis-servicios', color: '#a9d2b6' },
-        { label: 'Ver Solicitudes', icon: ClipboardList, path: '/mis-solicitudes', color: '#8eb69b' },
+        { label: 'Notificaciones', icon: ClipboardList, path: '/mis-solicitudes', color: '#8eb69b' },
         { label: 'Mi Perfil', icon: User, path: '/perfil', color: '#60a5fa' },
-        { label: 'Buscar', icon: Search, path: '/buscar', color: '#ff6b35' },
       ]
     : [
         { label: 'Buscar Servicios', icon: Search, path: '/buscar', color: '#a9d2b6' },

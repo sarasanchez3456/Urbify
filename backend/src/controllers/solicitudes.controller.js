@@ -8,7 +8,7 @@ function escapeHtml(str) {
 
 exports.crearSolicitud = async (req, res) => {
   try {
-    const { proveedor_id, servicio_id, descripcion, fecha_servicio } = req.body;
+    const { proveedor_id, servicio_id, descripcion, fecha_servicio, direccion, latitud, longitud } = req.body;
 
     if (req.usuarioId === Number(proveedor_id)) {
       return res.status(400).json({ error: 'No puedes solicitarte un servicio a ti mismo' });
@@ -33,10 +33,10 @@ exports.crearSolicitud = async (req, res) => {
     );
 
     const [result] = await query(
-      `INSERT INTO solicitudes (cliente_id, proveedor_id, servicio_id, descripcion, fecha_servicio)
+      `INSERT INTO solicitudes (cliente_id, proveedor_id, servicio_id, descripcion, fecha_servicio, direccion, latitud, longitud)
        OUTPUT INSERTED.id
-       VALUES (?, ?, ?, ?, ?)`,
-      [req.usuarioId, proveedor_id, servicio_id, descripcion, fecha_servicio || null]
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [req.usuarioId, proveedor_id, servicio_id, descripcion, fecha_servicio || null, direccion || null, latitud || null, longitud || null]
     );
 
     const solicitudId = result[0].id;
@@ -94,7 +94,7 @@ exports.crearSolicitud = async (req, res) => {
     });
   } catch (err) {
     console.error('Error al crear solicitud:', err);
-    res.status(500).json({ error: 'Error al crear solicitud' });
+    res.status(500).json({ error: 'Error al crear solicitud', detalle: err.message });
   }
 };
 

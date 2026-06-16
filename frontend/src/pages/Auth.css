@@ -9,17 +9,7 @@
   overflow: hidden;
 }
 
-.auth-container::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse at 20% 50%, rgba(169, 210, 182, 0.06) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 20%, rgba(30, 79, 67, 0.1) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 80%, rgba(169, 210, 182, 0.04) 0%, transparent 50%);
-  pointer-events: none;
-  z-index: 1;
-}
+
 
 .auth-form {
   display: flex;

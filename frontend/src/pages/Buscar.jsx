@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import DashboardLayout from '../components/DashboardLayout';
@@ -219,15 +219,14 @@ function BuscarContent({ dashboard }) {
 }
 
 export default function Buscar() {
-  const { usuario } = useAuth();
+  const { usuario, cargando } = useAuth();
 
-  if (usuario) {
-    return (
-      <DashboardLayout titulo="Buscar Servicios" subtitulo="Encuentra al profesional que necesitas">
-        <BuscarContent dashboard />
-      </DashboardLayout>
-    );
-  }
+  if (cargando) return null;
+  if (!usuario) return <Navigate to="/login" />;
 
-  return <BuscarContent />;
+  return (
+    <DashboardLayout titulo="Buscar Servicios" subtitulo="Encuentra al profesional que necesitas">
+      <BuscarContent dashboard />
+    </DashboardLayout>
+  );
 }

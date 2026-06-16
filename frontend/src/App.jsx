@@ -25,12 +25,13 @@ function RutaProtegida({ children, rol }) {
   return children;
 }
 
-const rutasDashboard = ['/dashboard', '/perfil', '/mis-servicios', '/mis-solicitudes', '/solicitar', '/calificar'];
+const rutasDashboard = ['/dashboard', '/perfil', '/mis-servicios', '/mis-solicitudes', '/solicitar', '/calificar', '/buscar'];
 
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
-  const esDashboard = rutasDashboard.some((r) => location.pathname.startsWith(r));
+  const { usuario } = useAuth();
+  const esDashboard = rutasDashboard.some((r) => location.pathname.startsWith(r)) || (location.pathname.startsWith('/mapa') && !!usuario);
 
   useEffect(() => {
     setOnUnauthorized(() => navigate('/login'));

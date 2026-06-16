@@ -14,6 +14,7 @@ import {
   DollarSign,
   User,
   Clock,
+  MapPin,
 } from 'lucide-react';
 
 const glassCard = {
@@ -147,6 +148,12 @@ export default function MisSolicitudes() {
                     </div>
                     {sol.descripcion && (
                       <p className="text-sm line-clamp-2" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>{sol.descripcion}</p>
+                    )}
+                    {sol.direccion && usuario?.rol === 'proveedor' && (
+                      <div className="flex items-start gap-2 text-sm" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>
+                        <MapPin size={14} className="mt-0.5 shrink-0" style={{ color: '#a9d2b6' }} />
+                        <span>{sol.direccion}</span>
+                      </div>
                     )}
                     <div className="flex items-center gap-4 text-sm" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>
                       <span className="flex items-center gap-1">

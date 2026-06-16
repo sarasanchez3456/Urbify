@@ -101,7 +101,7 @@ export default function Auth() {
 
   return (
     <div className="auth-container">
-      <SmokeyBackground color="#a9d2b6" />
+
 
       <div className="auth-form" style={{ transform: isRegister ? 'rotateY(-180deg)' : 'rotateY(0deg)' }}>
         {/* === LOGIN === */}

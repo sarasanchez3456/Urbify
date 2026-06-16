@@ -29,10 +29,10 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
   const navItems = [
     { path: '/dashboard', label: 'Inicio', icon: LayoutDashboard, roles: ['cliente', 'proveedor'] },
     { path: '/perfil', label: 'Mi Perfil', icon: User, roles: ['cliente', 'proveedor'] },
-    { path: '/mis-solicitudes', label: 'Mis Solicitudes', icon: ClipboardList, roles: ['cliente', 'proveedor'] },
+    { path: '/mis-solicitudes', label: usuario?.rol === 'proveedor' ? 'Notificaciones' : 'Mis Solicitudes', icon: ClipboardList, roles: ['cliente', 'proveedor'] },
     { path: '/mis-servicios', label: 'Mis Servicios', icon: Wrench, roles: ['proveedor'] },
-    { path: '/buscar', label: 'Buscar Servicios', icon: Search, roles: ['cliente', 'proveedor'] },
-    { path: '/mapa', label: 'Mapa', icon: MapPin, roles: ['cliente', 'proveedor'] },
+    { path: '/buscar', label: 'Buscar Servicios', icon: Search, roles: ['cliente'] },
+    { path: '/mapa', label: 'Mapa', icon: MapPin, roles: ['cliente'] },
   ].filter((item) => item.roles.includes(usuario?.rol));
 
   const handleLogout = () => {
@@ -194,17 +194,7 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
                       <User size={16} />
                       Mi Perfil
                     </Link>
-                    <Link
-                      to="/"
-                      onClick={() => setProfileOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
-                      style={{ color: 'rgba(193, 200, 193, 0.6)' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(21, 46, 47, 0.6)'; e.currentTarget.style.color = '#cde8e8'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'rgba(193, 200, 193, 0.6)'; }}
-                    >
-                      <Home size={16} />
-                      Ir al Inicio
-                    </Link>
+
                     <button
                       onClick={handleLogout}
                       className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors w-full text-left"

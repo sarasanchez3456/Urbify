@@ -32,7 +32,7 @@ exports.misServicios = async (req, res) => {
        FROM servicios s
        JOIN categorias c ON s.categoria_id = c.id
        WHERE s.proveedor_id = ?
-       ORDER BY s.creado_en DESC`,
+       ORDER BY s.creado_eldia DESC`,
       [req.usuarioId]
     );
     res.json(servicios);
@@ -59,7 +59,7 @@ exports.serviciosPorCategoria = async (req, res) => {
          WHERE cal.proveedor_id = u.id
        ) cal_stats
        WHERE s.categoria_id = ? AND s.disponible = 1 AND u.activo = 1
-       ORDER BY s.creado_en DESC`,
+       ORDER BY s.creado_eldia DESC`,
       [categoria_id]
     );
     res.json(servicios);
@@ -106,7 +106,7 @@ exports.buscarServicios = async (req, res) => {
       params.push(dispNum);
     }
 
-    sql += ` ORDER BY s.creado_en DESC`;
+    sql += ` ORDER BY s.creado_eldia DESC`;
 
     const [servicios] = await query(sql, params);
     res.json(servicios);
@@ -138,7 +138,7 @@ exports.destacados = async (req, res) => {
     res.json(servicios);
   } catch (err) {
     console.error('Error al obtener destacados:', err);
-    res.status(500).json({ error: 'Error al obtener servicios destacados' });
+    res.status(500).json({ error: 'Error al obtener servicios destacados', detalles: err.message });
   }
 };
 
@@ -212,19 +212,25 @@ exports.detalleServicio = async (req, res) => {
       return res.status(404).json({ error: 'Servicio no encontrado' });
     }
 
-    const [comentarios] = await query(
-      `SELECT TOP 10 cal.id, cal.puntuacion, cal.comentario, cal.creado_en,
-       u.nombre, u.apellido, u.foto_url
-       FROM calificaciones cal
-       JOIN usuarios u ON cal.cliente_id = u.id
-       WHERE cal.proveedor_id = ?
-       ORDER BY cal.creado_en DESC`,
-      [servicios[0].proveedor_id]
-    );
+    let comentarios = [];
+    try {
+      const [result] = await query(
+        `SELECT TOP 10 cal.id, cal.puntuacion, cal.comentario, cal.creado_eldia,
+         u.nombre, u.apellido, u.foto_url
+         FROM calificaciones cal
+         JOIN usuarios u ON cal.cliente_id = u.id
+         WHERE cal.proveedor_id = ?
+         ORDER BY cal.creado_eldia DESC`,
+        [servicios[0].proveedor_id]
+      );
+      comentarios = result;
+    } catch (err2) {
+      console.error('Error al obtener comentarios:', err2);
+    }
 
     res.json({ ...servicios[0], comentarios });
   } catch (err) {
     console.error('Error al obtener detalle:', err);
-    res.status(500).json({ error: 'Error al obtener detalle del servicio' });
+    res.status(500).json({ error: 'Error al obtener detalle del servicio', detalle: err.message });
   }
 };
