@@ -23,12 +23,11 @@ exports.registrar = async (req, res) => {
 
     const [result] = await query(
       `INSERT INTO usuarios (nombre, apellido, correo, contrasena, telefono, rol, direccion, latitud, longitud, oficio)
-       OUTPUT INSERTED.id
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [nombre, apellido, correo, hashedPassword, telefono || null, rol, direccion || null, latitud || null, longitud || null, oficio || null]
     );
 
-    const usuarioId = result[0].id;
+    const usuarioId = result.insertId;
 
     const token = jwt.sign(
       { id: usuarioId, rol },
@@ -37,12 +36,12 @@ exports.registrar = async (req, res) => {
     );
 
     await query(
-      'DELETE FROM tokens_sesion WHERE usuario_id = ? AND expira_en < GETDATE()',
+      'DELETE FROM tokens_sesion WHERE usuario_id = ? AND expira_en < NOW()',
       [usuarioId]
     );
     const tokenDays = parseInt(process.env.JWT_EXPIRES_DAYS, 10) || 7;
     await query(
-      `INSERT INTO tokens_sesion (usuario_id, token, expira_en) VALUES (?, ?, DATEADD(DAY, ${tokenDays}, GETDATE()))`,
+      `INSERT INTO tokens_sesion (usuario_id, token, expira_en) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ${tokenDays} DAY))`,
       [usuarioId, token]
     );
 
@@ -86,17 +85,20 @@ exports.login = async (req, res) => {
 
     const valido = await bcrypt.compare(contrasena, usuario.contrasena);
     if (!valido) {
-      const [updateResult] = await query(
-        `UPDATE usuarios SET intentos_fallidos = intentos_fallidos + 1
-         OUTPUT INSERTED.intentos_fallidos
-         WHERE id = ?`,
+      await query(
+        'UPDATE usuarios SET intentos_fallidos = intentos_fallidos + 1 WHERE id = ?',
         [usuario.id]
       );
-      const nuevosIntentos = updateResult[0].intentos_fallidos;
+
+      const [updated] = await query(
+        'SELECT intentos_fallidos FROM usuarios WHERE id = ?',
+        [usuario.id]
+      );
+      const nuevosIntentos = updated[0].intentos_fallidos;
 
       if (nuevosIntentos >= 3) {
         await query(
-          'UPDATE usuarios SET intentos_fallidos = 0, bloqueado_hasta = DATEADD(MINUTE, 5, GETDATE()) WHERE id = ?',
+          'UPDATE usuarios SET intentos_fallidos = 0, bloqueado_hasta = DATE_ADD(NOW(), INTERVAL 5 MINUTE) WHERE id = ?',
           [usuario.id]
         );
         return res.status(429).json({
@@ -122,11 +124,11 @@ exports.login = async (req, res) => {
     );
 
     await query(
-      'DELETE FROM tokens_sesion WHERE usuario_id = ? AND expira_en < GETDATE()',
+      'DELETE FROM tokens_sesion WHERE usuario_id = ? AND expira_en < NOW()',
       [usuario.id]
     );
     await query(
-      'INSERT INTO tokens_sesion (usuario_id, token, expira_en) VALUES (?, ?, DATEADD(DAY, 7, GETDATE()))',
+      'INSERT INTO tokens_sesion (usuario_id, token, expira_en) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))',
       [usuario.id, token]
     );
 
@@ -155,7 +157,7 @@ exports.login = async (req, res) => {
 exports.perfil = async (req, res) => {
   try {
     const [usuarios] = await query(
-      `SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, latitud, longitud, creado_eldia
+      `SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, latitud, longitud, creado_en
        FROM usuarios WHERE id = ?`,
       [req.usuarioId]
     );
@@ -194,7 +196,7 @@ exports.actualizarPerfil = async (req, res) => {
 exports.listarUsuarios = async (req, res) => {
   try {
     const [usuarios] = await query(
-      `SELECT id, nombre, apellido, correo, telefono, rol, activo, creado_eldia FROM usuarios ORDER BY creado_eldia DESC`
+      'SELECT id, nombre, apellido, correo, telefono, rol, activo, creado_en FROM usuarios ORDER BY creado_en DESC'
     );
     res.json(usuarios);
   } catch (err) {
@@ -207,7 +209,7 @@ exports.usuarioPorId = async (req, res) => {
   try {
     const { id } = req.params;
     const [usuarios] = await query(
-      `SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, latitud, longitud, oficio, activo, creado_eldia FROM usuarios WHERE id = ?`,
+      'SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, latitud, longitud, oficio, activo, creado_en FROM usuarios WHERE id = ?',
       [id]
     );
     if (usuarios.length === 0) {

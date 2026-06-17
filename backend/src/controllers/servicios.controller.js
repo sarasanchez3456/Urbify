@@ -10,14 +10,13 @@ exports.crearServicio = async (req, res) => {
 
     const [result] = await query(
       `INSERT INTO servicios (proveedor_id, categoria_id, titulo, descripcion, tarifa, tipo_tarifa)
-       OUTPUT INSERTED.id
        VALUES (?, ?, ?, ?, ?, ?)`,
       [req.usuarioId, categoria_id, titulo, descripcion, tarifa, tipo_tarifa || 'hora']
     );
 
     res.status(201).json({
       mensaje: 'Servicio creado exitosamente',
-      servicio: { id: result[0].id, proveedor_id: req.usuarioId, categoria_id, titulo, descripcion, tarifa },
+      servicio: { id: result.insertId, proveedor_id: req.usuarioId, categoria_id, titulo, descripcion, tarifa },
     });
   } catch (err) {
     console.error('Error al crear servicio:', err);
@@ -32,7 +31,7 @@ exports.misServicios = async (req, res) => {
        FROM servicios s
        JOIN categorias c ON s.categoria_id = c.id
        WHERE s.proveedor_id = ?
-       ORDER BY s.creado_eldia DESC`,
+       ORDER BY s.creado_en DESC`,
       [req.usuarioId]
     );
     res.json(servicios);
@@ -53,13 +52,13 @@ exports.serviciosPorCategoria = async (req, res) => {
        FROM servicios s
        JOIN categorias c ON s.categoria_id = c.id
        JOIN usuarios u ON s.proveedor_id = u.id
-       OUTER APPLY (
-         SELECT AVG(cal.puntuacion) AS promedio, COUNT(cal.id) AS total
+       LEFT JOIN (
+         SELECT cal.proveedor_id, AVG(cal.puntuacion) AS promedio, COUNT(cal.id) AS total
          FROM calificaciones cal
-         WHERE cal.proveedor_id = u.id
-       ) cal_stats
+         GROUP BY cal.proveedor_id
+       ) cal_stats ON cal_stats.proveedor_id = u.id
        WHERE s.categoria_id = ? AND s.disponible = 1 AND u.activo = 1
-       ORDER BY s.creado_eldia DESC`,
+       ORDER BY s.creado_en DESC`,
       [categoria_id]
     );
     res.json(servicios);
@@ -80,11 +79,11 @@ exports.buscarServicios = async (req, res) => {
                FROM servicios s
                JOIN categorias c ON s.categoria_id = c.id
                JOIN usuarios u ON s.proveedor_id = u.id
-               OUTER APPLY (
-                 SELECT AVG(cal.puntuacion) AS promedio, COUNT(cal.id) AS total
+               LEFT JOIN (
+                 SELECT cal.proveedor_id, AVG(cal.puntuacion) AS promedio, COUNT(cal.id) AS total
                  FROM calificaciones cal
-                 WHERE cal.proveedor_id = u.id
-               ) cal_stats
+                 GROUP BY cal.proveedor_id
+               ) cal_stats ON cal_stats.proveedor_id = u.id
                WHERE u.activo = 1`;
     const params = [];
 
@@ -106,7 +105,7 @@ exports.buscarServicios = async (req, res) => {
       params.push(dispNum);
     }
 
-    sql += ` ORDER BY s.creado_eldia DESC`;
+    sql += ` ORDER BY s.creado_en DESC`;
 
     const [servicios] = await query(sql, params);
     res.json(servicios);
@@ -119,7 +118,7 @@ exports.buscarServicios = async (req, res) => {
 exports.destacados = async (req, res) => {
   try {
     const [servicios] = await query(
-      `SELECT TOP 3 s.id, s.titulo, s.descripcion, s.tarifa, s.tipo_tarifa,
+      `SELECT s.id, s.titulo, s.descripcion, s.tarifa, s.tipo_tarifa,
        c.nombre AS categoria_nombre,
        u.id AS proveedor_id, u.nombre, u.apellido, u.foto_url,
        COALESCE(cal_stats.promedio, 0) AS calificacion_promedio,
@@ -127,13 +126,14 @@ exports.destacados = async (req, res) => {
        FROM servicios s
        JOIN categorias c ON s.categoria_id = c.id
        JOIN usuarios u ON s.proveedor_id = u.id
-       OUTER APPLY (
-         SELECT AVG(cal.puntuacion) AS promedio, COUNT(cal.id) AS total
+       LEFT JOIN (
+         SELECT cal.proveedor_id, AVG(cal.puntuacion) AS promedio, COUNT(cal.id) AS total
          FROM calificaciones cal
-         WHERE cal.proveedor_id = u.id
-       ) cal_stats
+         GROUP BY cal.proveedor_id
+       ) cal_stats ON cal_stats.proveedor_id = u.id
        WHERE s.disponible = 1 AND u.activo = 1
-       ORDER BY calificacion_promedio DESC, total_calificaciones DESC`
+       ORDER BY calificacion_promedio DESC, total_calificaciones DESC
+       LIMIT 3`
     );
     res.json(servicios);
   } catch (err) {
@@ -180,7 +180,7 @@ exports.eliminarServicio = async (req, res) => {
     res.json({ mensaje: 'Servicio eliminado exitosamente' });
   } catch (err) {
     console.error('Error al eliminar servicio:', err);
-    if (err.number === 547) {
+    if (err.errno === 1451) {
       return res.status(409).json({ error: 'No se puede eliminar el servicio porque tiene solicitudes asociadas. Desmárcale como no disponible en su lugar.' });
     }
     res.status(500).json({ error: 'Error al eliminar servicio' });
@@ -199,11 +199,11 @@ exports.detalleServicio = async (req, res) => {
        FROM servicios s
        JOIN categorias c ON s.categoria_id = c.id
        JOIN usuarios u ON s.proveedor_id = u.id
-       OUTER APPLY (
-         SELECT AVG(cal.puntuacion) AS promedio, COUNT(cal.id) AS total
+       LEFT JOIN (
+         SELECT cal.proveedor_id, AVG(cal.puntuacion) AS promedio, COUNT(cal.id) AS total
          FROM calificaciones cal
-         WHERE cal.proveedor_id = u.id
-       ) cal_stats
+         GROUP BY cal.proveedor_id
+       ) cal_stats ON cal_stats.proveedor_id = u.id
        WHERE s.id = ?`,
       [id]
     );
@@ -215,12 +215,13 @@ exports.detalleServicio = async (req, res) => {
     let comentarios = [];
     try {
       const [result] = await query(
-        `SELECT TOP 10 cal.id, cal.puntuacion, cal.comentario, cal.creado_eldia,
+        `SELECT cal.id, cal.puntuacion, cal.comentario, cal.creado_en,
          u.nombre, u.apellido, u.foto_url
          FROM calificaciones cal
          JOIN usuarios u ON cal.cliente_id = u.id
          WHERE cal.proveedor_id = ?
-         ORDER BY cal.creado_eldia DESC`,
+         ORDER BY cal.creado_en DESC
+         LIMIT 10`,
         [servicios[0].proveedor_id]
       );
       comentarios = result;

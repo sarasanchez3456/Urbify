@@ -22,7 +22,7 @@ const authenticate = async (req, res, next) => {
 
     try {
       const [rows] = await query(
-        'SELECT id FROM tokens_sesion WHERE token = ? AND usuario_id = ? AND expira_en > GETDATE()',
+        'SELECT id FROM tokens_sesion WHERE token = ? AND usuario_id = ? AND expira_en > NOW()',
         [token, decoded.id]
       );
       if (rows.length === 0) {

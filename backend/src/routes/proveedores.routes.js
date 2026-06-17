@@ -21,24 +21,23 @@ router.get('/cercanos', async (req, res) => {
     }
 
     const [proveedores] = await query(
-      `SELECT * FROM (
+      `SELECT sub.* FROM (
         SELECT u.id, u.nombre, u.apellido, u.foto_url, u.direccion, u.latitud, u.longitud, u.telefono,
          COALESCE(cal_stats.promedio, 0) AS calificacion_promedio,
          COALESCE(cal_stats.total, 0) AS total_calificaciones,
          (6371 * ACOS(
-           CASE WHEN ca.cos_val > 1 THEN 1 WHEN ca.cos_val < -1 THEN -1 ELSE ca.cos_val END
+           LEAST(1, GREATEST(-1,
+             COS(RADIANS(?)) * COS(RADIANS(u.latitud)) *
+             COS(RADIANS(u.longitud) - RADIANS(?)) +
+             SIN(RADIANS(?)) * SIN(RADIANS(u.latitud))
+           ))
          )) AS distancia_km
         FROM usuarios u
-        OUTER APPLY (
-          SELECT AVG(cal.puntuacion) AS promedio, COUNT(cal.id) AS total
+        LEFT JOIN (
+          SELECT cal.proveedor_id, AVG(cal.puntuacion) AS promedio, COUNT(cal.id) AS total
           FROM calificaciones cal
-          WHERE cal.proveedor_id = u.id
-        ) cal_stats
-        CROSS APPLY (VALUES (
-          COS(? * PI() / 180) * COS(u.latitud * PI() / 180) *
-          COS(u.longitud * PI() / 180 - ? * PI() / 180) + SIN(? * PI() / 180) *
-          SIN(u.latitud * PI() / 180)
-        )) ca(cos_val)
+          GROUP BY cal.proveedor_id
+        ) cal_stats ON cal_stats.proveedor_id = u.id
         WHERE u.rol = 'proveedor' AND u.activo = 1
         AND u.latitud IS NOT NULL AND u.longitud IS NOT NULL
       ) sub
