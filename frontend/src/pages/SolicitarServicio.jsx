@@ -94,6 +94,12 @@ export default function SolicitarServicio() {
   const debounceRef = useRef(null);
 
   useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!usuario) return;
     if (usuario.rol !== 'cliente') {
       navigate('/login');

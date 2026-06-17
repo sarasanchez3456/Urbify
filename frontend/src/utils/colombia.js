@@ -26,7 +26,7 @@ export async function geocodificarDireccion(texto) {
 
   const res = await fetch(
     `https://nominatim.openstreetmap.org/search?${params}`,
-    { headers: { 'Accept-Language': 'es' } }
+    { headers: { 'Accept-Language': 'es', 'User-Agent': 'Urbify/1.0 (teamlocknetsix@gmail.com)' } }
   );
 
   if (!res.ok) return [];
