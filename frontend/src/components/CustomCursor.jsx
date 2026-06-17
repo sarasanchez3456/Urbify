@@ -10,6 +10,7 @@ export function CustomCursor() {
     if (!cur || !ring) return;
 
     let mx = 0, my = 0, rx = 0, ry = 0;
+    let frameId;
 
     const onMouseMove = (e) => {
       mx = e.clientX;
@@ -23,15 +24,15 @@ export function CustomCursor() {
       ry += (my - ry) * 0.15;
       ring.style.left = rx + 'px';
       ring.style.top = ry + 'px';
-      requestAnimationFrame(animate);
+      frameId = requestAnimationFrame(animate);
     };
 
     window.addEventListener('mousemove', onMouseMove);
-    const animationId = requestAnimationFrame(animate);
+    frameId = requestAnimationFrame(animate);
 
     return () => {
       window.removeEventListener('mousemove', onMouseMove);
-      cancelAnimationFrame(animationId);
+      cancelAnimationFrame(frameId);
     };
   }, []);
 

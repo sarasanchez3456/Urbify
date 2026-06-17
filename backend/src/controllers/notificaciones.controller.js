@@ -19,6 +19,9 @@ exports.crearNotificacion = async (req, res) => {
     if (!usuario_id || !mensaje) {
       return res.status(400).json({ error: 'usuario_id y mensaje son requeridos' });
     }
+    if (Number(usuario_id) !== req.usuarioId) {
+      return res.status(403).json({ error: 'Solo puedes crear notificaciones para ti mismo' });
+    }
     const [result] = await query(
       'INSERT INTO notificaciones (usuario_id, mensaje) OUTPUT INSERTED.id VALUES (?, ?)',
       [usuario_id, mensaje]

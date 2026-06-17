@@ -29,7 +29,7 @@ export function Background() {
 
     const drawBG = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      pts.forEach(p => {
+      pts.forEach((p, i) => {
         p.x += p.vx;
         p.y += p.vy;
         if (p.x < 0) p.x = canvas.width;
@@ -42,7 +42,8 @@ export function Background() {
         ctx.fillStyle = `hsla(${p.hue}, 60%, 65%, ${p.a})`;
         ctx.fill();
 
-        pts.forEach(q => {
+        for (let j = i + 1; j < pts.length; j++) {
+          const q = pts[j];
           const d = Math.hypot(p.x - q.x, p.y - q.y);
           if (d < 100) {
             ctx.beginPath();
@@ -51,7 +52,7 @@ export function Background() {
             ctx.strokeStyle = `rgba(169, 210, 182, ${0.03 * (1 - d / 100)})`;
             ctx.stroke();
           }
-        });
+        }
       });
       animationFrameId = requestAnimationFrame(drawBG);
     };

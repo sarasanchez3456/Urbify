@@ -94,7 +94,7 @@ exports.crearSolicitud = async (req, res) => {
     });
   } catch (err) {
     console.error('Error al crear solicitud:', err);
-    res.status(500).json({ error: 'Error al crear solicitud', detalle: err.message });
+    res.status(500).json({ error: 'Error al crear solicitud' });
   }
 };
 

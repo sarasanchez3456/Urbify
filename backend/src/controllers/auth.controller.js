@@ -40,8 +40,9 @@ exports.registrar = async (req, res) => {
       'DELETE FROM tokens_sesion WHERE usuario_id = ? AND expira_en < GETDATE()',
       [usuarioId]
     );
+    const tokenDays = parseInt(process.env.JWT_EXPIRES_DAYS, 10) || 7;
     await query(
-      'INSERT INTO tokens_sesion (usuario_id, token, expira_en) VALUES (?, ?, DATEADD(DAY, 7, GETDATE()))',
+      `INSERT INTO tokens_sesion (usuario_id, token, expira_en) VALUES (?, ?, DATEADD(DAY, ${tokenDays}, GETDATE()))`,
       [usuarioId, token]
     );
 
@@ -64,7 +65,10 @@ exports.login = async (req, res) => {
       return res.status(400).json({ error: 'correo y contrasena son requeridos' });
     }
 
-    const [usuarios] = await query('SELECT * FROM usuarios WHERE correo = ? AND activo = 1', [correo]);
+    const [usuarios] = await query(
+      'SELECT id, nombre, apellido, correo, contrasena, telefono, rol, foto_url, direccion, latitud, longitud, intentos_fallidos, bloqueado_hasta FROM usuarios WHERE correo = ? AND activo = 1',
+      [correo]
+    );
     if (usuarios.length === 0) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
@@ -190,7 +194,7 @@ exports.actualizarPerfil = async (req, res) => {
 exports.listarUsuarios = async (req, res) => {
   try {
     const [usuarios] = await query(
-      `SELECT id, nombre, apellido, correo, telefono, rol, activo, creado_en FROM usuarios ORDER BY creado_en DESC`
+      `SELECT id, nombre, apellido, correo, telefono, rol, activo, creado_eldia FROM usuarios ORDER BY creado_eldia DESC`
     );
     res.json(usuarios);
   } catch (err) {
@@ -203,7 +207,7 @@ exports.usuarioPorId = async (req, res) => {
   try {
     const { id } = req.params;
     const [usuarios] = await query(
-      `SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, latitud, longitud, oficio, activo, creado_en FROM usuarios WHERE id = ?`,
+      `SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, latitud, longitud, oficio, activo, creado_eldia FROM usuarios WHERE id = ?`,
       [id]
     );
     if (usuarios.length === 0) {

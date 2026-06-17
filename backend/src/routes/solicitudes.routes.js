@@ -5,7 +5,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 router.post('/', authenticate, authorize('cliente'), solicitudesController.crearSolicitud);
 router.get('/cliente', authenticate, authorize('cliente'), solicitudesController.misSolicitudesComoCliente);
 router.get('/proveedor', authenticate, authorize('proveedor'), solicitudesController.misSolicitudesComoProveedor);
-router.put('/:id/estado', authenticate, authorize('proveedor'), solicitudesController.actualizarEstadoSolicitud);
+router.put('/:id/estado', authenticate, authorize('proveedor', 'cliente'), solicitudesController.actualizarEstadoSolicitud);
 router.delete('/:id', authenticate, solicitudesController.eliminarSolicitud);
 
 module.exports = router;

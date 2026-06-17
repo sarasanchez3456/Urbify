@@ -56,9 +56,11 @@ export default function Auth() {
   }, [bloqueado, minutosRestantes]);
 
   const handleToggle = () => {
-    setIsRegister(!isRegister);
+    const next = !isRegister;
+    setIsRegister(next);
     setError('');
     setBloqueado(false);
+    navigate(next ? '/registro' : '/login', { replace: true });
   };
 
   const handleLogin = async (e) => {
@@ -67,7 +69,7 @@ export default function Auth() {
     setBloqueado(false);
     setCargando(true);
     try {
-      const user = await login(loginCorreo, loginContrasena);
+      await login(loginCorreo, loginContrasena);
       navigate('/dashboard');
     } catch (err) {
       const data = err.response?.data;
@@ -86,7 +88,7 @@ export default function Auth() {
     setError('');
     setCargando(true);
     try {
-      const user = await registrar(regForm);
+      await registrar(regForm);
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'Error al registrarse');

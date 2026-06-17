@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useSearchParams, Navigate } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import DashboardLayout from '../components/DashboardLayout';
@@ -12,7 +12,7 @@ function BuscarContent({ dashboard }) {
   const [servicios, setServicios] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [filtros, setFiltros] = useState({
-    q: '',
+    q: searchParams.get('q') || '',
     categoria_id: searchParams.get('categoria_id') || '',
   });
   const debounceRef = useRef(null);
@@ -199,7 +199,7 @@ function BuscarContent({ dashboard }) {
                 </div>
                 <h3 className="servicio-titulo">{servicio.titulo}</h3>
                 <p className="servicio-descripcion">
-                  {servicio.descripcion?.substring(0, 120)}...
+                  {servicio.descripcion?.length > 120 ? `${servicio.descripcion.substring(0, 120)}...` : servicio.descripcion}
                 </p>
                 <div className="servicio-footer">
                   <span className="servicio-precio">
@@ -222,11 +222,14 @@ export default function Buscar() {
   const { usuario, cargando } = useAuth();
 
   if (cargando) return null;
-  if (!usuario) return <Navigate to="/login" />;
 
-  return (
-    <DashboardLayout titulo="Buscar Servicios" subtitulo="Encuentra al profesional que necesitas">
-      <BuscarContent dashboard />
-    </DashboardLayout>
-  );
+  if (usuario) {
+    return (
+      <DashboardLayout titulo="Buscar Servicios" subtitulo="Encuentra al profesional que necesitas">
+        <BuscarContent dashboard />
+      </DashboardLayout>
+    );
+  }
+
+  return <BuscarContent />;
 }

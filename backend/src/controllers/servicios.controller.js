@@ -138,7 +138,7 @@ exports.destacados = async (req, res) => {
     res.json(servicios);
   } catch (err) {
     console.error('Error al obtener destacados:', err);
-    res.status(500).json({ error: 'Error al obtener servicios destacados', detalles: err.message });
+    res.status(500).json({ error: 'Error al obtener servicios destacados' });
   }
 };
 
@@ -231,6 +231,6 @@ exports.detalleServicio = async (req, res) => {
     res.json({ ...servicios[0], comentarios });
   } catch (err) {
     console.error('Error al obtener detalle:', err);
-    res.status(500).json({ error: 'Error al obtener detalle del servicio', detalle: err.message });
+    res.status(500).json({ error: 'Error al obtener detalle del servicio' });
   }
 };

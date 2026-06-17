@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-
 import { useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Background } from './components/Background';
-import api, { setOnUnauthorized } from './api/axios';
+import { setOnUnauthorized } from './api/axios';
 
 import Home from './pages/Home';
 import Auth from './pages/Auth';

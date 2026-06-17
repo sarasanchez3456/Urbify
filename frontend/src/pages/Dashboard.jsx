@@ -79,25 +79,21 @@ export default function Dashboard() {
       label: 'Proveedores Activos',
       value: stats?.proveedores_activos || 0,
       icon: Users,
-      change: '+12%',
     },
     {
       label: 'Servicios Realizados',
       value: stats?.servicios_realizados || 0,
       icon: CheckCircle2,
-      change: '+8%',
     },
     {
       label: 'Calificación Media',
       value: stats?.calificacion_media || '0.0',
       icon: Star,
-      change: '',
     },
     {
       label: usuario?.rol === 'proveedor' ? 'Solicitudes' : 'Mis Solicitudes',
       value: solicitudes.length,
       icon: ClipboardList,
-      change: '',
     },
   ];
 
@@ -225,12 +221,6 @@ export default function Dashboard() {
                     <span className="text-xl lg:text-2xl font-bold" style={{ fontFamily: "'Playfair Display', serif", color: '#cde8e8' }}>
                       {card.value}
                     </span>
-                    {card.change && (
-                      <span className="text-xs font-medium flex items-center mb-1" style={{ color: '#a9d2b6' }}>
-                        <ArrowUpRight size={12} />
-                        {card.change}
-                      </span>
-                    )}
                   </div>
                 </div>
               );

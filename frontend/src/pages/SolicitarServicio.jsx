@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
@@ -13,6 +13,14 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
+
+function RecenterMap({ lat, lng }) {
+  const map = useMap();
+  useEffect(() => {
+    if (lat && lng) map.setView([lat, lng], map.getZoom());
+  }, [lat, lng, map]);
+  return null;
+}
 
 function DraggableMarker({ position, onMove }) {
   useMapEvents({
@@ -244,12 +252,12 @@ export default function SolicitarServicio() {
                   center={[latitud || 19.4326, longitud || -99.1332]}
                   zoom={latitud ? 15 : 5}
                   className="h-full w-full"
-                  key={`${latitud}-${longitud}`}
                 >
                   <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
+                  <RecenterMap lat={latitud} lng={longitud} />
                   {latitud && longitud && (
                     <DraggableMarker
                       position={[latitud, longitud]}

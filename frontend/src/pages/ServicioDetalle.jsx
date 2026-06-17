@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, Navigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import './ServicioDetalle.css';
@@ -18,7 +18,6 @@ export default function ServicioDetalle() {
   }, [id]);
 
   if (cargando) return <div className="loading container">Cargando servicio...</div>;
-  if (!usuario) return <Navigate to="/login" />;
   if (!servicio) return <div className="loading container">Servicio no encontrado</div>;
 
   return (

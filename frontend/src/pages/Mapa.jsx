@@ -26,16 +26,18 @@ function LocationMarker({ onLocationFound }) {
   const map = useMap();
 
   useEffect(() => {
+    let marker;
     map.locate({ setView: true, maxZoom: 14 });
     const handleLocationFound = (e) => {
       const { lat, lng } = e.latlng;
       onLocationFound(lat, lng);
-      L.marker([lat, lng], { icon: userIcon }).addTo(map)
+      if (marker) marker.remove();
+      marker = L.marker([lat, lng], { icon: userIcon }).addTo(map)
         .bindPopup('Tu ubicación').openPopup();
     };
     map.on('locationfound', handleLocationFound);
     return () => {
-      try { map.stop(); } catch (_) {}
+      if (marker) marker.remove();
       map.off('locationfound', handleLocationFound);
     };
   }, [map, onLocationFound]);

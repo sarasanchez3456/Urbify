@@ -32,7 +32,8 @@ const config = {
   options: {
     trustedConnection: true,
     encrypt: false,
-<<<<<<< HEAD
+    trustServerCertificate: true,
+    connectTimeout: 10000,
     connector: (connectOpts, lookup, signal) => {
       return new Promise((resolve, reject) => {
         const socket = net.createConnection(pipePath, () => resolve(socket));
@@ -40,10 +41,6 @@ const config = {
       });
     },
     port: 1433,
-=======
-    trustServerCertificate: true,
-    connectTimeout: 10000,
->>>>>>> 67ab2c1 (Actualización general del proyecto)
   },
   pool: {
     max: 10,
@@ -58,9 +55,6 @@ if (process.env.DB_NAME) {
 
 let pool;
 let poolPromise;
-<<<<<<< HEAD
-let poolError = false;
-=======
 let reconnecting = false;
 
 async function getPool() {
@@ -72,40 +66,27 @@ async function getPool() {
   }
   return createPool();
 }
->>>>>>> 67ab2c1 (Actualización general del proyecto)
 
 function createPool() {
   pool = new sql.ConnectionPool(config);
   poolPromise = pool.connect();
 
   poolPromise.then(() => {
-<<<<<<< HEAD
     console.log('Conectado a SQL Server (LocalDB)');
-  }).catch(err => {
-    console.error('Error al conectar a SQL Server:', err);
-    poolError = true;
-=======
-    console.log('Conectado a SQL Server');
     reconnecting = false;
   }).catch(err => {
     console.error('Error al conectar a SQL Server:', err);
     reconnecting = false;
->>>>>>> 67ab2c1 (Actualización general del proyecto)
   });
 
   pool.on('error', err => {
     console.error('Error en el pool de SQL Server, reconectando...', err);
-<<<<<<< HEAD
-    poolError = true;
-    createPool();
-=======
     if (!reconnecting) {
       reconnecting = true;
       pool = null;
       poolPromise = null;
       setTimeout(createPool, 2000);
     }
->>>>>>> 67ab2c1 (Actualización general del proyecto)
   });
 
   return poolPromise;
