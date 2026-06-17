@@ -64,7 +64,7 @@ export default function ServicioDetalle() {
                   </div>
                   {c.comentario && <p>{c.comentario}</p>}
                   <span className="comentario-fecha">
-                    {c.creado_eldia ? new Date(c.creado_eldia).toLocaleDateString() : ''}
+                    {c.creado_en ? new Date(c.creado_en).toLocaleDateString() : ''}
                   </span>
                 </div>
               ))

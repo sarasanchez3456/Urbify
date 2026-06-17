@@ -21,7 +21,7 @@ const authenticate = (req, res, next) => {
     req.usuarioRol = decoded.rol;
 
     query(
-      'SELECT id FROM tokens_sesion WHERE token = ? AND usuario_id = ? AND expira_en > GETDATE()',
+      'SELECT id FROM tokens_sesion WHERE token = ? AND usuario_id = ? AND expira_en > NOW()',
       [token, decoded.id]
     ).then(([rows]) => {
       if (rows.length === 0) {

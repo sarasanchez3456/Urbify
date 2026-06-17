@@ -23,14 +23,13 @@ exports.crearCalificacion = async (req, res) => {
 
     const [result] = await query(
       `INSERT INTO calificaciones (solicitud_id, cliente_id, proveedor_id, puntuacion, comentario)
-       OUTPUT INSERTED.id
        VALUES (?, ?, ?, ?, ?)`,
       [solicitud_id, req.usuarioId, solicitud[0].proveedor_id, puntuacion, comentario || null]
     );
 
     res.status(201).json({
       mensaje: 'Calificación creada exitosamente',
-      calificacion: { id: result[0].id },
+      calificacion: { id: result.insertId },
     });
   } catch (err) {
     console.error('Error al crear calificación:', err);
@@ -43,14 +42,14 @@ exports.calificacionesProveedor = async (req, res) => {
     const { proveedor_id } = req.params;
 
     const [calificaciones] = await query(
-      `SELECT cal.puntuacion, cal.comentario, cal.creado_eldia,
+      `SELECT cal.puntuacion, cal.comentario, cal.creado_en,
        u.nombre, u.apellido, u.foto_url, s.titulo AS servicio_titulo
        FROM calificaciones cal
        JOIN usuarios u ON cal.cliente_id = u.id
        JOIN solicitudes sol ON cal.solicitud_id = sol.id
        JOIN servicios s ON sol.servicio_id = s.id
        WHERE cal.proveedor_id = ?
-       ORDER BY cal.creado_eldia DESC`,
+       ORDER BY cal.creado_en DESC`,
       [proveedor_id]
     );
 

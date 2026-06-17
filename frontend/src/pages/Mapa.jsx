@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import DashboardLayout from '../components/DashboardLayout';
+import { COLOMBIA_CENTER, COLOMBIA_ZOOM, COLOMBIA_BOUNDS } from '../utils/colombia';
 import './Mapa.css';
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -22,6 +23,8 @@ const userIcon = new L.Icon({
   popupAnchor: [1, -34],
 });
 
+const colombiaBounds = L.latLngBounds(COLOMBIA_BOUNDS[0], COLOMBIA_BOUNDS[1]);
+
 function LocationMarker({ onLocationFound }) {
   const map = useMap();
 
@@ -29,14 +32,23 @@ function LocationMarker({ onLocationFound }) {
     map.locate({ setView: true, maxZoom: 14 });
     const handleLocationFound = (e) => {
       const { lat, lng } = e.latlng;
-      onLocationFound(lat, lng);
-      L.marker([lat, lng], { icon: userIcon }).addTo(map)
-        .bindPopup('Tu ubicación').openPopup();
+      if (colombiaBounds.contains(e.latlng)) {
+        onLocationFound(lat, lng);
+        L.marker([lat, lng], { icon: userIcon }).addTo(map)
+          .bindPopup('Tu ubicación').openPopup();
+      } else {
+        map.setView(COLOMBIA_CENTER, COLOMBIA_ZOOM);
+      }
+    };
+    const handleLocationError = () => {
+      map.setView(COLOMBIA_CENTER, COLOMBIA_ZOOM);
     };
     map.on('locationfound', handleLocationFound);
+    map.on('locationerror', handleLocationError);
     return () => {
       try { map.stop(); } catch (_) {}
       map.off('locationfound', handleLocationFound);
+      map.off('locationerror', handleLocationError);
     };
   }, [map, onLocationFound]);
 
@@ -91,7 +103,14 @@ function MapaContent() {
       </div>
 
       <div className="mapa-container bg-[#020617]/50 backdrop-blur-xl border border-cyan-500/20 rounded-3xl overflow-hidden">
-        <MapContainer center={[19.4326, -99.1332]} zoom={12} className="mapa-leaflet">
+        <MapContainer
+          center={COLOMBIA_CENTER}
+          zoom={COLOMBIA_ZOOM}
+          minZoom={5}
+          maxBounds={colombiaBounds}
+          maxBoundsViscosity={1.0}
+          className="mapa-leaflet"
+        >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"

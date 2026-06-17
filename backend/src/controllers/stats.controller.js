@@ -3,13 +3,13 @@ const db = require('../config/db');
 exports.getStats = async (req, res) => {
   try {
     const [proveedores] = await db.query(
-      `SELECT COUNT(*) AS total FROM usuarios WHERE rol = 'proveedor' AND activo = 1`
+      "SELECT COUNT(*) AS total FROM usuarios WHERE rol = 'proveedor' AND activo = 1"
     );
     const [solicitudesCompletadas] = await db.query(
-      `SELECT COUNT(*) AS total FROM solicitudes WHERE estado = 'completada'`
+      "SELECT COUNT(*) AS total FROM solicitudes WHERE estado = 'completada'"
     );
     const [calificacion] = await db.query(
-      `SELECT AVG(CAST(puntuacion AS DECIMAL(3,2))) AS media FROM calificaciones`
+      'SELECT AVG(CAST(puntuacion AS DECIMAL(3,2))) AS media FROM calificaciones'
     );
 
     res.json({

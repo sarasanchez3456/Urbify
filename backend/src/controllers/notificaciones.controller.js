@@ -20,10 +20,10 @@ exports.crearNotificacion = async (req, res) => {
       return res.status(400).json({ error: 'usuario_id y mensaje son requeridos' });
     }
     const [result] = await query(
-      'INSERT INTO notificaciones (usuario_id, mensaje) OUTPUT INSERTED.id VALUES (?, ?)',
+      'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
       [usuario_id, mensaje]
     );
-    res.status(201).json({ mensaje: 'Notificación creada exitosamente', id: result[0].id });
+    res.status(201).json({ mensaje: 'Notificación creada exitosamente', id: result.insertId });
   } catch (err) {
     console.error('Error al crear notificación:', err);
     res.status(500).json({ error: 'Error al crear notificación' });

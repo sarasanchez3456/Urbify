@@ -34,12 +34,11 @@ exports.crearSolicitud = async (req, res) => {
 
     const [result] = await query(
       `INSERT INTO solicitudes (cliente_id, proveedor_id, servicio_id, descripcion, fecha_servicio, direccion, latitud, longitud)
-       OUTPUT INSERTED.id
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [req.usuarioId, proveedor_id, servicio_id, descripcion, fecha_servicio || null, direccion || null, latitud || null, longitud || null]
     );
 
-    const solicitudId = result[0].id;
+    const solicitudId = result.insertId;
 
     let emailOk = true;
 

@@ -17,10 +17,10 @@ exports.crearCategoria = async (req, res) => {
       return res.status(400).json({ error: 'nombre es requerido' });
     }
     const [result] = await query(
-      `INSERT INTO categorias (nombre, descripcion, icono_url) OUTPUT INSERTED.id VALUES (?, ?, ?)`,
+      'INSERT INTO categorias (nombre, descripcion, icono_url) VALUES (?, ?, ?)',
       [nombre, descripcion || null, icono_url || null]
     );
-    res.status(201).json({ mensaje: 'Categoría creada exitosamente', id: result[0].id });
+    res.status(201).json({ mensaje: 'Categoría creada exitosamente', id: result.insertId });
   } catch (err) {
     console.error('Error al crear categoría:', err);
     res.status(500).json({ error: 'Error al crear categoría' });
@@ -57,7 +57,7 @@ exports.eliminarCategoria = async (req, res) => {
     res.json({ mensaje: 'Categoría eliminada exitosamente' });
   } catch (err) {
     console.error('Error al eliminar categoría:', err);
-    if (err.number === 547) {
+    if (err.errno === 1451) {
       return res.status(409).json({ error: 'No se puede eliminar la categoría porque tiene servicios asociados' });
     }
     res.status(500).json({ error: 'Error al eliminar categoría' });

@@ -1,11 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import DashboardLayout from '../components/DashboardLayout';
-import { Send, ArrowLeft, Calendar, DollarSign, User, Briefcase, MapPin, Crosshair } from 'lucide-react';
+import { Send, ArrowLeft, Calendar, DollarSign, User, Briefcase, MapPin, Crosshair, Search } from 'lucide-react';
+import {
+  COLOMBIA_CENTER,
+  COLOMBIA_BOUNDS,
+  geocodificarDireccion,
+  estaDentroDeColombia,
+} from '../utils/colombia';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -14,10 +20,24 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
+const colombiaBounds = L.latLngBounds(COLOMBIA_BOUNDS[0], COLOMBIA_BOUNDS[1]);
+
+function FlyToLocation({ lat, lng }) {
+  const map = useMap();
+  useEffect(() => {
+    if (lat && lng) {
+      map.flyTo([lat, lng], 16, { duration: 1 });
+    }
+  }, [lat, lng, map]);
+  return null;
+}
+
 function DraggableMarker({ position, onMove }) {
   useMapEvents({
     click(e) {
-      onMove(e.latlng.lat, e.latlng.lng);
+      if (estaDentroDeColombia(e.latlng.lat, e.latlng.lng)) {
+        onMove(e.latlng.lat, e.latlng.lng);
+      }
     },
   });
   return (
@@ -27,7 +47,9 @@ function DraggableMarker({ position, onMove }) {
       eventHandlers={{
         dragend(e) {
           const { lat, lng } = e.target.getLatLng();
-          onMove(lat, lng);
+          if (estaDentroDeColombia(lat, lng)) {
+            onMove(lat, lng);
+          }
         },
       }}
     />
@@ -66,6 +88,11 @@ export default function SolicitarServicio() {
   const [error, setError] = useState('');
   const [exito, setExito] = useState(false);
 
+  // Geocodificación
+  const [sugerencias, setSugerencias] = useState([]);
+  const [buscandoDireccion, setBuscandoDireccion] = useState(false);
+  const debounceRef = useRef(null);
+
   useEffect(() => {
     if (!usuario) return;
     if (usuario.rol !== 'cliente') {
@@ -78,9 +105,40 @@ export default function SolicitarServicio() {
       .finally(() => setCargando(false));
   }, [id, navigate, usuario]);
 
+  const handleDireccionChange = (valor) => {
+    setDireccion(valor);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (valor.trim().length < 3) {
+      setSugerencias([]);
+      return;
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      setBuscandoDireccion(true);
+      const resultados = await geocodificarDireccion(valor);
+      setSugerencias(resultados);
+      setBuscandoDireccion(false);
+    }, 400);
+  };
+
+  const seleccionarSugerencia = (sug) => {
+    setDireccion(sug.display_name);
+    setLatitud(sug.lat);
+    setLongitud(sug.lon);
+    setSugerencias([]);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (latitud && longitud && !estaDentroDeColombia(latitud, longitud)) {
+      setError('La ubicación seleccionada debe estar dentro de Colombia.');
+      return;
+    }
+
     setEnviando(true);
     try {
       await api.post('/solicitudes', {
@@ -107,8 +165,13 @@ export default function SolicitarServicio() {
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setLatitud(pos.coords.latitude);
-        setLongitud(pos.coords.longitude);
+        const { latitude, longitude } = pos.coords;
+        if (!estaDentroDeColombia(latitude, longitude)) {
+          setError('Tu ubicación actual no está dentro de Colombia.');
+          return;
+        }
+        setLatitud(latitude);
+        setLongitud(longitude);
       },
       () => setError('No se pudo obtener tu ubicación. Escríbela manualmente.')
     );
@@ -215,18 +278,49 @@ export default function SolicitarServicio() {
             <div>
               <label className="block text-sm mb-1.5" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>
                 <MapPin size={14} className="inline mr-1" />
-                Dirección del servicio
+                Dirección del servicio (Colombia)
               </label>
               <div className="flex gap-2 mb-2">
-                <input
-                  value={direccion}
-                  onChange={(e) => setDireccion(e.target.value)}
-                  placeholder="Calle, número, colonia, ciudad..."
-                  className="flex-1 px-4 py-2.5 rounded-lg transition-colors"
-                  style={{ ...glassInner, color: '#cde8e8', outline: 'none' }}
-                  onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.5)'; }}
-                  onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.08)'; }}
-                />
+                <div className="flex-1 relative">
+                  <div className="relative">
+                    <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'rgba(169, 210, 182, 0.4)' }} />
+                    <input
+                      value={direccion}
+                      onChange={(e) => handleDireccionChange(e.target.value)}
+                      placeholder="Ej: Calle 72 #10-07, Bogotá"
+                      className="w-full pl-8 pr-4 py-2.5 rounded-lg transition-colors"
+                      style={{ ...glassInner, color: '#cde8e8', outline: 'none' }}
+                      onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.5)'; }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.08)';
+                        setTimeout(() => setSugerencias([]), 200);
+                      }}
+                    />
+                  </div>
+
+                  {(sugerencias.length > 0 || buscandoDireccion) && (
+                    <div
+                      className="absolute z-50 w-full mt-1 rounded-lg overflow-hidden max-h-48 overflow-y-auto"
+                      style={{ backgroundColor: 'rgba(0, 17, 18, 0.95)', border: '1px solid rgba(169, 210, 182, 0.2)' }}
+                    >
+                      {buscandoDireccion ? (
+                        <div className="px-4 py-3 text-xs" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>Buscando direcciones...</div>
+                      ) : (
+                        sugerencias.map((sug, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onMouseDown={() => seleccionarSugerencia(sug)}
+                            className="w-full text-left px-4 py-2.5 text-xs transition-colors hover:bg-white/10"
+                            style={{ color: '#cde8e8', borderBottom: '1px solid rgba(169, 210, 182, 0.05)' }}
+                          >
+                            {sug.display_name}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={usarUbicacionActual}
@@ -241,20 +335,25 @@ export default function SolicitarServicio() {
               </div>
               <div className="rounded-lg overflow-hidden" style={{ height: 220, ...glassInner }}>
                 <MapContainer
-                  center={[latitud || 19.4326, longitud || -99.1332]}
-                  zoom={latitud ? 15 : 5}
+                  center={latitud && longitud ? [latitud, longitud] : COLOMBIA_CENTER}
+                  zoom={latitud ? 15 : 6}
+                  minZoom={5}
+                  maxBounds={colombiaBounds}
+                  maxBoundsViscosity={1.0}
                   className="h-full w-full"
-                  key={`${latitud}-${longitud}`}
                 >
                   <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
                   {latitud && longitud && (
-                    <DraggableMarker
-                      position={[latitud, longitud]}
-                      onMove={(lat, lng) => { setLatitud(lat); setLongitud(lng); }}
-                    />
+                    <>
+                      <FlyToLocation lat={latitud} lng={longitud} />
+                      <DraggableMarker
+                        position={[latitud, longitud]}
+                        onMove={(lat, lng) => { setLatitud(lat); setLongitud(lng); }}
+                      />
+                    </>
                   )}
                 </MapContainer>
               </div>

@@ -2,32 +2,31 @@ const { query } = require('../config/db');
 
 async function migrate() {
   try {
-    await query(`
-      IF NOT EXISTS (
-        SELECT * FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_NAME = 'usuarios' AND COLUMN_NAME = 'oficio'
-      )
-      ALTER TABLE usuarios ADD oficio NVARCHAR(100) NULL
-    `);
-    console.log('Migración 1/3: columna oficio agregada');
+    const [cols] = await query(
+      "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'usuarios'"
+    );
+    const columnNames = cols.map(c => c.COLUMN_NAME);
 
-    await query(`
-      IF NOT EXISTS (
-        SELECT * FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_NAME = 'usuarios' AND COLUMN_NAME = 'intentos_fallidos'
-      )
-      ALTER TABLE usuarios ADD intentos_fallidos INT DEFAULT 0
-    `);
-    console.log('Migración 2/3: columna intentos_fallidos agregada');
+    if (!columnNames.includes('oficio')) {
+      await query('ALTER TABLE usuarios ADD COLUMN oficio VARCHAR(100) NULL');
+      console.log('Migración 1/3: columna oficio agregada');
+    } else {
+      console.log('Migración 1/3: columna oficio ya existe');
+    }
 
-    await query(`
-      IF NOT EXISTS (
-        SELECT * FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_NAME = 'usuarios' AND COLUMN_NAME = 'bloqueado_hasta'
-      )
-      ALTER TABLE usuarios ADD bloqueado_hasta DATETIME2 NULL
-    `);
-    console.log('Migración 3/3: columna bloqueado_hasta agregada');
+    if (!columnNames.includes('intentos_fallidos')) {
+      await query('ALTER TABLE usuarios ADD COLUMN intentos_fallidos INT DEFAULT 0');
+      console.log('Migración 2/3: columna intentos_fallidos agregada');
+    } else {
+      console.log('Migración 2/3: columna intentos_fallidos ya existe');
+    }
+
+    if (!columnNames.includes('bloqueado_hasta')) {
+      await query('ALTER TABLE usuarios ADD COLUMN bloqueado_hasta DATETIME NULL');
+      console.log('Migración 3/3: columna bloqueado_hasta agregada');
+    } else {
+      console.log('Migración 3/3: columna bloqueado_hasta ya existe');
+    }
 
     console.log('Migración completada exitosamente');
   } catch (err) {
