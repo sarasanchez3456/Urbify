@@ -1,9 +1,16 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export function Navbar() {
   const { usuario, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isAuth = location.pathname === '/login' || location.pathname === '/registro';
+  const linkColor = isAuth ? "rgba(255,255,255,0.6)" : "oklch(0.35 0.05 240)";
+  const linkHover = isAuth ? "#fff" : "oklch(0.40 0.18 255)";
+  const logoMain = isAuth ? "rgba(255,255,255,0.9)" : "oklch(0.20 0.08 240)";
+  const logoAccent = isAuth ? "oklch(0.72 0.13 200)" : "oklch(0.40 0.18 255)";
 
   return (
     <nav
@@ -11,28 +18,26 @@ export function Navbar() {
       style={{
         padding: "0 52px",
         height: "80px",
-        background: "rgba(0, 23, 24, 0.82)",
-        backdropFilter: "blur(24px)",
-        borderBottom: "1px solid rgba(169, 210, 182, 0.08)",
+        background: "transparent",
       }}
     >
-      <Link to="/" className="logo no-underline relative" style={{ fontFamily: "'Playfair Display', serif", fontWeight: 800, fontSize: "1.3rem", color: "#a9d2b6", letterSpacing: "0.05em" }}>
-        Urbify<span style={{ color: "#ff6b35", fontSize: "0.5rem", verticalAlign: "super", marginLeft: "2px" }}>●</span>
+      <Link to="/" className="logo no-underline relative" style={{ fontFamily: "'DM Serif Display', 'Playfair Display', serif", fontWeight: 800, fontSize: "1.3rem", letterSpacing: "0.05em" }}>
+        <span style={{ color: logoMain }}>urb</span><span style={{ color: logoAccent }}>ify</span>
       </Link>
-      
+
       <ul className="nav-links flex gap-[36px] list-none m-0 p-0">
         <li>
-          <Link to="/buscar" className="no-underline" style={{ color: "rgba(205, 232, 232, 0.5)", fontSize: "0.78rem", letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 500, transition: "color 0.2s", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-            onMouseEnter={e => e.target.style.color = "#a9d2b6"}
-            onMouseLeave={e => e.target.style.color = "rgba(205, 232, 232, 0.5)"}
+          <Link to={usuario ? "/buscar" : "/login"} className="no-underline" style={{ color: linkColor, fontSize: "0.78rem", letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 500, transition: "color 0.2s", fontFamily: "'Fira Sans', sans-serif" }}
+            onMouseEnter={e => e.target.style.color = linkHover}
+            onMouseLeave={e => e.target.style.color = linkColor}
           >
             Buscar
           </Link>
         </li>
         <li>
-          <Link to="/mapa" className="no-underline" style={{ color: "rgba(205, 232, 232, 0.5)", fontSize: "0.78rem", letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 500, transition: "color 0.2s", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-            onMouseEnter={e => e.target.style.color = "#a9d2b6"}
-            onMouseLeave={e => e.target.style.color = "rgba(205, 232, 232, 0.5)"}
+          <Link to={usuario ? "/mapa" : "/login"} className="no-underline" style={{ color: linkColor, fontSize: "0.78rem", letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 500, transition: "color 0.2s", fontFamily: "'Fira Sans', sans-serif" }}
+            onMouseEnter={e => e.target.style.color = linkHover}
+            onMouseLeave={e => e.target.style.color = linkColor}
           >
             Mapa
           </Link>
@@ -50,34 +55,36 @@ export function Navbar() {
               }
             }}
             className="no-underline cursor-pointer"
-            style={{ color: "rgba(205, 232, 232, 0.5)", fontSize: "0.78rem", letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 500, transition: "color 0.2s", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-            onMouseEnter={e => e.target.style.color = "#a9d2b6"}
-            onMouseLeave={e => e.target.style.color = "rgba(205, 232, 232, 0.5)"}
+            style={{ color: linkColor, fontSize: "0.78rem", letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 500, transition: "color 0.2s", fontFamily: "'Fira Sans', sans-serif" }}
+            onMouseEnter={e => e.target.style.color = linkHover}
+            onMouseLeave={e => e.target.style.color = linkColor}
           >
             Cómo Funciona
           </span>
         </li>
       </ul>
 
-      <div className="nav-ctas flex gap-[10px]">
-        {usuario ? (
-          <>
-            <Link to="/perfil">
-              <button className="nav-btn-outline">Perfil</button>
-            </Link>
-            <button onClick={logout} className="nav-btn-primary">Salir</button>
-          </>
-        ) : (
-          <>
-            <Link to="/login">
-              <button className="nav-btn-outline">Ingresar</button>
-            </Link>
-            <Link to="/registro">
-              <button className="nav-btn-primary">Registrarse</button>
-            </Link>
-          </>
-        )}
-      </div>
+      {!isAuth && (
+        <div className="nav-ctas flex gap-[10px]">
+          {usuario ? (
+            <>
+              <Link to="/perfil">
+                <button className="nav-btn-outline">Perfil</button>
+              </Link>
+              <button onClick={logout} className="nav-btn-primary">Salir</button>
+            </>
+          ) : (
+            <>
+              <Link to="/login">
+                <button className="nav-btn-outline">Ingresar</button>
+              </Link>
+              <Link to="/registro">
+                <button className="nav-btn-primary">Registrarse</button>
+              </Link>
+            </>
+          )}
+        </div>
+      )}
     </nav>
   );
 }

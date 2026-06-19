@@ -32,18 +32,19 @@ export default function App() {
   const location = useLocation();
   const { usuario } = useAuth();
   const esDashboard = rutasDashboard.some((r) => location.pathname.startsWith(r)) || (location.pathname.startsWith('/mapa') && !!usuario);
+  const isAuth = location.pathname === '/login' || location.pathname === '/registro';
 
   useEffect(() => {
     setOnUnauthorized(() => navigate('/login'));
   }, [navigate]);
 
   return (
-    <div className="dark min-h-screen bg-[#001718] text-[#cde8e8] relative overflow-x-hidden">
+    <div className="min-h-screen bg-[oklch(0.97_0.012_80)] text-[oklch(0.25_0.06_240)] relative overflow-x-hidden">
       <Background />
 
-      {!esDashboard && <Navbar />}
+      {!esDashboard && !isAuth && <Navbar />}
 
-      <main className={`relative z-10 ${!esDashboard ? 'pt-20' : ''}`}>
+      <main className={`relative z-10 ${!esDashboard && !isAuth ? 'pt-20' : ''}`}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Auth />} />

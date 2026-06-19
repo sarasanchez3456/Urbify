@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { SmokeyBackground } from '../components/ui/smokey-background';
 import {
   User, Lock, Mail, Phone, MapPin, Wrench, ArrowRight, LogIn, UserPlus,
+  Zap, Shield, Star, ChevronRight,
 } from 'lucide-react';
 import './Auth.css';
 
@@ -102,250 +102,265 @@ export default function Auth() {
   };
 
   return (
-    <div className="auth-container">
+    <div className="auth-page">
+      <div className="auth-container">
 
-
-      <div className="auth-form" style={{ transform: isRegister ? 'rotateY(-180deg)' : 'rotateY(0deg)' }}>
-        {/* === LOGIN === */}
-        <div className={`form-face form-front ${bloqueado ? 'has-blocked' : ''}`}>
-          <div className="form-header">
-            <div className="form-icon">
-              <LogIn size={20} />
-            </div>
-            <h2 className="form-title">Iniciar Sesión</h2>
-            <p className="form-subtitle">Bienvenido de nuevo</p>
-          </div>
-
-          {bloqueado ? (
-            <div className="blocked-box">
-              <svg aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" className="blocked-icon">
-                <path clipRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" fillRule="evenodd"></path>
-              </svg>
-              <div className="blocked-text">
-                <p className="blocked-heading">Cuenta bloqueada temporalmente</p>
-                <p>Demasiados intentos fallidos. Intenta de nuevo en {minutosRestantes} minuto{minutosRestantes !== 1 ? 's' : ''}</p>
+        {/* ── LEFT PANEL (decorative) ── */}
+        <div className="auth-panel-left">
+          <div className="auth-panel-bg" />
+          <div className="auth-panel-content">
+            <div className="auth-brand" onClick={() => navigate('/')}>URBIFY</div>
+            <div className="auth-panel-body">
+              <h1 className="auth-panel-title">
+                {isRegister ? 'Únete a la comunidad' : 'Bienvenido de nuevo'}
+              </h1>
+              <p className="auth-panel-desc">
+                {isRegister
+                  ? 'Miles de profesionales y clientes ya confían en Urbify para conectar servicios urbanos.'
+                  : 'Tu hogar merece lo mejor. Accede y encuentra profesionales verificados cerca de ti.'}
+              </p>
+              <div className="auth-features">
+                <div className="auth-feature">
+                  <div className="auth-feature-icon"><Shield size={18} /></div>
+                  <div>
+                    <span className="auth-feature-title">Profesionales verificados</span>
+                    <span className="auth-feature-desc">Identidad y experiencia comprobada</span>
+                  </div>
+                </div>
+                <div className="auth-feature">
+                  <div className="auth-feature-icon"><Zap size={18} /></div>
+                  <div>
+                    <span className="auth-feature-title">Respuesta inmediata</span>
+                    <span className="auth-feature-desc">Solicita y agenda en minutos</span>
+                  </div>
+                </div>
+                <div className="auth-feature">
+                  <div className="auth-feature-icon"><Star size={18} /></div>
+                  <div>
+                    <span className="auth-feature-title">Calificaciones reales</span>
+                    <span className="auth-feature-desc">Reseñas de la comunidad Urbify</span>
+                  </div>
+                </div>
               </div>
             </div>
-          ) : error && (
-            <div className="error-box">
-              <span>{error}</span>
+            <div className="auth-panel-footer">
+              © 2026 Urbify · Servicios Urbanos
             </div>
-          )}
-
-          <form onSubmit={handleLogin} className="auth-inner-form">
-            <div className="floating-input-group">
-              <input
-                id="login_email"
-                type="email"
-                className="floating-input peer"
-                placeholder=" "
-                value={loginCorreo}
-                onChange={(e) => setLoginCorreo(e.target.value)}
-                required
-              />
-              <label htmlFor="login_email" className="floating-label">
-                <Mail size={15} className="floating-icon" />
-                Correo electrónico
-              </label>
-            </div>
-
-            <div className="floating-input-group">
-              <input
-                id="login_password"
-                type="password"
-                className="floating-input peer"
-                placeholder=" "
-                value={loginContrasena}
-                onChange={(e) => setLoginContrasena(e.target.value)}
-                required
-              />
-              <label htmlFor="login_password" className="floating-label">
-                <Lock size={15} className="floating-icon" />
-                Contraseña
-              </label>
-            </div>
-
-            <button className="auth-btn" type="submit" disabled={cargando}>
-              {cargando ? 'Entrando...' : 'Iniciar Sesión'}
-              <ArrowRight size={16} className="btn-icon" />
-            </button>
-          </form>
-
-          <p className="switch-text">
-            ¿No tienes cuenta?{' '}
-            <span onClick={handleToggle} className="switch-link">
-              Regístrate
-            </span>
-          </p>
+          </div>
         </div>
 
-        {/* === REGISTER === */}
-        <div className="form-face form-back">
-          <div className="form-header">
-            <div className="form-icon">
-              <UserPlus size={20} />
-            </div>
-            <h2 className="form-title">Crear Cuenta</h2>
-            <p className="form-subtitle">Únete a Urbify</p>
-          </div>
+        {/* ── RIGHT PANEL (form) ── */}
+        <div className="auth-panel-right">
+          <div className="auth-form-wrapper">
 
-          {error && (
-            <div className="error-box">
-              <span>{error}</span>
+            {/* Tab switch */}
+            <div className="auth-tab-bar">
+              <button
+                type="button"
+                className={`auth-tab ${!isRegister ? 'active' : ''}`}
+                onClick={() => isRegister && handleToggle()}
+              >
+                <LogIn size={16} />
+                Iniciar Sesión
+              </button>
+              <button
+                type="button"
+                className={`auth-tab ${isRegister ? 'active' : ''}`}
+                onClick={() => !isRegister && handleToggle()}
+              >
+                <UserPlus size={16} />
+                Registrarse
+              </button>
             </div>
-          )}
 
-          <form onSubmit={handleRegister} className="auth-inner-form">
-            <div className="reg-row">
-              <div className="floating-input-group reg-half">
-                <input
-                  id="reg_nombre"
-                  name="nombre"
-                  className="floating-input peer"
-                  placeholder=" "
-                  value={regForm.nombre}
-                  onChange={handleRegChange}
-                  required
-                />
-                <label htmlFor="reg_nombre" className="floating-label">
-                  <User size={15} className="floating-icon" />
-                  Nombre
-                </label>
+            {/* Header */}
+            <div className="auth-form-header">
+              <h2>{isRegister ? 'Crear Cuenta' : 'Iniciar Sesión'}</h2>
+              <p>{isRegister ? 'Completa tus datos para comenzar' : 'Ingresa con tu correo y contraseña'}</p>
+            </div>
+
+            {/* Error / blocked */}
+            {bloqueado && !isRegister ? (
+              <div className="auth-alert auth-alert-blocked">
+                <svg aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" className="auth-alert-icon">
+                  <path clipRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" fillRule="evenodd" />
+                </svg>
+                <div>
+                  <strong>Cuenta bloqueada temporalmente</strong>
+                  <span>Intenta de nuevo en {minutosRestantes} minuto{minutosRestantes !== 1 ? 's' : ''}</span>
+                </div>
               </div>
-              <div className="floating-input-group reg-half">
-                <input
-                  id="reg_apellido"
-                  name="apellido"
-                  className="floating-input peer"
-                  placeholder=" "
-                  value={regForm.apellido}
-                  onChange={handleRegChange}
-                  required
-                />
-                <label htmlFor="reg_apellido" className="floating-label">
-                  <User size={15} className="floating-icon" />
-                  Apellido
-                </label>
+            ) : error ? (
+              <div className="auth-alert auth-alert-error">
+                <span>{error}</span>
               </div>
-            </div>
+            ) : null}
 
-            <div className="floating-input-group">
-              <input
-                id="reg_email"
-                type="email"
-                name="correo"
-                className="floating-input peer"
-                placeholder=" "
-                value={regForm.correo}
-                onChange={handleRegChange}
-                required
-              />
-              <label htmlFor="reg_email" className="floating-label">
-                <Mail size={15} className="floating-icon" />
-                Correo electrónico
-              </label>
-            </div>
+            {/* ── LOGIN FORM ── */}
+            {!isRegister && (
+              <form onSubmit={handleLogin} className="auth-form">
+                <div className="auth-field">
+                  <label htmlFor="login_email"><Mail size={14} /> Correo electrónico</label>
+                  <input
+                    id="login_email"
+                    type="email"
+                    placeholder="tu@correo.com"
+                    value={loginCorreo}
+                    onChange={(e) => setLoginCorreo(e.target.value)}
+                    required
+                  />
+                </div>
 
-            <div className="floating-input-group">
-              <input
-                id="reg_password"
-                type="password"
-                name="contrasena"
-                className="floating-input peer"
-                placeholder=" "
-                value={regForm.contrasena}
-                onChange={handleRegChange}
-                required
-                minLength={6}
-              />
-              <label htmlFor="reg_password" className="floating-label">
-                <Lock size={15} className="floating-icon" />
-                Contraseña (mín. 6 caracteres)
-              </label>
-            </div>
+                <div className="auth-field">
+                  <label htmlFor="login_password"><Lock size={14} /> Contraseña</label>
+                  <input
+                    id="login_password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={loginContrasena}
+                    onChange={(e) => setLoginContrasena(e.target.value)}
+                    required
+                  />
+                </div>
 
-            <div className="floating-input-group">
-              <input
-                id="reg_phone"
-                name="telefono"
-                className="floating-input peer"
-                placeholder=" "
-                value={regForm.telefono}
-                onChange={handleRegChange}
-              />
-              <label htmlFor="reg_phone" className="floating-label">
-                <Phone size={15} className="floating-icon" />
-                Teléfono
-              </label>
-            </div>
-
-            <div className="floating-input-group">
-              <input
-                id="reg_address"
-                name="direccion"
-                className="floating-input peer"
-                placeholder=" "
-                value={regForm.direccion}
-                onChange={handleRegChange}
-              />
-              <label htmlFor="reg_address" className="floating-label">
-                <MapPin size={15} className="floating-icon" />
-                Dirección
-              </label>
-            </div>
-
-            <div className="role-selector">
-              <span className="role-label">Tipo de cuenta</span>
-              <div className="role-options">
-                <button
-                  type="button"
-                  className={`role-btn ${regForm.rol === 'cliente' ? 'active' : ''}`}
-                  onClick={() => setRegForm({ ...regForm, rol: 'cliente', oficio: '' })}
-                >
-                  <User size={16} />
-                  Cliente
+                <button className="auth-submit" type="submit" disabled={cargando}>
+                  {cargando ? 'Entrando...' : 'Iniciar Sesión'}
+                  <ArrowRight size={16} />
                 </button>
-                <button
-                  type="button"
-                  className={`role-btn ${regForm.rol === 'proveedor' ? 'active' : ''}`}
-                  onClick={() => setRegForm({ ...regForm, rol: 'proveedor' })}
-                >
-                  <Wrench size={16} />
-                  Proveedor
-                </button>
-              </div>
-            </div>
 
-            {regForm.rol === 'proveedor' && (
-              <div className="floating-input-group">
-                <input
-                  id="reg_oficio"
-                  name="oficio"
-                  className="floating-input peer"
-                  placeholder=" "
-                  value={regForm.oficio}
-                  onChange={handleRegChange}
-                  required
-                />
-                <label htmlFor="reg_oficio" className="floating-label">
-                  <Wrench size={15} className="floating-icon" />
-                  Ej: Electricista, Plomero, Mecánico...
-                </label>
-              </div>
+                <p className="auth-switch">
+                  ¿No tienes cuenta?{' '}
+                  <span onClick={handleToggle}>Regístrate aquí</span>
+                </p>
+              </form>
             )}
 
-            <button className="auth-btn" type="submit" disabled={cargando}>
-              {cargando ? 'Registrando...' : 'Crear Cuenta'}
-              <ArrowRight size={16} className="btn-icon" />
-            </button>
-          </form>
+            {/* ── REGISTER FORM ── */}
+            {isRegister && (
+              <form onSubmit={handleRegister} className="auth-form">
+                <div className="auth-row">
+                  <div className="auth-field">
+                    <label htmlFor="reg_nombre"><User size={14} /> Nombre</label>
+                    <input
+                      id="reg_nombre"
+                      name="nombre"
+                      placeholder="Juan"
+                      value={regForm.nombre}
+                      onChange={handleRegChange}
+                      required
+                    />
+                  </div>
+                  <div className="auth-field">
+                    <label htmlFor="reg_apellido"><User size={14} /> Apellido</label>
+                    <input
+                      id="reg_apellido"
+                      name="apellido"
+                      placeholder="Pérez"
+                      value={regForm.apellido}
+                      onChange={handleRegChange}
+                      required
+                    />
+                  </div>
+                </div>
 
-          <p className="switch-text">
-            ¿Ya tienes cuenta?{' '}
-            <span onClick={handleToggle} className="switch-link">
-              Inicia Sesión
-            </span>
-          </p>
+                <div className="auth-field">
+                  <label htmlFor="reg_email"><Mail size={14} /> Correo electrónico</label>
+                  <input
+                    id="reg_email"
+                    type="email"
+                    name="correo"
+                    placeholder="tu@correo.com"
+                    value={regForm.correo}
+                    onChange={handleRegChange}
+                    required
+                  />
+                </div>
+
+                <div className="auth-field">
+                  <label htmlFor="reg_password"><Lock size={14} /> Contraseña</label>
+                  <input
+                    id="reg_password"
+                    type="password"
+                    name="contrasena"
+                    placeholder="Mínimo 6 caracteres"
+                    value={regForm.contrasena}
+                    onChange={handleRegChange}
+                    required
+                    minLength={6}
+                  />
+                </div>
+
+                <div className="auth-row">
+                  <div className="auth-field">
+                    <label htmlFor="reg_phone"><Phone size={14} /> Teléfono</label>
+                    <input
+                      id="reg_phone"
+                      name="telefono"
+                      placeholder="300 123 4567"
+                      value={regForm.telefono}
+                      onChange={handleRegChange}
+                    />
+                  </div>
+                  <div className="auth-field">
+                    <label htmlFor="reg_address"><MapPin size={14} /> Dirección</label>
+                    <input
+                      id="reg_address"
+                      name="direccion"
+                      placeholder="Calle, barrio"
+                      value={regForm.direccion}
+                      onChange={handleRegChange}
+                    />
+                  </div>
+                </div>
+
+                <div className="auth-field">
+                  <label>Tipo de cuenta</label>
+                  <div className="auth-role-options">
+                    <button
+                      type="button"
+                      className={`auth-role-btn ${regForm.rol === 'cliente' ? 'active' : ''}`}
+                      onClick={() => setRegForm({ ...regForm, rol: 'cliente', oficio: '' })}
+                    >
+                      <User size={16} />
+                      Cliente
+                    </button>
+                    <button
+                      type="button"
+                      className={`auth-role-btn ${regForm.rol === 'proveedor' ? 'active' : ''}`}
+                      onClick={() => setRegForm({ ...regForm, rol: 'proveedor' })}
+                    >
+                      <Wrench size={16} />
+                      Proveedor
+                    </button>
+                  </div>
+                </div>
+
+                {regForm.rol === 'proveedor' && (
+                  <div className="auth-field">
+                    <label htmlFor="reg_oficio"><Wrench size={14} /> Oficio</label>
+                    <input
+                      id="reg_oficio"
+                      name="oficio"
+                      placeholder="Ej: Electricista, Plomero..."
+                      value={regForm.oficio}
+                      onChange={handleRegChange}
+                      required
+                    />
+                  </div>
+                )}
+
+                <button className="auth-submit" type="submit" disabled={cargando}>
+                  {cargando ? 'Registrando...' : 'Crear Cuenta'}
+                  <ArrowRight size={16} />
+                </button>
+
+                <p className="auth-switch">
+                  ¿Ya tienes cuenta?{' '}
+                  <span onClick={handleToggle}>Inicia Sesión</span>
+                </p>
+              </form>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -23,7 +23,7 @@ export function Background() {
       vx: (Math.random() - 0.5) * 0.2,
       vy: (Math.random() - 0.5) * 0.2,
       r: Math.random() * 1.5 + 0.3,
-      hue: 140 + Math.random() * 40,
+      hue: 220 + Math.random() * 40,
       a: Math.random() * 0.25 + 0.05
     }));
 
@@ -39,7 +39,7 @@ export function Background() {
 
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(${p.hue}, 60%, 65%, ${p.a})`;
+        ctx.fillStyle = `hsla(${p.hue}, 50%, 55%, ${p.a * 0.6})`;
         ctx.fill();
 
         for (let j = i + 1; j < pts.length; j++) {
@@ -49,7 +49,7 @@ export function Background() {
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(q.x, q.y);
-            ctx.strokeStyle = `rgba(169, 210, 182, ${0.03 * (1 - d / 100)})`;
+            ctx.strokeStyle = `rgba(80, 120, 200, ${0.02 * (1 - d / 100)})`;
             ctx.stroke();
           }
         }
@@ -70,13 +70,13 @@ export function Background() {
       <div 
         className="fixed inset-0 pointer-events-none z-0" 
         style={{
-          backgroundImage: 'linear-gradient(rgba(169, 210, 182, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(169, 210, 182, 0.02) 1px, transparent 1px)',
+          backgroundImage: 'linear-gradient(rgba(80, 120, 200, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(80, 120, 200, 0.02) 1px, transparent 1px)',
           backgroundSize: '60px 60px'
         }}
       />
       <canvas 
         ref={canvasRef} 
-        className="fixed top-0 left-0 z-0 opacity-35 pointer-events-none"
+        className="fixed top-0 left-0 z-0 opacity-25 pointer-events-none"
       />
     </>
   );

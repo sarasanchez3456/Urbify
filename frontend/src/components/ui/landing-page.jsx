@@ -97,15 +97,15 @@ export function ScrollGlobe({ sections, globeConfig = defaultGlobeConfig, classN
   return (
     <div ref={containerRef} className={cn("relative w-full max-w-screen overflow-x-hidden min-h-screen", className)}>
       {/* Progress Bar */}
-      <div className="fixed top-0 left-0 w-full h-0.5 z-50" style={{ background: "linear-gradient(90deg, rgba(169,210,182,0.2), rgba(169,210,182,0.4), rgba(169,210,182,0.2))" }}>
+      <div className="fixed top-0 left-0 w-full h-0.5 z-50" style={{ background: "transparent" }}>
         <div
           className="h-full will-change-transform shadow-sm"
           style={{
             transform: "scaleX(" + scrollProgress + ")",
             transformOrigin: "left center",
             transition: "transform 0.15s ease-out",
-            background: "linear-gradient(90deg, #a9d2b6, #1e4f43)",
-            filter: "drop-shadow(0 0 2px rgba(169,210,182,0.3))",
+            background: "linear-gradient(90deg, oklch(0.40 0.18 255), oklch(0.72 0.13 200))",
+            filter: "drop-shadow(0 0 2px oklch(0.40 0.18 255 / 0.3))",
             width: "100%"
           }}
         />
@@ -125,13 +125,13 @@ export function ScrollGlobe({ sections, globeConfig = defaultGlobeConfig, classN
                     activeSection === index ? "animate-fadeOut" : "opacity-0"
                   )}
                   style={{
-                    background: "rgba(9,35,36,0.95)",
-                    borderColor: "rgba(169,210,182,0.2)",
-                    color: "#a9d2b6",
+                    background: "rgba(255, 255, 255, 0.9)",
+                    borderColor: "oklch(0.40 0.18 255 / 0.15)",
+                    color: "oklch(0.40 0.18 255)",
                   }}
                 >
                   <div className="flex items-center gap-2">
-                    <div className="w-1.5 lg:w-2 h-1.5 lg:h-2 rounded-full bg-primary animate-pulse" />
+                    <div className="w-1.5 lg:w-2 h-1.5 lg:h-2 rounded-full animate-pulse" style={{ background: "oklch(0.40 0.18 255)" }} />
                     <span className="text-sm lg:text-base">{section.badge || ("Section " + (index + 1))}</span>
                   </div>
                 </div>
@@ -141,16 +141,10 @@ export function ScrollGlobe({ sections, globeConfig = defaultGlobeConfig, classN
                       sectionRefs.current[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
                   }}
-                  className={cn(
-                    "relative w-2.5 lg:w-3 h-2.5 lg:h-3 rounded-full border-2 transition-all duration-300 hover:scale-125",
-                    "before:absolute before:inset-0 before:rounded-full before:transition-all before:duration-300",
-                    activeSection === index
-                      ? "border-primary shadow-lg before:animate-ping"
-                      : "border-muted-foreground/40 hover:border-primary/60"
-                  )}
+                  className="relative w-2.5 lg:w-3 h-2.5 lg:h-3 rounded-full border-2 transition-all duration-300 hover:scale-125"
                   style={{
-                    backgroundColor: activeSection === index ? "#a9d2b6" : "transparent",
-                    borderColor: activeSection === index ? "#a9d2b6" : "rgba(193,200,193,0.4)",
+                    backgroundColor: activeSection === index ? "oklch(0.40 0.18 255)" : "transparent",
+                    borderColor: activeSection === index ? "oklch(0.40 0.18 255)" : "rgba(200,200,220,0.4)",
                   }}
                   aria-label={"Go to " + (section.badge || ("section " + (index + 1)))}
                 />
@@ -158,7 +152,7 @@ export function ScrollGlobe({ sections, globeConfig = defaultGlobeConfig, classN
             );
           })}
         </div>
-        <div className="absolute left-1/2 top-0 bottom-0 w-px -translate-x-1/2 -z-10" style={{ background: "linear-gradient(to bottom, transparent, rgba(169,210,182,0.2), transparent)" }} />
+        <div className="absolute left-1/2 top-0 bottom-0 w-px -translate-x-1/2 -z-10" style={{ background: "linear-gradient(to bottom, transparent, oklch(0.40 0.18 255 / 0.2), transparent)" }} />
       </div>
 
       {/* Globe */}
@@ -167,8 +161,8 @@ export function ScrollGlobe({ sections, globeConfig = defaultGlobeConfig, classN
         style={{
           transform: globeTransform,
           transition: "all 1400ms cubic-bezier(0.23,1,0.32,1)",
-          opacity: 0.2,
-          filter: "drop-shadow(0 0 50px rgba(169,210,182,0.15))",
+          opacity: 0.45,
+          filter: "drop-shadow(0 0 50px oklch(0.40 0.18 255 / 0.15))",
         }}
       >
         <div className="scale-75 sm:scale-90 lg:scale-100">
@@ -204,36 +198,55 @@ export function ScrollGlobe({ sections, globeConfig = defaultGlobeConfig, classN
                 index === 0
                   ? "text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl"
                   : "text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl"
-              )}>
-                {section.subtitle ? (
+              )} style={{ fontFamily: "'DM Serif Display', serif" }}>
+                {section.heroTitle ? (
+                  <div style={{ color: "oklch(0.20 0.08 240)" }}>
+                    Tu hogar, cuidado<br />por los mejores{' '}
+                    <span
+                      key={section.heroWord}
+                      style={{
+                        background: "linear-gradient(135deg, oklch(0.35 0.25 260), oklch(0.55 0.22 200))",
+                        WebkitBackgroundClip: "text",
+                        WebkitTextFillColor: "transparent",
+                        backgroundClip: "text",
+                        fontStyle: "italic",
+                        display: "inline-block",
+                        animation: "heroWordFade 0.6s ease both",
+                      }}
+                    >
+                      {section.heroWord}
+                    </span>
+                    <span style={{ color: "oklch(0.40 0.18 255)" }}>.</span>
+                  </div>
+                ) : section.subtitle ? (
                   <div className="space-y-1 sm:space-y-2">
-                    <div className="bg-gradient-to-r from-[#cde8e8] to-[#cde8e8]/80 bg-clip-text text-transparent">
+                    <div style={{ color: "oklch(0.20 0.08 240)" }}>
                       {section.title}
                     </div>
-                    <div className="text-[#a9d2b6] text-[0.6em] sm:text-[0.7em] font-medium tracking-wider">
+                    <div className="text-[0.6em] sm:text-[0.7em] font-medium tracking-wider" style={{ color: "oklch(0.72 0.13 200)" }}>
                       {section.subtitle}
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-gradient-to-r from-[#cde8e8] via-[#cde8e8] to-[#cde8e8]/80 bg-clip-text text-transparent">
+                  <div style={{ color: "oklch(0.20 0.08 240)" }}>
                     {section.title}
                   </div>
                 )}
               </h1>
 
               <div className={cn(
-                "text-[rgba(193,200,193,0.6)] leading-relaxed mb-8 sm:mb-10 text-base sm:text-lg lg:text-xl font-light",
+                "leading-relaxed mb-8 sm:mb-10 text-base sm:text-lg lg:text-xl font-light",
                 section.align === 'center' ? "max-w-full mx-auto text-center" : "max-w-full"
-              )}>
+              )} style={{ color: "oklch(0.35 0.05 240)" }}>
                 <p className="mb-3 sm:mb-4">{section.description}</p>
                 {index === 0 && (
-                  <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm text-[rgba(193,200,193,0.4)] mt-4 sm:mt-6">
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm mt-4 sm:mt-6" style={{ color: "oklch(0.45 0.04 240)" }}>
                     <div className="flex items-center gap-1.5 sm:gap-2">
-                      <div className="w-1 h-1 rounded-full bg-[#a9d2b6] animate-pulse" />
+                      <div className="w-1 h-1 rounded-full animate-pulse" style={{ background: "oklch(0.72 0.13 200)" }} />
                       <span>Interactive Experience</span>
                     </div>
                     <div className="flex items-center gap-1.5 sm:gap-2">
-                      <div className="w-1 h-1 rounded-full bg-[#a9d2b6] animate-pulse" style={{ animationDelay: '0.5s' }} />
+                      <div className="w-1 h-1 rounded-full animate-pulse" style={{ background: "oklch(0.72 0.13 200)", animationDelay: '0.5s' }} />
                       <span>Scroll to Explore</span>
                     </div>
                   </div>
@@ -246,21 +259,17 @@ export function ScrollGlobe({ sections, globeConfig = defaultGlobeConfig, classN
                     return (
                       <div
                         key={feature.title}
-                        className={cn(
-                          "group p-4 sm:p-5 lg:p-6 rounded-lg sm:rounded-xl border backdrop-blur-sm transition-all duration-300 hover:shadow-lg",
-                          "hover:-translate-y-1"
-                        )}
+                        className="group p-4 sm:p-5 lg:p-6 rounded-lg sm:rounded-xl border backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
                         style={{
-                          background: "rgba(9,35,36,0.3)",
-                          borderColor: "rgba(169,210,182,0.08)",
-                          animationDelay: (featureIndex * 0.1) + "s",
+                          background: "rgba(255, 255, 255, 0.6)",
+                          borderColor: "oklch(0.40 0.18 255 / 0.12)",
                         }}
                       >
                         <div className="flex items-start gap-3 sm:gap-4">
-                          <div className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full mt-1.5 sm:mt-2 flex-shrink-0" style={{ backgroundColor: "rgba(169,210,182,0.6)" }} />
+                          <div className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full mt-1.5 sm:mt-2 flex-shrink-0" style={{ backgroundColor: "oklch(0.72 0.13 200 / 0.6)" }} />
                           <div className="flex-1 space-y-1.5 sm:space-y-2 min-w-0">
-                            <h3 className="font-semibold text-base sm:text-lg" style={{ color: "#cde8e8" }}>{feature.title}</h3>
-                            <p className="leading-relaxed text-sm sm:text-base" style={{ color: "rgba(193,200,193,0.5)" }}>{feature.description}</p>
+                            <h3 className="font-semibold text-base sm:text-lg" style={{ color: "oklch(0.20 0.08 240)" }}>{feature.title}</h3>
+                            <p className="leading-relaxed text-sm sm:text-base" style={{ color: "oklch(0.35 0.05 240)" }}>{feature.description}</p>
                           </div>
                         </div>
                       </div>
@@ -281,21 +290,14 @@ export function ScrollGlobe({ sections, globeConfig = defaultGlobeConfig, classN
                       <button
                         key={action.label}
                         onClick={action.onClick}
-                        className={cn(
-                          "group relative px-6 sm:px-8 py-3 sm:py-4 rounded-lg sm:rounded-xl font-medium transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] text-sm sm:text-base",
-                          "hover:shadow-lg focus:outline-none focus:ring-2 w-full sm:w-auto",
-                          action.variant === 'primary'
-                            ? "shadow-lg"
-                            : "border-2 bg-background/50 backdrop-blur-sm hover:opacity-80"
-                        )}
+                        className="group relative px-6 sm:px-8 py-3 sm:py-4 rounded-lg sm:rounded-xl font-medium transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] text-sm sm:text-base hover:shadow-lg focus:outline-none focus:ring-2 w-full sm:w-auto"
                         style={{
                           background: action.variant === 'primary'
-                            ? "linear-gradient(135deg, #a9d2b6, #1e4f43)"
+                            ? "linear-gradient(135deg, oklch(0.40 0.18 255), oklch(0.72 0.13 200))"
                             : "transparent",
-                          color: action.variant === 'primary' ? "#001718" : "rgba(205,232,232,0.65)",
-                          borderColor: action.variant === 'primary' ? "transparent" : "rgba(169,210,182,0.2)",
-                          boxShadow: action.variant === 'primary' ? "0 0 20px rgba(169,210,182,0.2)" : "none",
-                          animationDelay: ((actionIndex * 0.1) + 0.2) + "s",
+                          color: action.variant === 'primary' ? "#fff" : "oklch(0.30 0.06 240)",
+                          border: action.variant === 'primary' ? "none" : "2px solid oklch(0.40 0.18 255 / 0.2)",
+                          boxShadow: action.variant === 'primary' ? "0 0 20px oklch(0.40 0.18 255 / 0.2)" : "none",
                         }}
                       >
                         <span className="relative z-10">{action.label}</span>
@@ -311,4 +313,3 @@ export function ScrollGlobe({ sections, globeConfig = defaultGlobeConfig, classN
     </div>
   );
 }
-

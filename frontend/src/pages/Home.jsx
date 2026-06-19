@@ -26,50 +26,48 @@ const ICONS = {
 };
 
 const CATS = [
-  { name: 'Electricidad', icon: 'bolt' }, { name: 'Plomer\u00eda', icon: 'drop' },
-  { name: 'Mec\u00e1nica', icon: 'gear' },     { name: 'Carpinter\u00eda', icon: 'hammer' },
-  { name: 'Pintura', icon: 'roller' },    { name: 'Jardiner\u00eda', icon: 'sprout' },
+  { name: 'Electricidad', icon: 'bolt' }, { name: 'Plomería', icon: 'drop' },
+  { name: 'Mecánica', icon: 'gear' },     { name: 'Carpintería', icon: 'hammer' },
+  { name: 'Pintura', icon: 'roller' },    { name: 'Jardinería', icon: 'sprout' },
 ];
 
 const STEPS = [
-  { icon: 'search',    title: 'Busca el servicio',  desc: 'Escribe lo que necesitas o explora el mapa: ver\u00e1s qui\u00e9n est\u00e1 disponible cerca de ti.' },
+  { icon: 'search',    title: 'Busca el servicio',  desc: 'Escribe lo que necesitas o explora el mapa: verás quién está disponible cerca de ti.' },
   { icon: 'user',      title: 'Revisa el perfil',   desc: 'Calificaciones reales, experiencia verificada y tarifas claras antes de decidir.' },
-  { icon: 'clipboard', title: 'Solicita y agenda',  desc: 'Describe el trabajo, acuerda la hora y recibe confirmaci\u00f3n en minutos.' },
-  { icon: 'star',      title: 'Califica al final',  desc: 'Tu rese\u00f1a mantiene la calidad de la comunidad para el siguiente vecino.' },
+  { icon: 'clipboard', title: 'Solicita y agenda',  desc: 'Describe el trabajo, acuerda la hora y recibe confirmación en minutos.' },
+  { icon: 'star',      title: 'Califica al final',  desc: 'Tu reseña mantiene la calidad de la comunidad para el siguiente vecino.' },
 ];
+
+const HERO_WORDS = ['electricidad', 'plomería', 'mecánica', 'carpintería', 'pintura', 'jardinería'];
 
 export default function Home() {
   const navigate = useNavigate();
   const { usuario } = useAuth();
   const [stats, setStats] = useState(null);
   const [destacados, setDestacados] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/buscar?q=${encodeURIComponent(searchQuery.trim())}`);
-    } else {
-      navigate('/buscar');
-    }
-  };
+  const [heroWord, setHeroWord] = useState(0);
 
   useEffect(() => {
     api.get('/stats').then(res => setStats(res.data)).catch(() => {});
     api.get('/servicios/destacados').then(res => setDestacados(res.data)).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const interval = setInterval(() => setHeroWord(i => (i + 1) % HERO_WORDS.length), 4000);
+    return () => clearInterval(interval);
+  }, []);
+
   const demoSections = [
     {
       id: "hero",
-      badge: "Información de Urbify",
-      title: "Urbify",
-      subtitle: "Servicios para el hogar",
+      badge: "Servicios urbanos · Medellín",
+      heroTitle: true,
+      heroWord: HERO_WORDS[heroWord],
       description: "La plataforma que conecta a profesionales verificados con clientes que necesitan servicios para el hogar. Electricistas, plomeros, mecánicos y más, cerca de ti.",
       align: "left",
       actions: [
-        { label: "Buscar Servicios", variant: "primary", onClick: () => navigate('/buscar') },
-        { label: "Ver Mapa en Vivo", variant: "secondary", onClick: () => navigate('/mapa') },
+        { label: "Buscar Servicios", variant: "primary", onClick: () => navigate(usuario ? '/buscar' : '/login') },
+        { label: "Ver Mapa en Vivo", variant: "secondary", onClick: () => navigate(usuario ? '/mapa' : '/login') },
       ]
     },
     {
@@ -108,221 +106,200 @@ export default function Home() {
 
   return (
     <div className="home-wrapper">
-      {/* ScrollGlobe immersive sections */}
       <ScrollGlobe sections={demoSections} />
 
-      {/* STATS BAND */}
-      <div className="stats-band">
-        <div className="stats-inner">
-          <div className="stat-item">
-            <span className="stat-number">{stats ? stats.proveedores_activos : '—'}</span>
-            <span className="stat-label">Proveedores Activos</span>
+      <div className="home-cream">
+
+        {/* STATS BAND */}
+        <div className="stats-band">
+          <div className="stats-inner">
+            <div className="stat-item">
+              <span className="stat-number">{stats ? stats.proveedores_activos : '—'}</span>
+              <span className="stat-label">Proveedores Activos</span>
+            </div>
+            <div className="stat-divider" />
+            <div className="stat-item">
+              <span className="stat-number">{stats ? stats.servicios_realizados : '—'}</span>
+              <span className="stat-label">Servicios Realizados</span>
+            </div>
+            <div className="stat-divider" />
+            <div className="stat-item">
+              <span className="stat-number">{stats ? `${stats.calificacion_media}★` : '—'}</span>
+              <span className="stat-label">Calificación Media</span>
+            </div>
           </div>
-          <div className="stat-divider" />
-          <div className="stat-item">
-            <span className="stat-number">{stats ? stats.servicios_realizados : '—'}</span>
-            <span className="stat-label">Servicios Realizados</span>
+        </div>
+
+        {/* CATEGORIES */}
+        <section className="uy-sec" id="servicios">
+          <div className="uy-sec-head">
+            <span className="uy-tag">Categorías</span>
+            <h2>¿Qué necesita tu casa hoy?</h2>
+            <p>Seis oficios, cientos de manos expertas cerca de ti.</p>
           </div>
-          <div className="stat-divider" />
-          <div className="stat-item">
-            <span className="stat-number">{stats ? `${stats.calificacion_media}★` : '—'}</span>
-            <span className="stat-label">Calificación Media</span>
+          <div className="uy-cats">
+            {CATS.map((c) => (
+              <button key={c.name} className="uy-cat"
+                onClick={() => navigate(`/buscar?cat=${c.name}`)} aria-label={c.name}>
+                <span className="uy-cat-ic">{ICONS[c.icon]}</span>
+                <span className="uy-cat-name">{c.name}</span>
+              </button>
+            ))}
           </div>
-        </div>
-      </div>
+        </section>
 
-
-
-      {/* CATEGORIES */}
-      <section className="uy-sec" id="servicios">
-        <div className="uy-sec-head">
-          <span className="uy-tag">Categorías</span>
-          <h2>¿Qué necesita tu casa hoy?</h2>
-          <p>Seis oficios, cientos de manos expertas cerca de ti.</p>
-        </div>
-        <div className="uy-cats">
-          {CATS.map((c, i) => (
-            <button key={c.name} className="uy-cat"
-              onClick={() => navigate(`/buscar?cat=${c.name}`)} aria-label={c.name}>
-              <span className="uy-cat-ic">{ICONS[c.icon]}</span>
-              <span className="uy-cat-name">{c.name}</span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* SEARCH */}
-      <section className="sec-search">
-        <div className="search-box glass-card">
-          <h3 className="search-title">Buscar Servicios</h3>
-          <form onSubmit={handleSearch} className="search-bar">
-            <input
-              className="search-input"
-              placeholder="Ej: instalación eléctrica, reparación de tuberías..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <button type="submit" className="search-btn">Buscar</button>
-          </form>
-        </div>
-      </section>
-
-      {/* SERVICES */}
-      <section className="sec-services">
-        <div className="sec-head">
-          <div className="sec-tag">// Profesionales</div>
-          <h2 className="sec-title">Servicios Destacados</h2>
-          <p className="sec-subtitle">Profesionales verificados con las mejores calificaciones</p>
-        </div>
-        <div className="services-grid">
-          {destacados.map((svc, i) => {
-            const initials = (svc.nombre?.[0] || '') + (svc.apellido?.[0] || '');
-            const nombreCorto = svc.nombre ? svc.nombre + ' ' + (svc.apellido?.[0] || '') + '.' : 'Proveedor';
-            const catIcon = {
-              'Electricidad': '⚡',
-              'Plomería': '🔧',
-              'Mecánica': '🔩',
-              'Carpintería': '🪚',
-              'Pintura': '🎨',
-              'Jardinería': '🌿',
-              'Cerrajería': '🔒',
-              'Limpieza': '🧹',
-            }[svc.categoria_nombre] || '⭐';
-            const palettes = [
-              { back: 'fc-back--green', frontBg: 'linear-gradient(160deg, #071e1f 0%, #0e3530 55%, #1a4a3a 100%)', avatarBg: 'linear-gradient(135deg, #a9d2b6, #1e4f43)', accent: '#a9d2b6', tagBorder: 'rgba(169,210,182,0.3)' },
-              { back: 'fc-back--teal', frontBg: 'linear-gradient(160deg, #071e20 0%, #0d3530 55%, #3a8a7a 100%)', avatarBg: 'linear-gradient(135deg, #9fd1c1, #4a9e8a)', accent: '#9fd1c1', tagBorder: 'rgba(159,209,193,0.3)' },
-              { back: 'fc-back--orange', frontBg: 'linear-gradient(160deg, #1a0e08 0%, #2e1a0d 55%, #7a3010 100%)', avatarBg: 'linear-gradient(135deg, #ff9966, #c0392b)', accent: '#ff9966', tagBorder: 'rgba(255,153,102,0.3)' },
-            ];
-            const p = palettes[i % palettes.length];
-            const bgImageMap = {
-              'Electricidad': '/images/bg_electricidad_1780486963455.png',
-              'Plomería': '/images/bg_plomeria_1780486974582.png',
-              'Mecánica': '/images/bg_mecanica_1780486988149.png',
-              'Carpintería': '/images/bg_carpinteria_1780487001930.png',
-              'Pintura': '/images/bg_pintura_1780487014409.png',
-              'Jardinería': '/images/bg_jardineria_1780487034986.png',
-            };
-            const catImage = bgImageMap[svc.categoria_nombre] || null;
-            return (
-              <div className="fc-card" key={svc.id}>
-                <div className="fc-content">
-                  <div className={'fc-back ' + p.back}>
-                    <div 
-                      className="fc-back-content fc-svc-body"
-                      style={catImage ? { backgroundImage: `linear-gradient(to bottom, rgba(9, 35, 36, 0.3), rgba(9, 35, 36, 0.9)), url(${catImage})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: 'transparent' } : undefined}
-                    >
-                      <div className="fc-svc-info">
-                        <h4 className="fc-svc-title">{svc.titulo}</h4>
-                        <p className="fc-svc-desc">{svc.descripcion}</p>
+        {/* SERVICES */}
+        <section className="sec-services">
+          <div className="sec-head">
+            <div className="sec-tag">Profesionales</div>
+            <h2 className="sec-title">Servicios Destacados</h2>
+            <p className="sec-subtitle">Profesionales verificados con las mejores calificaciones</p>
+          </div>
+          <div className="services-grid">
+            {destacados.map((svc, i) => {
+              const initials = (svc.nombre?.[0] || '') + (svc.apellido?.[0] || '');
+              const nombreCorto = svc.nombre ? svc.nombre + ' ' + (svc.apellido?.[0] || '') + '.' : 'Proveedor';
+              const catIcon = {
+                'Electricidad': '⚡', 'Plomería': '🔧', 'Mecánica': '🔩',
+                'Carpintería': '🪚', 'Pintura': '🎨', 'Jardinería': '🌿',
+                'Cerrajería': '🔒', 'Limpieza': '🧹',
+              }[svc.categoria_nombre] || '⭐';
+              const palettes = [
+                { back: 'fc-back--blue', frontBg: 'linear-gradient(160deg, oklch(0.15 0.04 240) 0%, oklch(0.20 0.08 250) 55%, oklch(0.25 0.12 260) 100%)', avatarBg: 'linear-gradient(135deg, oklch(0.72 0.13 200), oklch(0.40 0.18 255))', accent: 'oklch(0.72 0.13 200)', tagBorder: 'oklch(0.72 0.13 200 / 0.3)' },
+                { back: 'fc-back--cobalt', frontBg: 'linear-gradient(160deg, oklch(0.14 0.05 250) 0%, oklch(0.22 0.10 260) 55%, oklch(0.30 0.15 255) 100%)', avatarBg: 'linear-gradient(135deg, oklch(0.65 0.12 210), oklch(0.45 0.16 250))', accent: 'oklch(0.65 0.12 210)', tagBorder: 'oklch(0.65 0.12 210 / 0.3)' },
+                { back: 'fc-back--navy', frontBg: 'linear-gradient(160deg, oklch(0.12 0.03 235) 0%, oklch(0.18 0.06 245) 55%, oklch(0.28 0.10 240) 100%)', avatarBg: 'linear-gradient(135deg, oklch(0.80 0.10 195), oklch(0.50 0.14 220))', accent: 'oklch(0.80 0.10 195)', tagBorder: 'oklch(0.80 0.10 195 / 0.3)' },
+              ];
+              const p = palettes[i % palettes.length];
+              const bgImageMap = {
+                'Electricidad': '/images/bg_electricidad_1780486963455.png',
+                'Plomería': '/images/bg_plomeria_1780486974582.png',
+                'Mecánica': '/images/bg_mecanica_1780486988149.png',
+                'Carpintería': '/images/bg_carpinteria_1780487001930.png',
+                'Pintura': '/images/bg_pintura_1780487014409.png',
+                'Jardinería': '/images/bg_jardineria_1780487034986.png',
+              };
+              const catImage = bgImageMap[svc.categoria_nombre] || null;
+              return (
+                <div className="fc-card" key={svc.id}>
+                  <div className="fc-content">
+                    <div className={'fc-back ' + p.back}>
+                      <div
+                        className="fc-back-content fc-svc-body"
+                        style={catImage ? { backgroundImage: `linear-gradient(to bottom, oklch(0.18 0.04 240 / 0.3), oklch(0.18 0.04 240 / 0.9)), url(${catImage})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: 'transparent' } : undefined}
+                      >
+                        <div className="fc-svc-info">
+                          <h4 className="fc-svc-title">{svc.titulo}</h4>
+                          <p className="fc-svc-desc">{svc.descripcion}</p>
+                        </div>
+                        <span className="fc-svc-tag" style={{ color: p.accent, borderColor: p.tagBorder, backgroundColor: 'oklch(0.18 0.04 240 / 0.6)', backdropFilter: 'blur(4px)' }}>{svc.categoria_nombre}</span>
                       </div>
-                      <span className="fc-svc-tag" style={{ color: p.accent, borderColor: p.tagBorder, backgroundColor: 'rgba(9, 35, 36, 0.6)', backdropFilter: 'blur(4px)' }}>{svc.categoria_nombre}</span>
                     </div>
-                  </div>
-                  <div className="fc-front" style={{ background: p.frontBg }}>
-                    <div className="fc-front-content fc-prov-body">
-                      <div className="fc-prov-top">
-                        <div className="fc-avatar" style={{ background: p.avatarBg }}>{initials}</div>
-                        <div className="fc-prov-meta">
-                          <span className="fc-prov-name">{nombreCorto}</span>
-                          <span className="fc-prov-cat">{catIcon} {svc.categoria_nombre}</span>
+                    <div className="fc-front" style={{ background: p.frontBg }}>
+                      <div className="fc-front-content fc-prov-body">
+                        <div className="fc-prov-top">
+                          <div className="fc-avatar" style={{ background: p.avatarBg }}>{initials}</div>
+                          <div className="fc-prov-meta">
+                            <span className="fc-prov-name">{nombreCorto}</span>
+                            <span className="fc-prov-cat">{catIcon} {svc.categoria_nombre}</span>
+                          </div>
                         </div>
+                        <div className="fc-prov-stats">
+                          <div className="fc-prov-stat">
+                            <span className="fc-prov-val">★ {parseFloat(svc.calificacion_promedio || 0).toFixed(1)}</span>
+                            <span className="fc-prov-lbl">{svc.total_calificaciones} reseñas</span>
+                          </div>
+                          <div className="fc-prov-divider" />
+                          <div className="fc-prov-stat">
+                            <span className="fc-prov-val" style={{ color: p.accent }}>${Number(svc.tarifa || 0).toLocaleString()}</span>
+                            <span className="fc-prov-lbl">por {svc.tipo_tarifa || 'hora'}</span>
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => navigate(usuario ? '/servicio/' + svc.id : '/login')} className="fc-prov-btn">Ver servicio →</button>
                       </div>
-                      <div className="fc-prov-stats">
-                        <div className="fc-prov-stat">
-                          <span className="fc-prov-val">★ {parseFloat(svc.calificacion_promedio || 0).toFixed(1)}</span>
-                          <span className="fc-prov-lbl">{svc.total_calificaciones} reseñas</span>
-                        </div>
-                        <div className="fc-prov-divider" />
-                        <div className="fc-prov-stat">
-                          <span className="fc-prov-val" style={p.accent !== '#a9d2b6' ? { color: p.accent } : undefined}>${Number(svc.tarifa || 0).toLocaleString()}</span>
-                          <span className="fc-prov-lbl">por {svc.tipo_tarifa || 'hora'}</span>
-                        </div>
-                      </div>
-                      <button type="button" onClick={() => navigate(usuario ? '/servicio/' + svc.id : '/login')} className="fc-prov-btn" style={p.accent !== '#a9d2b6' ? { background: 'rgba(' + (p.accent === '#9fd1c1' ? '159,209,193' : '255,153,102') + ',0.15)', borderColor: p.tagBorder, color: p.accent } : undefined}>Ver servicio →</button>
                     </div>
                   </div>
                 </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* MAP */}
+        <section className="sec-map">
+          <div className="map-wrap">
+            <div className="map-info glass-card">
+              <div className="sec-tag">Cobertura en Vivo</div>
+              <h3>Profesionales cerca<br />de ti, ahora mismo.</h3>
+              <p>Visualiza en el mapa interactivo dónde están los proveedores disponibles en tu zona. Filtra por categoría, calificación y disponibilidad.</p>
+              <Link to="/mapa">
+                <button className="hbtn-primary">Abrir Mapa →</button>
+              </Link>
+            </div>
+            <div className="map-vis">
+              <div className="map-grid-bg" />
+              <div className="map-dot" style={{ top: '35%', left: '45%', '--dot-color': 'oklch(0.72 0.13 200)' }}>
+                <span className="map-label">Electricista</span>
               </div>
-            );
-          })}
-        </div>
-      </section>
+              <div className="map-dot" style={{ top: '55%', left: '63%', '--dot-color': 'oklch(0.65 0.12 210)' }}>
+                <span className="map-label">Plomero</span>
+              </div>
+              <div className="map-dot" style={{ top: '27%', left: '71%', '--dot-color': 'oklch(0.40 0.18 255)' }}>
+                <span className="map-label">Mecánico</span>
+              </div>
+              <div className="map-dot" style={{ top: '67%', left: '30%', '--dot-color': 'oklch(0.72 0.13 200)' }}>
+                <span className="map-label">Carpintero</span>
+              </div>
+              <div className="map-dot" style={{ top: '40%', left: '22%', '--dot-color': 'oklch(0.65 0.12 210)' }}>
+                <span className="map-label">Pintor</span>
+              </div>
+              <svg className="map-lines">
+                <line x1="45%" y1="35%" x2="63%" y2="55%" stroke="oklch(0.72 0.13 200)" strokeWidth="1" strokeDasharray="4,4" opacity="0.6" />
+                <line x1="63%" y1="55%" x2="71%" y2="27%" stroke="oklch(0.65 0.12 210)" strokeWidth="1" strokeDasharray="4,4" opacity="0.6" />
+                <line x1="71%" y1="27%" x2="30%" y2="67%" stroke="oklch(0.40 0.18 255)" strokeWidth="1" strokeDasharray="4,4" opacity="0.6" />
+                <line x1="30%" y1="67%" x2="22%" y2="40%" stroke="oklch(0.72 0.13 200)" strokeWidth="1" strokeDasharray="4,4" opacity="0.6" />
+                <line x1="22%" y1="40%" x2="45%" y2="35%" stroke="oklch(0.65 0.12 210)" strokeWidth="1" strokeDasharray="4,4" opacity="0.6" />
+              </svg>
+              <div className="map-city-label">MEDELLÍN — COL</div>
+            </div>
+          </div>
+        </section>
 
-      {/* MAP */}
-      <section className="sec-map">
-        <div className="map-wrap">
-          <div className="map-info glass-card">
-            <div className="sec-tag">// Cobertura en Vivo</div>
-            <h3>Profesionales cerca<br />de ti, ahora mismo.</h3>
-            <p>Visualiza en el mapa interactivo dónde están los proveedores disponibles en tu zona. Filtra por categoría, calificación y disponibilidad.</p>
-            <Link to="/mapa">
-              <button className="hbtn-primary">Abrir Mapa →</button>
-            </Link>
+        {/* HOW IT WORKS */}
+        <section id="como-funciona" className="uy-sec" style={{ scrollMarginTop: '100px' }}>
+          <div className="uy-sec-head">
+            <span className="uy-tag">Cómo funciona</span>
+            <h2>De la necesidad a la solución</h2>
+            <p>Cuatro pasos, sin llamadas a desconocidos ni precios sorpresa.</p>
           </div>
-          <div className="map-vis">
-            <div className="map-grid-bg" />
-            <div className="map-dot" style={{ top: '35%', left: '45%', '--dot-color': '#a9d2b6' }}>
-              <span className="map-label">Electricista</span>
-            </div>
-            <div className="map-dot" style={{ top: '55%', left: '63%', '--dot-color': '#9fd1c1' }}>
-              <span className="map-label">Plomero</span>
-            </div>
-            <div className="map-dot" style={{ top: '27%', left: '71%', '--dot-color': '#ff6b35' }}>
-              <span className="map-label">Mecánico</span>
-            </div>
-            <div className="map-dot" style={{ top: '67%', left: '30%', '--dot-color': '#a9d2b6' }}>
-              <span className="map-label">Carpintero</span>
-            </div>
-            <div className="map-dot" style={{ top: '40%', left: '22%', '--dot-color': '#9fd1c1' }}>
-              <span className="map-label">Pintor</span>
-            </div>
-            <svg className="map-lines">
-              <line x1="45%" y1="35%" x2="63%" y2="55%" stroke="#a9d2b6" strokeWidth="1" strokeDasharray="4,4" opacity="0.3" />
-              <line x1="63%" y1="55%" x2="71%" y2="27%" stroke="#9fd1c1" strokeWidth="1" strokeDasharray="4,4" opacity="0.3" />
-              <line x1="71%" y1="27%" x2="30%" y2="67%" stroke="#ff6b35" strokeWidth="1" strokeDasharray="4,4" opacity="0.3" />
-              <line x1="30%" y1="67%" x2="22%" y2="40%" stroke="#a9d2b6" strokeWidth="1" strokeDasharray="4,4" opacity="0.3" />
-              <line x1="22%" y1="40%" x2="45%" y2="35%" stroke="#9fd1c1" strokeWidth="1" strokeDasharray="4,4" opacity="0.3" />
-            </svg>
-            <div className="map-city-label">MEDELLÍN — COL</div>
-          </div>
-        </div>
-      </section>
+          <ol className="uy-steps">
+            {STEPS.map((s, i) => (
+              <li key={s.title} className="uy-step">
+                <span className="uy-step-ic">{ICONS[s.icon]}</span>
+                <h3><span>{i + 1}.</span> {s.title}</h3>
+                <p>{s.desc}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
 
-      {/* HOW IT WORKS */}
-      <section id="como-funciona" className="uy-sec" style={{ scrollMarginTop: '100px' }}>
-        <div className="uy-sec-head">
-          <span className="uy-tag">Cómo funciona</span>
-          <h2>De la necesidad a la solución</h2>
-          <p>Cuatro pasos, sin llamadas a desconocidos ni precios sorpresa.</p>
-        </div>
-        <ol className="uy-steps">
-          {STEPS.map((s, i) => (
-            <li key={s.title} className="uy-step">
-              <span className="uy-step-ic">{ICONS[s.icon]}</span>
-              <h3><span>{i + 1}.</span> {s.title}</h3>
-              <p>{s.desc}</p>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      {/* FOOTER */}
-      <footer className="site-footer">
-        <div className="footer-inner">
-          <div className="footer-brand">
-            <div className="footer-logo">URBIFY</div>
-            <p className="footer-desc">La plataforma de servicios urbanos del futuro.</p>
+        {/* FOOTER */}
+        <footer className="site-footer">
+          <div className="footer-inner">
+            <div className="footer-brand">
+              <div className="footer-logo">URBIFY</div>
+              <p className="footer-desc">La plataforma de servicios urbanos del futuro.</p>
+            </div>
+            <div className="footer-links">
+              <span>Términos</span>
+              <span>Privacidad</span>
+              <span>Contacto</span>
+            </div>
+            <div className="footer-copy">
+              © 2026 Urbify · Servicios Urbanos del Futuro
+            </div>
           </div>
-          <div className="footer-links">
-            <span style={{ color: 'rgba(193,200,193,0.4)', fontSize: '0.85rem' }}>Términos</span>
-            <span style={{ color: 'rgba(193,200,193,0.4)', fontSize: '0.85rem' }}>Privacidad</span>
-            <span style={{ color: 'rgba(193,200,193,0.4)', fontSize: '0.85rem' }}>Contacto</span>
-          </div>
-          <div className="footer-copy">
-            © 2026 Urbify · Servicios Urbanos del Futuro
-          </div>
-        </div>
-      </footer>
+        </footer>
+      </div>
     </div>
   );
 }
