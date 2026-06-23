@@ -157,7 +157,7 @@ exports.login = async (req, res) => {
 exports.perfil = async (req, res) => {
   try {
     const [usuarios] = await query(
-      `SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, latitud, longitud, creado_en
+      `SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, latitud, longitud, fecha_creacion
        FROM usuarios WHERE id = ?`,
       [req.usuarioId]
     );
@@ -196,7 +196,7 @@ exports.actualizarPerfil = async (req, res) => {
 exports.listarUsuarios = async (req, res) => {
   try {
     const [usuarios] = await query(
-      'SELECT id, nombre, apellido, correo, telefono, rol, activo, creado_en FROM usuarios ORDER BY creado_en DESC'
+      'SELECT id, nombre, apellido, correo, telefono, rol, activo, fecha_creacion FROM usuarios ORDER BY fecha_creacion DESC'
     );
     res.json(usuarios);
   } catch (err) {
@@ -209,7 +209,7 @@ exports.usuarioPorId = async (req, res) => {
   try {
     const { id } = req.params;
     const [usuarios] = await query(
-      'SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, latitud, longitud, oficio, activo, creado_en FROM usuarios WHERE id = ?',
+      'SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, latitud, longitud, oficio, activo, fecha_creacion FROM usuarios WHERE id = ?',
       [id]
     );
     if (usuarios.length === 0) {

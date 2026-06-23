@@ -42,14 +42,14 @@ exports.calificacionesProveedor = async (req, res) => {
     const { proveedor_id } = req.params;
 
     const [calificaciones] = await query(
-      `SELECT cal.puntuacion, cal.comentario, cal.creado_en,
+      `SELECT cal.puntuacion, cal.comentario, cal.fecha_creacion,
        u.nombre, u.apellido, u.foto_url, s.titulo AS servicio_titulo
        FROM calificaciones cal
        JOIN usuarios u ON cal.cliente_id = u.id
        JOIN solicitudes sol ON cal.solicitud_id = sol.id
        JOIN servicios s ON sol.servicio_id = s.id
        WHERE cal.proveedor_id = ?
-       ORDER BY cal.creado_en DESC`,
+       ORDER BY cal.fecha_creacion DESC`,
       [proveedor_id]
     );
 

@@ -68,11 +68,10 @@ function MapaContent() {
     radioRef.current = radio;
   }, [radio]);
 
-  const handleLocationFound = useCallback(async (lat, lng) => {
-    setCoords({ lat, lng });
+  const fetchProveedores = useCallback(async (lat, lng, currentRadio) => {
     setCargando(true);
     try {
-      const res = await api.get(`/proveedores/cercanos?lat=${lat}&lng=${lng}&radio=${radioRef.current}`);
+      const res = await api.get(`/proveedores/cercanos?lat=${lat}&lng=${lng}&radio=${currentRadio}`);
       setProveedores(res.data);
     } catch (err) {
       console.error('Error al cargar proveedores:', err);
@@ -81,11 +80,15 @@ function MapaContent() {
     }
   }, []);
 
+  const handleLocationFound = useCallback((lat, lng) => {
+    setCoords({ lat, lng });
+  }, []);
+
   useEffect(() => {
     if (coords) {
-      handleLocationFound(coords.lat, coords.lng);
+      fetchProveedores(coords.lat, coords.lng, radio);
     }
-  }, [radio, coords, handleLocationFound]);
+  }, [coords?.lat, coords?.lng, radio, fetchProveedores]);
 
   return (
     <div className="mapa-page">
@@ -104,7 +107,7 @@ function MapaContent() {
         </div>
       </div>
 
-      <div className="mapa-container bg-[#020617]/50 backdrop-blur-xl border border-cyan-500/20 rounded-3xl overflow-hidden">
+      <div className="mapa-container bg-white/60 backdrop-blur-xl border border-black/5 rounded-3xl overflow-hidden">
         <MapContainer
           center={COLOMBIA_CENTER}
           zoom={COLOMBIA_ZOOM}
@@ -121,12 +124,12 @@ function MapaContent() {
           {proveedores.map((p) => (
             <Marker key={p.id} position={[parseFloat(p.latitud), parseFloat(p.longitud)]}>
               <Popup>
-                <div className="popup-content bg-[#020617] text-white p-2">
-                  <strong className="text-cyan-400">{p.nombre} {p.apellido}</strong>
-                  <p>⭐ {parseFloat(p.calificacion_promedio || 0).toFixed(1)} ({p.total_calificaciones})</p>
-                  <p className="text-xs text-gray-400">{p.servicios?.map((s) => s.titulo).join(', ')}</p>
-                  <p className="popup-distancia text-fuchsia-400 font-bold">{parseFloat(p.distancia_km || 0).toFixed(2)} km</p>
-                  <Link to={p.servicios?.[0]?.id ? `/servicio/${p.servicios[0].id}` : '#'} className="btn-premium-sm">
+                <div className="popup-content bg-white text-on-surface p-2 rounded-xl">
+                  <strong className="text-[oklch(0.25_0.06_240)]">{p.nombre} {p.apellido}</strong>
+                  <p className="text-[oklch(0.45_0.03_240)]">⭐ {parseFloat(p.calificacion_promedio || 0).toFixed(1)} ({p.total_calificaciones})</p>
+                  <p className="text-xs text-[oklch(0.45_0.03_240)]">{p.servicios?.map((s) => s.titulo).join(', ')}</p>
+                  <p className="popup-distancia text-[oklch(0.40_0.18_255)] font-bold mt-1 mb-2">{parseFloat(p.distancia_km || 0).toFixed(2)} km</p>
+                  <Link to={p.servicios?.[0]?.id ? `/servicio/${p.servicios[0].id}` : '#'} className="px-4 py-1.5 rounded-full text-xs font-medium bg-[oklch(0.40_0.18_255)] text-white hover:bg-[oklch(0.35_0.18_255)] transition-colors inline-block text-center w-full">
                     Ver Perfil
                   </Link>
                 </div>
@@ -135,23 +138,23 @@ function MapaContent() {
           ))}
         </MapContainer>
 
-        <div className="mapa-sidebar bg-[#020617]/80 backdrop-blur-md border-l border-cyan-500/20 text-white p-6">
-          <h3 className="font-['Orbitron'] text-cyan-400 mb-4">Proveedores Cercanos ({proveedores.length})</h3>
+        <div className="mapa-sidebar bg-white/80 backdrop-blur-md border-l border-black/5 text-[oklch(0.25_0.06_240)] p-6">
+          <h3 className="font-semibold text-[oklch(0.25_0.06_240)] mb-4 font-['Playfair_Display']">Proveedores Cercanos ({proveedores.length})</h3>
           {cargando ? (
-            <p className="loading text-cyan-500">Cargando...</p>
+            <p className="loading text-[oklch(0.45_0.03_240)]">Cargando...</p>
           ) : proveedores.length === 0 ? (
-            <p className="sin-proveedores text-gray-400">No se encontraron proveedores cercanos. Aumenta el radio de búsqueda.</p>
+            <p className="sin-proveedores text-[oklch(0.45_0.03_240)]">No se encontraron proveedores cercanos. Aumenta el radio de búsqueda.</p>
           ) : (
             <div className="proveedores-lista flex flex-col gap-3">
               {proveedores.map((p) => (
-                <Link key={p.id} to={p.servicios?.[0]?.id ? `/servicio/${p.servicios[0].id}` : '#'} className="proveedor-item bg-white/5 hover:bg-white/10 p-3 rounded-xl border border-white/10 transition-all">
-                  <div className="proveedor-item-avatar bg-gradient-to-br from-cyan-500 to-fuchsia-500 text-black font-bold">
+                <Link key={p.id} to={p.servicios?.[0]?.id ? `/servicio/${p.servicios[0].id}` : '#'} className="proveedor-item bg-black/5 hover:bg-black/10 p-3 rounded-xl border border-black/5 transition-all">
+                  <div className="proveedor-item-avatar bg-gradient-to-br from-[oklch(0.72_0.13_200)] to-[oklch(0.40_0.18_255)] text-white font-bold">
                     {p.nombre?.[0]}{p.apellido?.[0]}
                   </div>
                   <div>
-                    <strong className="text-white">{p.nombre} {p.apellido}</strong>
-                    <p className="text-yellow-400">⭐ {parseFloat(p.calificacion_promedio || 0).toFixed(1)}</p>
-                    <p className="proveedor-item-distancia text-cyan-400 text-xs">{parseFloat(p.distancia_km || 0).toFixed(2)} km</p>
+                    <strong className="text-[oklch(0.25_0.06_240)]">{p.nombre} {p.apellido}</strong>
+                    <p className="text-amber-500 font-medium text-sm">⭐ {parseFloat(p.calificacion_promedio || 0).toFixed(1)}</p>
+                    <p className="proveedor-item-distancia text-[oklch(0.45_0.03_240)] text-xs font-medium">{parseFloat(p.distancia_km || 0).toFixed(2)} km</p>
                   </div>
                 </Link>
               ))}

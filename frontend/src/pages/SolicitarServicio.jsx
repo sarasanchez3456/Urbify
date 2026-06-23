@@ -57,20 +57,20 @@ function DraggableMarker({ position, onMove }) {
 }
 
 const glassCard = {
-  backgroundColor: 'rgba(9, 35, 36, 0.4)',
+  backgroundColor: 'rgba(255, 255, 255, 0.6)',
   backdropFilter: 'blur(16px)',
-  border: '1px solid rgba(169, 210, 182, 0.12)',
+  border: '1px solid rgba(0, 0, 0, 0.05)',
 };
 
 const glassInner = {
-  backgroundColor: 'rgba(0, 17, 18, 0.4)',
+  backgroundColor: 'rgba(255, 255, 255, 0.6)',
   backdropFilter: 'blur(12px)',
-  border: '1px solid rgba(169, 210, 182, 0.08)',
+  border: '1px solid rgba(0, 0, 0, 0.05)',
 };
 
 const btnGradient = {
-  color: '#001718',
-  background: 'linear-gradient(135deg, #a9d2b6, #1e4f43)',
+  color: 'white',
+  background: 'linear-gradient(135deg, oklch(0.40 0.18 255), #1e4f43)',
 };
 
 export default function SolicitarServicio() {
@@ -186,7 +186,7 @@ export default function SolicitarServicio() {
   if (cargando) {
     return (
       <DashboardLayout titulo="Solicitar Servicio">
-        <div className="flex items-center justify-center h-64" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>Cargando...</div>
+        <div className="flex items-center justify-center h-64" style={{ color: 'oklch(0.45 0.03 240)' }}>Cargando...</div>
       </DashboardLayout>
     );
   }
@@ -198,16 +198,16 @@ export default function SolicitarServicio() {
           <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}>
             <Send size={32} style={{ color: '#4ade80' }} />
           </div>
-          <h2 className="text-xl font-semibold mb-2" style={{ fontFamily: "'Playfair Display', serif", color: '#cde8e8' }}>¡Solicitud enviada con éxito!</h2>
-          <p className="text-sm mb-6" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>
+          <h2 className="text-xl font-semibold mb-2" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>¡Solicitud enviada con éxito!</h2>
+          <p className="text-sm mb-6" style={{ color: 'oklch(0.45 0.03 240)' }}>
             El proveedor recibirá una notificación y se pondrá en contacto contigo pronto.
           </p>
           <button
             onClick={() => navigate('/mis-solicitudes')}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg transition-all text-sm font-semibold"
             style={btnGradient}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, #bde2ca, #256f5a)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, #a9d2b6, #1e4f43)'; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.45 0.18 255), oklch(0.77 0.13 200))'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.40 0.18 255), #1e4f43)'; }}
           >
             <ArrowLeft size={16} />
             Ver Mis Solicitudes
@@ -223,19 +223,19 @@ export default function SolicitarServicio() {
         <div className="rounded-xl p-6 lg:p-8" style={glassCard}>
           <div className="mb-6 p-4 rounded-lg space-y-2" style={glassInner}>
             <div className="flex items-center gap-2 text-sm">
-              <Briefcase size={14} style={{ color: '#a9d2b6' }} />
-              <span style={{ color: 'rgba(193, 200, 193, 0.5)' }}>Servicio:</span>
-              <span className="font-medium" style={{ color: '#cde8e8' }}>{servicio?.titulo}</span>
+              <Briefcase size={14} style={{ color: 'oklch(0.40 0.18 255)' }} />
+              <span style={{ color: 'oklch(0.45 0.03 240)' }}>Servicio:</span>
+              <span className="font-medium" style={{ color: 'oklch(0.25 0.06 240)' }}>{servicio?.titulo}</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <User size={14} style={{ color: '#a9d2b6' }} />
-              <span style={{ color: 'rgba(193, 200, 193, 0.5)' }}>Proveedor:</span>
-              <span style={{ color: '#cde8e8' }}>{servicio?.nombre} {servicio?.apellido}</span>
+              <User size={14} style={{ color: 'oklch(0.40 0.18 255)' }} />
+              <span style={{ color: 'oklch(0.45 0.03 240)' }}>Proveedor:</span>
+              <span style={{ color: 'oklch(0.25 0.06 240)' }}>{servicio?.nombre} {servicio?.apellido}</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <DollarSign size={14} style={{ color: '#a9d2b6' }} />
-              <span style={{ color: 'rgba(193, 200, 193, 0.5)' }}>Tarifa:</span>
-              <span className="font-medium" style={{ color: '#cde8e8' }}>${parseFloat(servicio?.tarifa || 0).toFixed(2)} / {servicio?.tipo_tarifa}</span>
+              <DollarSign size={14} style={{ color: 'oklch(0.40 0.18 255)' }} />
+              <span style={{ color: 'oklch(0.45 0.03 240)' }}>Tarifa:</span>
+              <span className="font-medium" style={{ color: 'oklch(0.25 0.06 240)' }}>${parseFloat(servicio?.tarifa || 0).toFixed(2)} / {servicio?.tipo_tarifa}</span>
             </div>
           </div>
 
@@ -251,7 +251,7 @@ export default function SolicitarServicio() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm mb-1.5" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>Describe tu problema o necesidad</label>
+              <label className="block text-sm mb-1.5" style={{ color: 'oklch(0.45 0.03 240)' }}>Describe tu problema o necesidad</label>
               <textarea
                 rows="5"
                 value={descripcion}
@@ -259,14 +259,14 @@ export default function SolicitarServicio() {
                 placeholder="Describe qué necesitas, la dirección exacta, y cualquier detalle relevante..."
                 required
                 className="w-full px-4 py-2.5 rounded-lg transition-colors resize-none"
-                style={{ ...glassInner, color: '#cde8e8', outline: 'none' }}
-                onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.5)'; }}
-                onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.08)'; }}
+                style={{ ...glassInner, color: 'oklch(0.25 0.06 240)', outline: 'none' }}
+                onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.2)'; }}
+                onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.05)'; }}
               />
             </div>
 
             <div>
-              <label className="block text-sm mb-1.5" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>
+              <label className="block text-sm mb-1.5" style={{ color: 'oklch(0.45 0.03 240)' }}>
                 <Calendar size={14} className="inline mr-1" />
                 Fecha preferida (opcional)
               </label>
@@ -275,14 +275,14 @@ export default function SolicitarServicio() {
                 value={fecha}
                 onChange={(e) => setFecha(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-lg transition-colors"
-                style={{ ...glassInner, color: '#cde8e8', outline: 'none' }}
-                onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.5)'; }}
-                onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.08)'; }}
+                style={{ ...glassInner, color: 'oklch(0.25 0.06 240)', outline: 'none' }}
+                onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.2)'; }}
+                onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.05)'; }}
               />
             </div>
 
             <div>
-              <label className="block text-sm mb-1.5" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>
+              <label className="block text-sm mb-1.5" style={{ color: 'oklch(0.45 0.03 240)' }}>
                 <MapPin size={14} className="inline mr-1" />
                 Dirección del servicio (Colombia)
               </label>
@@ -295,10 +295,10 @@ export default function SolicitarServicio() {
                       onChange={(e) => handleDireccionChange(e.target.value)}
                       placeholder="Ej: Calle 72 #10-07, Bogotá"
                       className="w-full pl-8 pr-4 py-2.5 rounded-lg transition-colors"
-                      style={{ ...glassInner, color: '#cde8e8', outline: 'none' }}
-                      onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.5)'; }}
+                      style={{ ...glassInner, color: 'oklch(0.25 0.06 240)', outline: 'none' }}
+                      onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.2)'; }}
                       onBlur={(e) => {
-                        e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.08)';
+                        e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.05)';
                         setTimeout(() => setSugerencias([]), 200);
                       }}
                     />
@@ -310,7 +310,7 @@ export default function SolicitarServicio() {
                       style={{ backgroundColor: 'rgba(0, 17, 18, 0.95)', border: '1px solid rgba(169, 210, 182, 0.2)' }}
                     >
                       {buscandoDireccion ? (
-                        <div className="px-4 py-3 text-xs" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>Buscando direcciones...</div>
+                        <div className="px-4 py-3 text-xs" style={{ color: 'oklch(0.45 0.03 240)' }}>Buscando direcciones...</div>
                       ) : (
                         sugerencias.map((sug, i) => (
                           <button
@@ -318,7 +318,7 @@ export default function SolicitarServicio() {
                             type="button"
                             onMouseDown={() => seleccionarSugerencia(sug)}
                             className="w-full text-left px-4 py-2.5 text-xs transition-colors hover:bg-white/10"
-                            style={{ color: '#cde8e8', borderBottom: '1px solid rgba(169, 210, 182, 0.05)' }}
+                            style={{ color: 'oklch(0.25 0.06 240)', borderBottom: '1px solid rgba(169, 210, 182, 0.05)' }}
                           >
                             {sug.display_name}
                           </button>
@@ -331,9 +331,9 @@ export default function SolicitarServicio() {
                   type="button"
                   onClick={usarUbicacionActual}
                   className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap"
-                  style={{ backgroundColor: 'rgba(169, 210, 182, 0.1)', color: '#a9d2b6', border: '1px solid rgba(169, 210, 182, 0.2)' }}
+                  style={{ backgroundColor: 'rgba(0, 0, 0, 0.04)', color: 'oklch(0.40 0.18 255)', border: '1px solid rgba(169, 210, 182, 0.2)' }}
                   onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(169, 210, 182, 0.2)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(169, 210, 182, 0.1)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)'; }}
                 >
                   <Crosshair size={14} />
                   Mi ubicación
@@ -376,8 +376,8 @@ export default function SolicitarServicio() {
               disabled={enviando}
               className="w-full flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg transition-all disabled:opacity-50 text-sm font-semibold"
               style={btnGradient}
-              onMouseEnter={(e) => { if (!enviando) e.currentTarget.style.background = 'linear-gradient(135deg, #bde2ca, #256f5a)'; }}
-              onMouseLeave={(e) => { if (!enviando) e.currentTarget.style.background = 'linear-gradient(135deg, #a9d2b6, #1e4f43)'; }}
+              onMouseEnter={(e) => { if (!enviando) e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.45 0.18 255), oklch(0.77 0.13 200))'; }}
+              onMouseLeave={(e) => { if (!enviando) e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.40 0.18 255), #1e4f43)'; }}
             >
               <Send size={16} />
               {enviando ? 'Enviando solicitud...' : 'Enviar Solicitud'}

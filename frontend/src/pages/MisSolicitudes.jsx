@@ -18,16 +18,16 @@ import {
 } from 'lucide-react';
 
 const glassCard = {
-  backgroundColor: 'rgba(9, 35, 36, 0.4)',
+  backgroundColor: 'rgba(255, 255, 255, 0.6)',
   backdropFilter: 'blur(16px)',
-  border: '1px solid rgba(169, 210, 182, 0.12)',
+  border: '1px solid rgba(0, 0, 0, 0.05)',
 };
 
-const subtleBorder = '1px solid rgba(169, 210, 182, 0.06)';
+const subtleBorder = '1px solid rgba(0, 0, 0, 0.05)';
 
 const btnGradient = {
-  color: '#001718',
-  background: 'linear-gradient(135deg, #a9d2b6, #1e4f43)',
+  color: 'white',
+  background: 'linear-gradient(135deg, oklch(0.40 0.18 255), #1e4f43)',
 };
 
 export default function MisSolicitudes() {
@@ -62,13 +62,13 @@ export default function MisSolicitudes() {
       completada: { bg: 'rgba(34, 197, 94, 0.1)', text: '#4ade80', border: 'rgba(34, 197, 94, 0.2)', icon: CheckCircle },
       cancelada: { bg: 'rgba(239, 68, 68, 0.1)', text: '#f87171', border: 'rgba(239, 68, 68, 0.2)', icon: XCircle },
     };
-    return map[estado] || { bg: 'rgba(9, 35, 36, 0.4)', text: 'rgba(193, 200, 193, 0.5)', border: 'rgba(169, 210, 182, 0.12)', icon: ClipboardList };
+    return map[estado] || { bg: 'rgba(255, 255, 255, 0.6)', text: 'oklch(0.45 0.03 240)', border: 'rgba(0, 0, 0, 0.05)', icon: ClipboardList };
   };
 
   if (cargando) {
     return (
       <DashboardLayout titulo="Mis Solicitudes" subtitulo={usuario?.rol === 'cliente' ? 'Solicitudes que has realizado' : 'Solicitudes que has recibido'}>
-        <div className="flex items-center justify-center h-64" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>Cargando...</div>
+        <div className="flex items-center justify-center h-64" style={{ color: 'oklch(0.45 0.03 240)' }}>Cargando...</div>
       </DashboardLayout>
     );
   }
@@ -77,14 +77,14 @@ export default function MisSolicitudes() {
     <DashboardLayout titulo="Mis Solicitudes" subtitulo={usuario?.rol === 'cliente' ? 'Solicitudes que has realizado' : 'Solicitudes que has recibido'}>
       <div className="max-w-5xl mx-auto space-y-6">
         <div>
-          <p className="text-sm" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>{solicitudes.length} solicitud{solicitudes.length !== 1 ? 'es' : ''}</p>
+          <p className="text-sm" style={{ color: 'oklch(0.45 0.03 240)' }}>{solicitudes.length} solicitud{solicitudes.length !== 1 ? 'es' : ''}</p>
         </div>
 
         {solicitudes.length === 0 ? (
           <div className="text-center py-16 rounded-xl" style={glassCard}>
-            <ClipboardList size={48} className="mx-auto mb-4" style={{ opacity: 0.3, color: 'rgba(193, 200, 193, 0.5)' }} />
-            <h3 className="text-lg font-semibold mb-2" style={{ fontFamily: "'Playfair Display', serif", color: '#cde8e8' }}>No hay solicitudes</h3>
-            <p className="text-sm mb-6" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>
+            <ClipboardList size={48} className="mx-auto mb-4" style={{ opacity: 0.3, color: 'oklch(0.45 0.03 240)' }} />
+            <h3 className="text-lg font-semibold mb-2" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>No hay solicitudes</h3>
+            <p className="text-sm mb-6" style={{ color: 'oklch(0.45 0.03 240)' }}>
               {usuario?.rol === 'cliente'
                 ? 'Busca servicios y solicita un profesional'
                 : 'Aún no has recibido solicitudes'}
@@ -94,8 +94,8 @@ export default function MisSolicitudes() {
                 to="/buscar"
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg transition-all text-sm font-semibold"
                 style={btnGradient}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, #bde2ca, #256f5a)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, #a9d2b6, #1e4f43)'; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.45 0.18 255), oklch(0.77 0.13 200))'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.40 0.18 255), #1e4f43)'; }}
               >
                 <Search size={16} />
                 Buscar Servicios
@@ -112,15 +112,15 @@ export default function MisSolicitudes() {
                   key={sol.id}
                   className="rounded-xl p-5 transition-all"
                   style={{
-                    backgroundColor: 'rgba(0, 17, 18, 0.4)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.6)',
                     backdropFilter: 'blur(12px)',
-                    border: '1px solid rgba(169, 210, 182, 0.08)',
+                    border: '1px solid rgba(0, 0, 0, 0.05)',
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.25)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.08)'; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.1)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.05)'; }}
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <h3 className="text-base font-semibold" style={{ fontFamily: "'Playfair Display', serif", color: '#cde8e8' }}>
+                    <h3 className="text-base font-semibold" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>
                       {sol.servicio_titulo}
                     </h3>
                     <span
@@ -137,7 +137,7 @@ export default function MisSolicitudes() {
                   </div>
 
                   <div className="space-y-2 mb-4">
-                    <div className="flex items-center gap-2 text-sm" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>
+                    <div className="flex items-center gap-2 text-sm" style={{ color: 'oklch(0.45 0.03 240)' }}>
                       <User size={14} />
                       <span>
                         {usuario?.rol === 'cliente'
@@ -147,15 +147,15 @@ export default function MisSolicitudes() {
                       </span>
                     </div>
                     {sol.descripcion && (
-                      <p className="text-sm line-clamp-2" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>{sol.descripcion}</p>
+                      <p className="text-sm line-clamp-2" style={{ color: 'oklch(0.45 0.03 240)' }}>{sol.descripcion}</p>
                     )}
                     {sol.direccion && usuario?.rol === 'proveedor' && (
-                      <div className="flex items-start gap-2 text-sm" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>
-                        <MapPin size={14} className="mt-0.5 shrink-0" style={{ color: '#a9d2b6' }} />
+                      <div className="flex items-start gap-2 text-sm" style={{ color: 'oklch(0.45 0.03 240)' }}>
+                        <MapPin size={14} className="mt-0.5 shrink-0" style={{ color: 'oklch(0.40 0.18 255)' }} />
                         <span>{sol.direccion}</span>
                       </div>
                     )}
-                    <div className="flex items-center gap-4 text-sm" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>
+                    <div className="flex items-center gap-4 text-sm" style={{ color: 'oklch(0.45 0.03 240)' }}>
                       <span className="flex items-center gap-1">
                         <Calendar size={14} />
                         {sol.fecha_solicitud ? new Date(sol.fecha_solicitud).toLocaleDateString('es-ES', {
@@ -164,7 +164,7 @@ export default function MisSolicitudes() {
                           year: 'numeric',
                         }) : ''}
                       </span>
-                      <span className="flex items-center gap-1" style={{ color: '#a9d2b6' }}>
+                      <span className="flex items-center gap-1" style={{ color: 'oklch(0.40 0.18 255)' }}>
                         <DollarSign size={14} />
                         ${parseFloat(sol.tarifa || 0).toFixed(2)}
                       </span>

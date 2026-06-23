@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   activo TINYINT(1) NOT NULL DEFAULT 1,
   intentos_fallidos INT NOT NULL DEFAULT 0,
   bloqueado_hasta DATETIME NULL,
-  creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS tokens_sesion (
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS servicios (
   tarifa DECIMAL(10, 2) NOT NULL DEFAULT 0,
   tipo_tarifa VARCHAR(20) NOT NULL DEFAULT 'hora',
   disponible TINYINT(1) NOT NULL DEFAULT 1,
-  creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (proveedor_id) REFERENCES usuarios(id) ON DELETE CASCADE,
   FOREIGN KEY (categoria_id) REFERENCES categorias(id)
 ) ENGINE=InnoDB;
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS calificaciones (
   proveedor_id INT NOT NULL,
   puntuacion INT NOT NULL CHECK (puntuacion BETWEEN 1 AND 5),
   comentario TEXT NULL,
-  creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id),
   FOREIGN KEY (cliente_id) REFERENCES usuarios(id),
   FOREIGN KEY (proveedor_id) REFERENCES usuarios(id)
@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS notificaciones (
   usuario_id INT NOT NULL,
   mensaje TEXT NOT NULL,
   leida TINYINT(1) NOT NULL DEFAULT 0,
-  creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 

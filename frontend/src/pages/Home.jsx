@@ -231,7 +231,7 @@ export default function Home() {
               <div className="sec-tag">Cobertura en Vivo</div>
               <h3>Profesionales cerca<br />de ti, ahora mismo.</h3>
               <p>Visualiza en el mapa interactivo dónde están los proveedores disponibles en tu zona. Filtra por categoría, calificación y disponibilidad.</p>
-              <Link to="/mapa">
+              <Link to={usuario ? "/mapa" : "/login"}>
                 <button className="hbtn-primary">Abrir Mapa →</button>
               </Link>
             </div>

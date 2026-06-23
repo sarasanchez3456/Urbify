@@ -31,7 +31,7 @@ exports.misServicios = async (req, res) => {
        FROM servicios s
        JOIN categorias c ON s.categoria_id = c.id
        WHERE s.proveedor_id = ?
-       ORDER BY s.creado_en DESC`,
+       ORDER BY s.fecha_creacion DESC`,
       [req.usuarioId]
     );
     res.json(servicios);
@@ -58,7 +58,7 @@ exports.serviciosPorCategoria = async (req, res) => {
          GROUP BY cal.proveedor_id
        ) cal_stats ON cal_stats.proveedor_id = u.id
        WHERE s.categoria_id = ? AND s.disponible = 1 AND u.activo = 1
-       ORDER BY s.creado_en DESC`,
+       ORDER BY s.fecha_creacion DESC`,
       [categoria_id]
     );
     res.json(servicios);
@@ -105,7 +105,7 @@ exports.buscarServicios = async (req, res) => {
       params.push(dispNum);
     }
 
-    sql += ` ORDER BY s.creado_en DESC`;
+    sql += ` ORDER BY s.fecha_creacion DESC`;
 
     const [servicios] = await query(sql, params);
     res.json(servicios);
@@ -215,12 +215,12 @@ exports.detalleServicio = async (req, res) => {
     let comentarios = [];
     try {
       const [result] = await query(
-        `SELECT cal.id, cal.puntuacion, cal.comentario, cal.creado_en,
+        `SELECT cal.id, cal.puntuacion, cal.comentario, cal.fecha_creacion,
          u.nombre, u.apellido, u.foto_url
          FROM calificaciones cal
          JOIN usuarios u ON cal.cliente_id = u.id
          WHERE cal.proveedor_id = ?
-         ORDER BY cal.creado_en DESC
+         ORDER BY cal.fecha_creacion DESC
          LIMIT 10`,
         [servicios[0].proveedor_id]
       );

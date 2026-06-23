@@ -19,18 +19,18 @@ import {
 } from 'lucide-react';
 
 const glassCard = {
-  backgroundColor: 'rgba(9, 35, 36, 0.4)',
+  backgroundColor: 'rgba(255, 255, 255, 0.6)',
   backdropFilter: 'blur(16px)',
-  border: '1px solid rgba(169, 210, 182, 0.12)',
+  border: '1px solid rgba(0, 0, 0, 0.05)',
 };
 
 const glassCardHover = {
-  backgroundColor: 'rgba(9, 35, 36, 0.55)',
+  backgroundColor: 'rgba(255, 255, 255, 0.8)',
   backdropFilter: 'blur(16px)',
-  border: '1px solid rgba(169, 210, 182, 0.25)',
+  border: '1px solid rgba(0, 0, 0, 0.1)',
 };
 
-const subtleBorder = '1px solid rgba(169, 210, 182, 0.06)';
+const subtleBorder = '1px solid rgba(0, 0, 0, 0.05)';
 
 export default function Dashboard() {
   const { usuario } = useAuth();
@@ -61,7 +61,7 @@ export default function Dashboard() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
-          <div style={{ color: 'rgba(193, 200, 193, 0.5)' }}>Cargando...</div>
+          <div style={{ color: 'oklch(0.45 0.03 240)' }}>Cargando...</div>
         </div>
       </DashboardLayout>
     );
@@ -105,25 +105,25 @@ export default function Dashboard() {
       completada: { bg: 'rgba(34, 197, 94, 0.1)', text: '#4ade80', border: 'rgba(34, 197, 94, 0.2)' },
       cancelada: { bg: 'rgba(239, 68, 68, 0.1)', text: '#f87171', border: 'rgba(239, 68, 68, 0.2)' },
     };
-    return map[estado] || { bg: 'rgba(9, 35, 36, 0.4)', text: 'rgba(193, 200, 193, 0.5)', border: 'rgba(169, 210, 182, 0.12)' };
+    return map[estado] || { bg: 'rgba(255, 255, 255, 0.6)', text: 'oklch(0.45 0.03 240)', border: 'rgba(0, 0, 0, 0.05)' };
   };
 
   const quickActions = usuario?.rol === 'proveedor'
     ? [
-        { label: 'Publicar Servicio', icon: Wrench, path: '/mis-servicios', color: '#a9d2b6' },
-        { label: 'Notificaciones', icon: ClipboardList, path: '/mis-solicitudes', color: '#8eb69b' },
+        { label: 'Publicar Servicio', icon: Wrench, path: '/mis-servicios', color: 'oklch(0.40 0.18 255)' },
+        { label: 'Notificaciones', icon: ClipboardList, path: '/mis-solicitudes', color: 'oklch(0.72 0.13 200)' },
         { label: 'Mi Perfil', icon: User, path: '/perfil', color: '#60a5fa' },
       ]
     : [
-        { label: 'Buscar Servicios', icon: Search, path: '/buscar', color: '#a9d2b6' },
-        { label: 'Mis Solicitudes', icon: ClipboardList, path: '/mis-solicitudes', color: '#8eb69b' },
+        { label: 'Buscar Servicios', icon: Search, path: '/buscar', color: 'oklch(0.40 0.18 255)' },
+        { label: 'Mis Solicitudes', icon: ClipboardList, path: '/mis-solicitudes', color: 'oklch(0.72 0.13 200)' },
         { label: 'Mi Perfil', icon: User, path: '/perfil', color: '#60a5fa' },
-        { label: 'Ver Mapa', icon: MapPin, path: '/mapa', color: '#ff6b35' },
+        { label: 'Buscar en Mapa', icon: MapPin, path: '/buscar', color: '#ff6b35' },
       ];
 
   const activityItems = [
-    { icon: CheckCircle, color: '#a9d2b6', label: 'Plataforma operando al 100%', time: 'En línea' },
-    { icon: Users, color: '#8eb69b', label: `${stats?.proveedores_activos || 0} proveedores activos`, time: 'Tiempo real' },
+    { icon: CheckCircle, color: 'oklch(0.40 0.18 255)', label: 'Plataforma operando al 100%', time: 'En línea' },
+    { icon: Users, color: 'oklch(0.72 0.13 200)', label: `${stats?.proveedores_activos || 0} proveedores activos`, time: 'Tiempo real' },
     { icon: CheckCircle2, color: '#4ade80', label: `${stats?.servicios_realizados || 0} servicios completados`, time: 'Total' },
     { icon: Star, color: '#ff6b35', label: `Calificación: ${stats?.calificacion_media || '0.0'} / 5.0`, time: 'General' },
   ];
@@ -137,57 +137,56 @@ export default function Dashboard() {
             className="col-span-12 xl:col-span-8 rounded-xl relative overflow-hidden p-6 lg:p-8 flex flex-col justify-center min-h-[220px]"
             style={{
               ...glassCard,
-              background: 'linear-gradient(135deg, rgba(9, 35, 36, 0.6), rgba(0, 23, 24, 0.9)), radial-gradient(circle at 20% 30%, rgba(169, 210, 182, 0.08) 0%, transparent 60%)',
+              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.9)), radial-gradient(circle at 20% 30%, rgba(0, 0, 0, 0.05) 0%, transparent 60%)',
               backdropFilter: 'blur(16px)',
-              border: '1px solid rgba(169, 210, 182, 0.12)',
+              border: '1px solid rgba(0, 0, 0, 0.05)',
             }}
           >
             <div className="relative z-10">
               <span className="text-xs font-semibold px-3 py-1 rounded-full tracking-wider uppercase inline-block" style={{
-                color: '#a9d2b6',
-                backgroundColor: 'rgba(169, 210, 182, 0.1)',
-                border: '1px solid rgba(169, 210, 182, 0.2)',
+                color: 'oklch(0.40 0.18 255)',
+                backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                border: '1px solid rgba(0, 0, 0, 0.05)',
               }}>
                 Plataforma Inteligente
               </span>
-              <h2 className="text-2xl lg:text-3xl font-bold mt-4 leading-tight" style={{ fontFamily: "'Playfair Display', serif", color: '#cde8e8' }}>
-                Conectamos <span style={{ color: 'rgba(193, 200, 193, 0.5)' }}>personas,</span><br />
-                <span style={{ color: '#a9d2b6' }}>proyectos y servicios.</span>
+              <h2 className="text-2xl lg:text-3xl font-bold mt-4 leading-tight" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>
+                Conectamos <span style={{ color: 'oklch(0.45 0.03 240)' }}>personas,</span><br />
+                <span style={{ color: 'oklch(0.40 0.18 255)' }}>proyectos y servicios.</span>
               </h2>
-              <p className="text-sm mt-3 max-w-md" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>
+              <p className="text-sm mt-3 max-w-md" style={{ color: 'oklch(0.45 0.03 240)' }}>
                 Urbify centraliza todo lo que necesitas para encontrar profesionales y gestionar solicitudes de servicio de forma inteligente.
               </p>
               <div className="flex items-center gap-4 mt-5">
                 <div className="flex -space-x-2">
                   {[1, 2, 3].map((i) => (
                     <div key={i} className="w-7 h-7 rounded-full flex items-center justify-center text-[8px] font-bold" style={{
-                      backgroundColor: 'rgba(9, 35, 36, 0.4)',
-                      border: '2px solid #001718',
-                      color: 'rgba(193, 200, 193, 0.5)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.6)',
+                      border: '2px solid white',
+                      color: 'oklch(0.45 0.03 240)',
                     }}>
                       {String.fromCharCode(64 + i)}
                     </div>
                   ))}
                   <div className="w-7 h-7 rounded-full flex items-center justify-center text-[8px] font-bold" style={{
-                    backgroundColor: 'rgba(9, 35, 36, 0.4)',
-                    border: '2px solid #001718',
-                    color: 'rgba(193, 200, 193, 0.5)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+                    border: '2px solid white',
+                    color: 'oklch(0.45 0.03 240)',
                   }}>
                     +{stats?.proveedores_activos || 0}
                   </div>
                 </div>
                 <Link
                   to={usuario?.rol === 'proveedor' ? '/mis-servicios' : '/buscar'}
-                  className="px-5 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 text-white"
                   style={{
-                    color: '#001718',
-                    background: 'linear-gradient(135deg, #a9d2b6, #1e4f43)',
+                    background: 'linear-gradient(135deg, oklch(0.40 0.18 255), oklch(0.72 0.13 200))',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, #bde2ca, #256f5a)';
+                    e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.45 0.18 255), oklch(0.77 0.13 200))';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, #a9d2b6, #1e4f43)';
+                    e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.40 0.18 255), oklch(0.72 0.13 200))';
                   }}
                 >
                   {usuario?.rol === 'proveedor' ? 'Gestionar servicios' : 'Explorar servicios'}
@@ -208,17 +207,17 @@ export default function Dashboard() {
                   style={glassCard}
                 >
                   <div className="flex justify-between items-start">
-                    <span className="text-xs" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>{card.label}</span>
+                    <span className="text-xs" style={{ color: 'oklch(0.45 0.03 240)' }}>{card.label}</span>
                     <div className="w-7 h-7 rounded flex items-center justify-center" style={{
-                      backgroundColor: 'rgba(169, 210, 182, 0.1)',
-                      color: '#a9d2b6',
-                      border: '1px solid rgba(169, 210, 182, 0.2)',
+                      backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                      color: 'oklch(0.40 0.18 255)',
+                      border: '1px solid rgba(0, 0, 0, 0.05)',
                     }}>
                       <Icon size={14} />
                     </div>
                   </div>
                   <div className="flex items-end gap-2 mt-3">
-                    <span className="text-xl lg:text-2xl font-bold" style={{ fontFamily: "'Playfair Display', serif", color: '#cde8e8' }}>
+                    <span className="text-xl lg:text-2xl font-bold" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>
                       {card.value}
                     </span>
                   </div>
@@ -235,20 +234,20 @@ export default function Dashboard() {
             {/* Solicitudes Recientes */}
             <div className="rounded-xl p-5 lg:p-6" style={glassCard}>
               <div className="flex justify-between items-center mb-5">
-                <h3 className="text-base lg:text-lg font-semibold" style={{ fontFamily: "'Playfair Display', serif", color: '#cde8e8' }}>
+                <h3 className="text-base lg:text-lg font-semibold" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>
                   Solicitudes Recientes
                 </h3>
-                <Link to="/mis-solicitudes" className="text-sm transition-colors" style={{ color: '#a9d2b6' }}>
+                <Link to="/mis-solicitudes" className="text-sm transition-colors" style={{ color: 'oklch(0.40 0.18 255)' }}>
                   Ver todas
                 </Link>
               </div>
 
               {solicitudes.length === 0 ? (
-                <div className="text-center py-12" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>
+                <div className="text-center py-12" style={{ color: 'oklch(0.45 0.03 240)' }}>
                   <ClipboardList size={40} className="mx-auto mb-3" style={{ opacity: 0.3 }} />
                   <p className="text-sm">No hay solicitudes aún</p>
                   {usuario?.rol === 'cliente' && (
-                    <Link to="/buscar" className="inline-block mt-3 text-sm" style={{ color: '#a9d2b6' }}>
+                    <Link to="/buscar" className="inline-block mt-3 text-sm" style={{ color: 'oklch(0.40 0.18 255)' }}>
                       Buscar servicios disponibles
                     </Link>
                   )}
@@ -262,19 +261,19 @@ export default function Dashboard() {
                         key={sol.id}
                         className="rounded-xl p-4 transition-all"
                         style={{
-                          backgroundColor: 'rgba(0, 17, 18, 0.4)',
+                          backgroundColor: 'rgba(255, 255, 255, 0.6)',
                           backdropFilter: 'blur(12px)',
-                          border: '1px solid rgba(169, 210, 182, 0.08)',
+                          border: '1px solid rgba(0, 0, 0, 0.05)',
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.25)';
+                          e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.1)';
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.08)';
+                          e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.05)';
                         }}
                       >
                         <div className="flex items-start justify-between mb-3">
-                          <h4 className="text-sm font-semibold truncate" style={{ fontFamily: "'Playfair Display', serif", color: '#cde8e8' }}>
+                          <h4 className="text-sm font-semibold truncate" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>
                             {sol.servicio_titulo}
                           </h4>
                           <span
@@ -288,18 +287,18 @@ export default function Dashboard() {
                             {sol.estado.replace('_', ' ')}
                           </span>
                         </div>
-                        <p className="text-xs line-clamp-2 mb-3" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>
+                        <p className="text-xs line-clamp-2 mb-3" style={{ color: 'oklch(0.45 0.03 240)' }}>
                           {sol.descripcion || 'Sin descripción'}
                         </p>
                         <div className="flex items-center justify-between text-xs pt-2" style={{
-                          color: 'rgba(193, 200, 193, 0.5)',
+                          color: 'oklch(0.45 0.03 240)',
                           borderTop: subtleBorder,
                         }}>
                           <span className="flex items-center gap-1">
                             <Calendar size={12} />
                             {sol.fecha_solicitud ? new Date(sol.fecha_solicitud).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : ''}
                           </span>
-                          <span className="flex items-center gap-1 font-medium" style={{ color: '#a9d2b6' }}>
+                          <span className="flex items-center gap-1 font-medium" style={{ color: 'oklch(0.40 0.18 255)' }}>
                             <DollarSign size={12} />
                             ${parseFloat(sol.tarifa || 0).toFixed(2)}
                           </span>
@@ -316,38 +315,36 @@ export default function Dashboard() {
           <div className="col-span-12 xl:col-span-4 flex flex-col gap-6">
             {/* Accesos Rápidos */}
             <div className="rounded-xl p-5 lg:p-6" style={glassCard}>
-              <h3 className="text-base font-semibold mb-4" style={{ fontFamily: "'Playfair Display', serif", color: '#cde8e8' }}>
+              <h3 className="text-base font-semibold mb-4" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>
                 Accesos Rápidos
               </h3>
               <div className="grid grid-cols-2 gap-3">
                 {quickActions.map((action, i) => {
                   const Icon = action.icon;
                   return (
-                    <Link
-                      key={i}
-                      to={action.path}
+                      <Link key={i} to={action.path}
                       className="flex flex-col items-center justify-center gap-2 p-3 lg:p-4 rounded-xl transition-all group"
                       style={{
-                        backgroundColor: 'rgba(0, 17, 18, 0.4)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.6)',
                         backdropFilter: 'blur(12px)',
-                        border: '1px solid rgba(169, 210, 182, 0.08)',
+                        border: '1px solid rgba(0, 0, 0, 0.05)',
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(21, 46, 47, 0.5)';
-                        e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.25)';
+                        e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.03)';
+                        e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.1)';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(0, 17, 18, 0.4)';
-                        e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.08)';
+                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.6)';
+                        e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.05)';
                       }}
                     >
                       <div className="w-9 h-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110" style={{
-                        backgroundColor: 'rgba(169, 210, 182, 0.1)',
+                        backgroundColor: 'rgba(0, 0, 0, 0.04)',
                         color: action.color,
                       }}>
                         <Icon size={18} />
                       </div>
-                      <span className="text-[11px] text-center leading-tight" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>
+                      <span className="text-[11px] text-center leading-tight" style={{ color: 'oklch(0.45 0.03 240)' }}>
                         {action.label}
                       </span>
                     </Link>
@@ -358,7 +355,7 @@ export default function Dashboard() {
 
             {/* Resumen */}
             <div className="rounded-xl p-5 lg:p-6 flex-1" style={glassCard}>
-              <h3 className="text-base font-semibold mb-5" style={{ fontFamily: "'Playfair Display', serif", color: '#cde8e8' }}>
+              <h3 className="text-base font-semibold mb-5" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>
                 Resumen
               </h3>
               <div className="space-y-4">
@@ -373,10 +370,10 @@ export default function Dashboard() {
                         <Icon size={14} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm truncate" style={{ color: '#cde8e8' }}>{item.label}</p>
-                        <p className="text-[11px]" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>{item.time}</p>
+                        <p className="text-sm truncate" style={{ color: 'oklch(0.25 0.06 240)' }}>{item.label}</p>
+                        <p className="text-[11px]" style={{ color: 'oklch(0.45 0.03 240)' }}>{item.time}</p>
                       </div>
-                      <div className="w-1.5 h-1.5 rounded-full shrink-0 mt-2" style={{ backgroundColor: '#a9d2b6' }} />
+                      <div className="w-1.5 h-1.5 rounded-full shrink-0 mt-2" style={{ backgroundColor: 'oklch(0.40 0.18 255)' }} />
                     </div>
                   );
                 })}

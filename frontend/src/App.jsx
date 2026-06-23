@@ -25,13 +25,13 @@ function RutaProtegida({ children, rol }) {
   return children;
 }
 
-const rutasDashboard = ['/dashboard', '/perfil', '/mis-servicios', '/mis-solicitudes', '/solicitar', '/calificar', '/buscar'];
+const rutasDashboard = ['/dashboard', '/perfil', '/mis-servicios', '/mis-solicitudes', '/solicitar', '/calificar', '/buscar', '/mapa'];
 
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const { usuario } = useAuth();
-  const esDashboard = rutasDashboard.some((r) => location.pathname.startsWith(r)) || (location.pathname.startsWith('/mapa') && !!usuario);
+  const esDashboard = rutasDashboard.some((r) => location.pathname.startsWith(r)) && !!usuario;
   const isAuth = location.pathname === '/login' || location.pathname === '/registro';
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export default function App() {
 
       <main className={`relative z-10 ${!esDashboard && !isAuth ? 'pt-20' : ''}`}>
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={usuario ? <Navigate to="/dashboard" /> : <Home />} />
           <Route path="/login" element={<Auth />} />
           <Route path="/registro" element={<Auth />} />
           <Route path="/buscar" element={<Buscar />} />

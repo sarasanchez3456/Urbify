@@ -3,7 +3,7 @@ const { query } = require('../config/db');
 exports.listarNotificaciones = async (req, res) => {
   try {
     const [notificaciones] = await query(
-      'SELECT * FROM notificaciones WHERE usuario_id = ? ORDER BY creado_en DESC',
+      'SELECT * FROM notificaciones WHERE usuario_id = ? ORDER BY fecha_creacion DESC',
       [req.usuarioId]
     );
     res.json(notificaciones);

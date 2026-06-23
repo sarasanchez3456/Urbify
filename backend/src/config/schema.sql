@@ -1,152 +1,104 @@
-IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'urbify_db')
-  CREATE DATABASE urbify_db;
-GO
+CREATE DATABASE IF NOT EXISTS urbify_db;
 
 USE urbify_db;
-GO
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[categorias]') AND type in (N'U'))
-CREATE TABLE categorias (
-  id            INT IDENTITY(1,1) PRIMARY KEY,
-  nombre        NVARCHAR(100) NOT NULL,
-  icono_url     NVARCHAR(255),
-  descripcion   NVARCHAR(MAX)
+CREATE TABLE IF NOT EXISTS categorias (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  nombre        VARCHAR(100) NOT NULL,
+  icono_url     VARCHAR(255),
+  descripcion   TEXT
 );
-GO
 
-IF NOT EXISTS (SELECT 1 FROM categorias)
-  INSERT INTO categorias (nombre, descripcion) VALUES
-    (N'Electricidad',  N'Instalaciones eléctricas, reparaciones y mantenimiento'),
-    (N'Plomería',      N'Reparación de tuberías, sanitarios y sistemas de agua'),
-    (N'Mecánica',      N'Reparación y mantenimiento de vehículos'),
-    (N'Carpintería',   N'Fabricación y reparación de muebles y estructuras en madera'),
-    (N'Pintura',       N'Pintura interior y exterior de inmuebles'),
-    (N'Cerrajería',    N'Instalación y reparación de cerraduras'),
-    (N'Jardinería',    N'Mantenimiento de jardines y zonas verdes'),
-    (N'Limpieza',      N'Servicios de aseo residencial y comercial');
-GO
+INSERT IGNORE INTO categorias (id, nombre, descripcion) VALUES
+  (1, 'Electricidad',  'Instalaciones eléctricas, reparaciones y mantenimiento'),
+  (2, 'Plomería',      'Reparación de tuberías, sanitarios y sistemas de agua'),
+  (3, 'Mecánica',      'Reparación y mantenimiento de vehículos'),
+  (4, 'Carpintería',   'Fabricación y reparación de muebles y estructuras en madera'),
+  (5, 'Pintura',       'Pintura interior y exterior de inmuebles'),
+  (6, 'Cerrajería',    'Instalación y reparación de cerraduras'),
+  (7, 'Jardinería',    'Mantenimiento de jardines y zonas verdes'),
+  (8, 'Limpieza',      'Servicios de aseo residencial y comercial');
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[usuarios]') AND type in (N'U'))
-CREATE TABLE usuarios (
-  id            INT IDENTITY(1,1) PRIMARY KEY,
-  nombre        NVARCHAR(100) NOT NULL,
-  apellido      NVARCHAR(100) NOT NULL,
-  correo        NVARCHAR(150) NOT NULL,
-  contrasena    NVARCHAR(255) NOT NULL,
-  telefono      NVARCHAR(20),
-  rol           NVARCHAR(20) NOT NULL CHECK (rol IN ('cliente', 'proveedor')),
-  foto_url      NVARCHAR(255),
-  categoria_id  INT NULL REFERENCES categorias(id),
+CREATE TABLE IF NOT EXISTS usuarios (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  nombre        VARCHAR(100) NOT NULL,
+  apellido      VARCHAR(100) NOT NULL,
+  correo        VARCHAR(150) NOT NULL UNIQUE,
+  contrasena    VARCHAR(255) NOT NULL,
+  telefono      VARCHAR(20),
+  rol           VARCHAR(20) NOT NULL CHECK (rol IN ('cliente', 'proveedor')),
+  foto_url      VARCHAR(255),
+  categoria_id  INT NULL,
   latitud       DECIMAL(10,8),
   longitud      DECIMAL(11,8),
-  oficio        NVARCHAR(100),
-  direccion     NVARCHAR(255),
-  activo        BIT DEFAULT 1,
+  oficio        VARCHAR(100),
+  direccion     VARCHAR(255),
+  activo        BOOLEAN DEFAULT 1,
   intentos_fallidos INT DEFAULT 0,
-  bloqueado_hasta   DATETIME2 NULL,
-  creado_eldia     DATETIME2 DEFAULT GETDATE(),
-  CONSTRAINT UQ_usuarios_correo UNIQUE (correo)
+  bloqueado_hasta   DATETIME NULL,
+  fecha_creacion     DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (categoria_id) REFERENCES categorias(id)
 );
-GO
 
-IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'usuarios' AND COLUMN_NAME = 'categoria_id')
-BEGIN
-  ALTER TABLE usuarios ADD categoria_id INT NULL REFERENCES categorias(id);
-  PRINT 'Columna categoria_id agregada a usuarios';
-END
-GO
-
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[servicios]') AND type in (N'U'))
-CREATE TABLE servicios (
-  id               INT IDENTITY(1,1) PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS servicios (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
   proveedor_id     INT NOT NULL,
   categoria_id     INT NOT NULL,
-  titulo           NVARCHAR(150) NOT NULL,
-  descripcion      NVARCHAR(MAX),
+  titulo           VARCHAR(150) NOT NULL,
+  descripcion      TEXT,
   tarifa           DECIMAL(10,2) NOT NULL,
-  tipo_tarifa      NVARCHAR(10) DEFAULT 'hora' CHECK (tipo_tarifa IN ('hora', 'fijo')),
-  disponible       BIT DEFAULT 1,
-  creado_eldia       DATETIME2 DEFAULT GETDATE(),
+  tipo_tarifa      VARCHAR(10) DEFAULT 'hora' CHECK (tipo_tarifa IN ('hora', 'fijo')),
+  disponible       BOOLEAN DEFAULT 1,
+  fecha_creacion       DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (proveedor_id) REFERENCES usuarios(id) ON DELETE CASCADE,
   FOREIGN KEY (categoria_id) REFERENCES categorias(id)
 );
-GO
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[solicitudes]') AND type in (N'U'))
-CREATE TABLE solicitudes (
-  id               INT IDENTITY(1,1) PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS solicitudes (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
   cliente_id       INT NOT NULL,
   proveedor_id     INT NOT NULL,
   servicio_id      INT NOT NULL,
-  descripcion      NVARCHAR(MAX),
-  direccion        NVARCHAR(255),
+  descripcion      TEXT,
+  direccion        VARCHAR(255),
   latitud          DECIMAL(10,8),
   longitud         DECIMAL(11,8),
-  fecha_solicitud  DATETIME2 DEFAULT GETDATE(),
-  fecha_servicio   DATETIME2,
-  estado           NVARCHAR(20) DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'aceptada', 'en_proceso', 'completada', 'cancelada')),
-  correo_enviado   BIT DEFAULT 0,
+  fecha_solicitud  DATETIME DEFAULT CURRENT_TIMESTAMP,
+  fecha_servicio   DATETIME,
+  estado           VARCHAR(20) DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'aceptada', 'en_proceso', 'completada', 'cancelada')),
+  correo_enviado   BOOLEAN DEFAULT 0,
   FOREIGN KEY (cliente_id)   REFERENCES usuarios(id),
   FOREIGN KEY (proveedor_id) REFERENCES usuarios(id),
   FOREIGN KEY (servicio_id)  REFERENCES servicios(id)
 );
-GO
 
-IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'solicitudes' AND COLUMN_NAME = 'direccion')
-BEGIN
-  ALTER TABLE solicitudes ADD direccion NVARCHAR(255) NULL;
-  PRINT 'Columna direccion agregada a solicitudes';
-END
-GO
-
-IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'solicitudes' AND COLUMN_NAME = 'latitud')
-BEGIN
-  ALTER TABLE solicitudes ADD latitud DECIMAL(10,8) NULL;
-  PRINT 'Columna latitud agregada a solicitudes';
-END
-GO
-
-IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'solicitudes' AND COLUMN_NAME = 'longitud')
-BEGIN
-  ALTER TABLE solicitudes ADD longitud DECIMAL(11,8) NULL;
-  PRINT 'Columna longitud agregada a solicitudes';
-END
-GO
-
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[calificaciones]') AND type in (N'U'))
-CREATE TABLE calificaciones (
-  id               INT IDENTITY(1,1) PRIMARY KEY,
-  solicitud_id     INT NOT NULL,
+CREATE TABLE IF NOT EXISTS calificaciones (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  solicitud_id     INT NOT NULL UNIQUE,
   cliente_id       INT NOT NULL,
   proveedor_id     INT NOT NULL,
   puntuacion       TINYINT NOT NULL CHECK (puntuacion BETWEEN 1 AND 5),
-  comentario       NVARCHAR(MAX),
-  creado_eldia        DATETIME2 DEFAULT GETDATE(),
+  comentario       TEXT,
+  fecha_creacion        DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (solicitud_id)  REFERENCES solicitudes(id),
   FOREIGN KEY (cliente_id)    REFERENCES usuarios(id),
-  FOREIGN KEY (proveedor_id)  REFERENCES usuarios(id),
-  CONSTRAINT UQ_calificaciones_solicitud UNIQUE (solicitud_id)
+  FOREIGN KEY (proveedor_id)  REFERENCES usuarios(id)
 );
-GO
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[tokens_sesion]') AND type in (N'U'))
-CREATE TABLE tokens_sesion (
-  id               INT IDENTITY(1,1) PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS tokens_sesion (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
   usuario_id       INT NOT NULL,
-  token            NVARCHAR(512) NOT NULL,
-  expira_en        DATETIME2 NOT NULL,
-  creado_eldia        DATETIME2 DEFAULT GETDATE(),
+  token            VARCHAR(512) NOT NULL,
+  expira_en        DATETIME NOT NULL,
+  fecha_creacion        DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 );
-GO
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[notificaciones]') AND type in (N'U'))
-CREATE TABLE notificaciones (
-  id               INT IDENTITY(1,1) PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS notificaciones (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
   usuario_id       INT NOT NULL,
-  mensaje          NVARCHAR(MAX) NOT NULL,
-  leida            BIT DEFAULT 0,
-  creado_eldia        DATETIME2 DEFAULT GETDATE(),
+  mensaje          TEXT NOT NULL,
+  leida            BOOLEAN DEFAULT 0,
+  fecha_creacion        DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 );
-GO

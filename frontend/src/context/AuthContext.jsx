@@ -19,7 +19,7 @@ export function AuthProvider({ children }) {
         localStorage.setItem('usuario', JSON.stringify(res.data));
       })
       .catch((err) => {
-        if (err.response?.status === 401) {
+        if (err.response?.status === 401 || err.response?.status === 404) {
           localStorage.removeItem('token');
           localStorage.removeItem('usuario');
           setUsuario(null);

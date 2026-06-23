@@ -18,7 +18,7 @@ export function Navbar() {
       style={{
         padding: "0 52px",
         height: "80px",
-        background: "transparent",
+        background: "white",
       }}
     >
       <Link to="/" className="logo no-underline relative" style={{ fontFamily: "'DM Serif Display', 'Playfair Display', serif", fontWeight: 800, fontSize: "1.3rem", letterSpacing: "0.05em" }}>

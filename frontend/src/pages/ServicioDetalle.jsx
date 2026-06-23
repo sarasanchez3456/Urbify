@@ -63,7 +63,7 @@ export default function ServicioDetalle() {
                   </div>
                   {c.comentario && <p>{c.comentario}</p>}
                   <span className="comentario-fecha">
-                    {c.creado_en ? new Date(c.creado_en).toLocaleDateString() : ''}
+                    {c.fecha_creacion ? new Date(c.fecha_creacion).toLocaleDateString() : ''}
                   </span>
                 </div>
               ))

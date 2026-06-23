@@ -5,14 +5,14 @@ import DashboardLayout from '../components/DashboardLayout';
 import { Star, Send, ArrowLeft } from 'lucide-react';
 
 const glassCard = {
-  backgroundColor: 'rgba(9, 35, 36, 0.4)',
+  backgroundColor: 'rgba(255, 255, 255, 0.6)',
   backdropFilter: 'blur(16px)',
-  border: '1px solid rgba(169, 210, 182, 0.12)',
+  border: '1px solid rgba(0, 0, 0, 0.05)',
 };
 
 const btnGradient = {
-  color: '#001718',
-  background: 'linear-gradient(135deg, #a9d2b6, #1e4f43)',
+  color: 'white',
+  background: 'linear-gradient(135deg, oklch(0.40 0.18 255), #1e4f43)',
 };
 
 export default function Calificar() {
@@ -52,14 +52,14 @@ export default function Calificar() {
           }}>
             <Star size={32} style={{ color: '#4ade80', fill: '#4ade80' }} />
           </div>
-          <h2 className="text-xl font-semibold mb-2" style={{ fontFamily: "'Playfair Display', serif", color: '#cde8e8' }}>¡Calificación enviada!</h2>
-          <p className="text-sm mb-6" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>Gracias por tu feedback, ayuda a mejorar la comunidad.</p>
+          <h2 className="text-xl font-semibold mb-2" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>¡Calificación enviada!</h2>
+          <p className="text-sm mb-6" style={{ color: 'oklch(0.45 0.03 240)' }}>Gracias por tu feedback, ayuda a mejorar la comunidad.</p>
           <button
             onClick={() => navigate('/mis-solicitudes')}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg transition-all text-sm font-semibold"
             style={btnGradient}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, #bde2ca, #256f5a)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, #a9d2b6, #1e4f43)'; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.45 0.18 255), oklch(0.77 0.13 200))'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.40 0.18 255), #1e4f43)'; }}
           >
             <ArrowLeft size={16} />
             Volver a Mis Solicitudes
@@ -84,7 +84,7 @@ export default function Calificar() {
           )}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="text-center">
-              <label className="block text-sm mb-3" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>Puntuación</label>
+              <label className="block text-sm mb-3" style={{ color: 'oklch(0.45 0.03 240)' }}>Puntuación</label>
               <div className="flex justify-center gap-2">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
@@ -105,7 +105,7 @@ export default function Calificar() {
                 ))}
               </div>
               {puntuacion > 0 && (
-                <p className="text-sm mt-2" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>
+                <p className="text-sm mt-2" style={{ color: 'oklch(0.45 0.03 240)' }}>
                   {puntuacion === 1 && 'Muy malo'}
                   {puntuacion === 2 && 'Malo'}
                   {puntuacion === 3 && 'Regular'}
@@ -116,7 +116,7 @@ export default function Calificar() {
             </div>
 
             <div>
-              <label className="block text-sm mb-1.5" style={{ color: 'rgba(193, 200, 193, 0.5)' }}>Comentario (opcional)</label>
+              <label className="block text-sm mb-1.5" style={{ color: 'oklch(0.45 0.03 240)' }}>Comentario (opcional)</label>
               <textarea
                 rows="4"
                 value={comentario}
@@ -124,14 +124,14 @@ export default function Calificar() {
                 placeholder="Cuenta tu experiencia con este servicio..."
                 className="w-full px-4 py-2.5 rounded-lg transition-colors resize-none"
                 style={{
-                  backgroundColor: 'rgba(0, 17, 18, 0.4)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.6)',
                   backdropFilter: 'blur(12px)',
-                  border: '1px solid rgba(169, 210, 182, 0.08)',
-                  color: '#cde8e8',
+                  border: '1px solid rgba(0, 0, 0, 0.05)',
+                  color: 'oklch(0.25 0.06 240)',
                   outline: 'none',
                 }}
-                onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.5)'; }}
-                onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(169, 210, 182, 0.08)'; }}
+                onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.2)'; }}
+                onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.05)'; }}
               />
             </div>
 
@@ -140,8 +140,8 @@ export default function Calificar() {
               disabled={enviando}
               className="w-full flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg transition-all disabled:opacity-50 text-sm font-semibold"
               style={btnGradient}
-              onMouseEnter={(e) => { if (!enviando) e.currentTarget.style.background = 'linear-gradient(135deg, #bde2ca, #256f5a)'; }}
-              onMouseLeave={(e) => { if (!enviando) e.currentTarget.style.background = 'linear-gradient(135deg, #a9d2b6, #1e4f43)'; }}
+              onMouseEnter={(e) => { if (!enviando) e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.45 0.18 255), oklch(0.77 0.13 200))'; }}
+              onMouseLeave={(e) => { if (!enviando) e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.40 0.18 255), #1e4f43)'; }}
             >
               <Send size={16} />
               {enviando ? 'Enviando...' : 'Enviar Calificación'}
