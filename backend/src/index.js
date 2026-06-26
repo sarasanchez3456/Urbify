@@ -14,8 +14,21 @@ const notificacionesRoutes = require('./routes/notificaciones.routes');
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// Soporta múltiples orígenes separados por coma en CORS_ORIGIN
+// Ej: https://sarasanchez3456.github.io,http://localhost:5173
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map((o) => o.trim());
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Permite requests sin origin (Postman, curl, server-to-server)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS bloqueado para origen: ${origin}`));
+    }
+  },
   credentials: true,
 }));
 app.use(express.json());
