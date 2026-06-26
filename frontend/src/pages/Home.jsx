@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import './Home.css';
 
+// Componente SVG reutilizable para los íconos: recibe un path (d) o hijos directos
 const Icon = ({ d, vb = '0 0 24 24', children }) => (
   <svg viewBox={vb} fill="none" stroke="currentColor" strokeWidth="1.5"
     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -12,6 +13,7 @@ const Icon = ({ d, vb = '0 0 24 24', children }) => (
   </svg>
 );
 
+// Biblioteca de íconos SVG usados en categorías y pasos "Cómo funciona"
 const ICONS = {
   bolt:   <Icon d="M13 2.5 5.5 13.5h5L9.5 21.5 18.5 9.5h-6l.5-7Z" />,
   drop:   <Icon><path d="M12 3.5C12 3.5 6 10.5 6 14.5a6 6 0 0 0 12 0c0-4-6-11-6-11Z"/><path d="M9.5 15.5a2.5 2.5 0 0 0 2 2.4"/></Icon>,
@@ -25,12 +27,14 @@ const ICONS = {
   star:   <Icon d="m12 3.5 2.5 5.3 5.8.7-4.3 4 1.1 5.7L12 16.4l-5.1 2.8 1.1-5.7-4.3-4 5.8-.7L12 3.5Z" />,
 };
 
+// Categorías de servicios disponibles en la plataforma
 const CATS = [
   { name: 'Electricidad', icon: 'bolt' }, { name: 'Plomería', icon: 'drop' },
   { name: 'Mecánica', icon: 'gear' },     { name: 'Carpintería', icon: 'hammer' },
   { name: 'Pintura', icon: 'roller' },    { name: 'Jardinería', icon: 'sprout' },
 ];
 
+// Pasos del flujo "Cómo funciona" que se muestran en la sección inferior
 const STEPS = [
   { icon: 'search',    title: 'Busca el servicio',  desc: 'Escribe lo que necesitas o explora el mapa: verás quién está disponible cerca de ti.' },
   { icon: 'user',      title: 'Revisa el perfil',   desc: 'Calificaciones reales, experiencia verificada y tarifas claras antes de decidir.' },
@@ -38,25 +42,30 @@ const STEPS = [
   { icon: 'star',      title: 'Califica al final',  desc: 'Tu reseña mantiene la calidad de la comunidad para el siguiente vecino.' },
 ];
 
+// Palabras que rotan en el título del hero para mostrar los distintos servicios
 const HERO_WORDS = ['electricidad', 'plomería', 'mecánica', 'carpintería', 'pintura', 'jardinería'];
 
 export default function Home() {
   const navigate = useNavigate();
   const { usuario } = useAuth();
-  const [stats, setStats] = useState(null);
-  const [destacados, setDestacados] = useState([]);
-  const [heroWord, setHeroWord] = useState(0);
+  const [stats, setStats] = useState(null);       // estadísticas globales (proveedores, servicios, calificación)
+  const [destacados, setDestacados] = useState([]); // servicios destacados para las tarjetas flip
+  const [heroWord, setHeroWord] = useState(0);    // índice de la palabra animada en el hero
 
+  // Carga inicial: estadísticas globales y servicios destacados desde la API
   useEffect(() => {
     api.get('/stats').then(res => setStats(res.data)).catch(() => {});
     api.get('/servicios/destacados').then(res => setDestacados(res.data)).catch(() => {});
   }, []);
 
+  // Rota la palabra del hero cada 4 segundos
   useEffect(() => {
     const interval = setInterval(() => setHeroWord(i => (i + 1) % HERO_WORDS.length), 4000);
     return () => clearInterval(interval);
   }, []);
 
+  // Secciones que consume el componente ScrollGlobe (animación de scroll con globo 3D)
+  // Cada sección define badge, título, descripción, alineación y botones de acción
   const demoSections = [
     {
       id: "hero",
@@ -106,11 +115,13 @@ export default function Home() {
 
   return (
     <div className="home-wrapper">
+      {/* Sección animada con globo 3D que recorre las secciones al hacer scroll */}
       <ScrollGlobe sections={demoSections} />
 
+      {/* Contenido estático debajo del ScrollGlobe */}
       <div className="home-cream">
 
-        {/* STATS BAND */}
+        {/* STATS BAND — franja horizontal con 3 métricas clave traídas de la API */}
         <div className="stats-band">
           <div className="stats-inner">
             <div className="stat-item">
@@ -130,7 +141,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* CATEGORIES */}
+        {/* CATEGORIES — grid de 6 botones de categoría; al hacer clic filtra la búsqueda */}
         <section className="uy-sec" id="servicios">
           <div className="uy-sec-head">
             <span className="uy-tag">Categorías</span>
@@ -148,7 +159,9 @@ export default function Home() {
           </div>
         </section>
 
-        {/* SERVICES */}
+        {/* SERVICES — tarjetas flip con los servicios destacados traídos de la API.
+            El frente muestra info del proveedor (avatar, calificación, tarifa).
+            El reverso muestra título y descripción del servicio con imagen de fondo por categoría. */}
         <section className="sec-services">
           <div className="sec-head">
             <div className="sec-tag">Profesionales</div>
@@ -164,12 +177,14 @@ export default function Home() {
                 'Carpintería': '🪚', 'Pintura': '🎨', 'Jardinería': '🌿',
                 'Cerrajería': '🔒', 'Limpieza': '🧹',
               }[svc.categoria_nombre] || '⭐';
+              // Paleta de colores que rota entre las tarjetas para variedad visual
               const palettes = [
                 { back: 'fc-back--blue', frontBg: 'linear-gradient(160deg, oklch(0.15 0.04 240) 0%, oklch(0.20 0.08 250) 55%, oklch(0.25 0.12 260) 100%)', avatarBg: 'linear-gradient(135deg, oklch(0.72 0.13 200), oklch(0.40 0.18 255))', accent: 'oklch(0.72 0.13 200)', tagBorder: 'oklch(0.72 0.13 200 / 0.3)' },
                 { back: 'fc-back--cobalt', frontBg: 'linear-gradient(160deg, oklch(0.14 0.05 250) 0%, oklch(0.22 0.10 260) 55%, oklch(0.30 0.15 255) 100%)', avatarBg: 'linear-gradient(135deg, oklch(0.65 0.12 210), oklch(0.45 0.16 250))', accent: 'oklch(0.65 0.12 210)', tagBorder: 'oklch(0.65 0.12 210 / 0.3)' },
                 { back: 'fc-back--navy', frontBg: 'linear-gradient(160deg, oklch(0.12 0.03 235) 0%, oklch(0.18 0.06 245) 55%, oklch(0.28 0.10 240) 100%)', avatarBg: 'linear-gradient(135deg, oklch(0.80 0.10 195), oklch(0.50 0.14 220))', accent: 'oklch(0.80 0.10 195)', tagBorder: 'oklch(0.80 0.10 195 / 0.3)' },
               ];
               const p = palettes[i % palettes.length];
+              // Imagen de fondo del reverso de la tarjeta según categoría
               const bgImageMap = {
                 'Electricidad': '/images/bg_electricidad_1780486963455.png',
                 'Plomería': '/images/bg_plomeria_1780486974582.png',
@@ -182,6 +197,7 @@ export default function Home() {
               return (
                 <div className="fc-card" key={svc.id}>
                   <div className="fc-content">
+                    {/* Reverso de la tarjeta: descripción del servicio + imagen de categoría */}
                     <div className={'fc-back ' + p.back}>
                       <div
                         className="fc-back-content fc-svc-body"
@@ -194,6 +210,7 @@ export default function Home() {
                         <span className="fc-svc-tag" style={{ color: p.accent, borderColor: p.tagBorder, backgroundColor: 'oklch(0.18 0.04 240 / 0.6)', backdropFilter: 'blur(4px)' }}>{svc.categoria_nombre}</span>
                       </div>
                     </div>
+                    {/* Frente de la tarjeta: avatar, nombre, calificación, tarifa y botón */}
                     <div className="fc-front" style={{ background: p.frontBg }}>
                       <div className="fc-front-content fc-prov-body">
                         <div className="fc-prov-top">
@@ -224,7 +241,8 @@ export default function Home() {
           </div>
         </section>
 
-        {/* MAP */}
+        {/* MAP — sección decorativa con un mapa ilustrativo (puntos y líneas SVG)
+            y un panel de texto que redirige al mapa interactivo real de Leaflet */}
         <section className="sec-map">
           <div className="map-wrap">
             <div className="map-info glass-card">
@@ -235,6 +253,7 @@ export default function Home() {
                 <button className="hbtn-primary">Abrir Mapa →</button>
               </Link>
             </div>
+            {/* Mapa ilustrativo: puntos animados con etiquetas y líneas punteadas SVG */}
             <div className="map-vis">
               <div className="map-grid-bg" />
               <div className="map-dot" style={{ top: '35%', left: '45%', '--dot-color': 'oklch(0.72 0.13 200)' }}>
@@ -264,7 +283,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* HOW IT WORKS */}
+        {/* HOW IT WORKS — lista ordenada de 4 pasos que explican el flujo de la plataforma */}
         <section id="como-funciona" className="uy-sec" style={{ scrollMarginTop: '100px' }}>
           <div className="uy-sec-head">
             <span className="uy-tag">Cómo funciona</span>
@@ -282,7 +301,7 @@ export default function Home() {
           </ol>
         </section>
 
-        {/* FOOTER */}
+        {/* FOOTER — pie de página con logo, links y copyright */}
         <footer className="site-footer">
           <div className="footer-inner">
             <div className="footer-brand">
