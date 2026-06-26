@@ -3,8 +3,6 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  // base debe coincidir exactamente con el nombre del repositorio en GitHub
-  base: '/Urbify/',
   plugins: [
     react(),
     tailwindcss(),
