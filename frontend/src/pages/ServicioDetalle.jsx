@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import DashboardLayout from '../components/DashboardLayout';
 import './ServicioDetalle.css';
 
 export default function ServicioDetalle() {
@@ -20,10 +21,8 @@ export default function ServicioDetalle() {
   if (cargando) return <div className="loading container">Cargando servicio...</div>;
   if (!servicio) return <div className="loading container">Servicio no encontrado</div>;
 
-  return (
-    <div className="detalle-page container">
-      <Link to="/buscar" className="btn-back">← Volver a resultados</Link>
-
+  const contenido = (
+    <div className="detalle-page">
       <div className="detalle-grid">
         <div className="detalle-main card">
           <div className="detalle-header">
@@ -92,4 +91,10 @@ export default function ServicioDetalle() {
       </div>
     </div>
   );
+
+  if (usuario) {
+    return <DashboardLayout titulo={servicio.titulo}>{contenido}</DashboardLayout>;
+  }
+
+  return <div className="container">{contenido}</div>;
 }

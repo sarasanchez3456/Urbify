@@ -25,7 +25,7 @@ function RutaProtegida({ children, rol }) {
   return children;
 }
 
-const rutasDashboard = ['/dashboard', '/perfil', '/mis-servicios', '/mis-solicitudes', '/solicitar', '/calificar', '/buscar', '/mapa'];
+const rutasDashboard = ['/dashboard', '/perfil', '/mis-servicios', '/mis-solicitudes', '/solicitar', '/calificar', '/buscar', '/mapa', '/servicio'];
 
 export default function App() {
   const navigate = useNavigate();

@@ -1,10 +1,10 @@
 .detalle-page {
-  padding: 2rem 52px;
+  padding: 1.5rem 0;
 }
 
 .btn-back {
   display: inline-block;
-  color: #a9d2b6;
+  color: oklch(0.40 0.18 255);
   text-decoration: none;
   font-weight: 500;
   margin-bottom: 1.5rem;
@@ -14,7 +14,7 @@
 }
 
 .btn-back:hover {
-  color: #c3eccf;
+  color: oklch(0.30 0.12 250);
 }
 
 .detalle-grid {
@@ -30,21 +30,21 @@
 
 .detalle-categoria {
   display: inline-block;
-  background: rgba(169, 210, 182, 0.1);
-  color: #a9d2b6;
+  background: oklch(0.40 0.18 255 / 0.08);
+  color: oklch(0.40 0.18 255);
   padding: 0.25rem 0.75rem;
   border-radius: 100px;
   font-size: 0.8rem;
   font-weight: 500;
   margin-bottom: 0.75rem;
   font-family: 'Plus Jakarta Sans', sans-serif;
-  border: 1px solid rgba(169, 210, 182, 0.15);
+  border: 1px solid oklch(0.40 0.18 255 / 0.15);
 }
 
 .detalle-header h1 {
   font-family: 'Playfair Display', serif;
   font-size: 1.75rem;
-  color: #cde8e8;
+  color: oklch(0.25 0.06 240);
   margin-bottom: 0.5rem;
 }
 
@@ -57,7 +57,7 @@
 }
 
 .detalle-rating span:last-child {
-  color: rgba(193, 200, 193, 0.3);
+  color: oklch(0.55 0.03 240);
   font-weight: 400;
 }
 
@@ -65,37 +65,36 @@
   font-family: 'Playfair Display', serif;
   font-size: 1.1rem;
   margin-bottom: 0.75rem;
-  color: #cde8e8;
+  color: oklch(0.25 0.06 240);
 }
 
 .detalle-body p {
-  color: rgba(193, 200, 193, 0.5);
+  color: oklch(0.45 0.03 240);
   line-height: 1.7;
   margin-bottom: 1.5rem;
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .detalle-precio-box {
-  background: rgba(9, 35, 36, 0.4);
-  border: 1px solid rgba(169, 210, 182, 0.15);
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.07);
   border-radius: 10px;
   padding: 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  backdrop-filter: blur(8px);
 }
 
 .detalle-precio-label {
   font-weight: 500;
-  color: rgba(205, 232, 232, 0.6);
+  color: oklch(0.45 0.03 240);
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .detalle-precio-valor {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #a9d2b6;
+  color: oklch(0.40 0.18 255);
   font-family: 'Playfair Display', serif;
 }
 
@@ -107,18 +106,18 @@
   font-family: 'Playfair Display', serif;
   font-size: 1.1rem;
   margin-bottom: 1rem;
-  color: #cde8e8;
+  color: oklch(0.25 0.06 240);
 }
 
 .sin-comentarios {
-  color: rgba(193, 200, 193, 0.3);
+  color: oklch(0.55 0.03 240);
   text-align: center;
   padding: 2rem;
 }
 
 .comentario-item {
   padding: 1rem 0;
-  border-bottom: 1px solid rgba(169, 210, 182, 0.06);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .comentario-item:last-child {
@@ -133,7 +132,7 @@
 
 .comentario-header strong {
   font-size: 0.95rem;
-  color: #cde8e8;
+  color: oklch(0.25 0.06 240);
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
@@ -142,7 +141,7 @@
 }
 
 .comentario-item p {
-  color: rgba(193, 200, 193, 0.5);
+  color: oklch(0.45 0.03 240);
   font-size: 0.9rem;
   margin-bottom: 0.25rem;
   font-family: 'Plus Jakarta Sans', sans-serif;
@@ -150,7 +149,7 @@
 
 .comentario-fecha {
   font-size: 0.8rem;
-  color: rgba(193, 200, 193, 0.25);
+  color: oklch(0.60 0.03 240);
 }
 
 .detalle-sidebar .card {
@@ -167,8 +166,8 @@
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #a9d2b6, #8eb69b);
-  color: #001718;
+  background: linear-gradient(135deg, oklch(0.40 0.18 255), oklch(0.55 0.16 240));
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -182,12 +181,12 @@
   font-family: 'Playfair Display', serif;
   font-size: 1.15rem;
   margin-bottom: 0.5rem;
-  color: #cde8e8;
+  color: oklch(0.25 0.06 240);
 }
 
 .proveedor-direccion,
 .proveedor-telefono {
-  color: rgba(193, 200, 193, 0.4);
+  color: oklch(0.45 0.03 240);
   font-size: 0.9rem;
   margin: 0.25rem 0;
   font-family: 'Plus Jakarta Sans', sans-serif;
@@ -195,7 +194,7 @@
 
 @media (max-width: 768px) {
   .detalle-page {
-    padding: 1rem;
+    padding: 1rem 0;
   }
   .detalle-grid {
     grid-template-columns: 1fr;
