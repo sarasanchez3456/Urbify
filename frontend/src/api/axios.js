@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+// En desarrollo usa el proxy de Vite (/api → localhost:4000).
+// En producción (GitHub Pages) usa la variable VITE_API_URL del archivo .env.production.
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: { 'Content-Type': 'application/json' },
 });
 
