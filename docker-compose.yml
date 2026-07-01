@@ -1,0 +1,93 @@
+# ═══════════════════════════════════════════════════════════════════
+#  URBIFY – Docker Compose
+#  Orquesta los 3 servicios: base de datos, backend y frontend
+#  Uso: docker compose up -d --build
+# ═══════════════════════════════════════════════════════════════════
+
+services:
+
+  # ─────────────────────────────────────────────────────────────
+  # SERVICIO 1: Base de datos MySQL 8.0
+  # ─────────────────────────────────────────────────────────────
+  db:
+    image: mysql:8.0
+    container_name: urbify-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-urbify_secret}
+      MYSQL_DATABASE: urbify_db
+    ports:
+      # Puerto nativo de MySQL: 3306 (host) → 3306 (contenedor)
+      - "3306:3306"
+    volumes:
+      # Volumen nombrado: los datos sobreviven aunque el contenedor se borre
+      - mysql_data:/var/lib/mysql
+      # Script SQL que crea las tablas al arrancar por primera vez
+      - ./backend/src/config/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    networks:
+      - urbify-red
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-urbify_secret}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ─────────────────────────────────────────────────────────────
+  # SERVICIO 2: API REST – Node.js / Express
+  # ─────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: urbify-backend
+    restart: unless-stopped
+    environment:
+      PORT: 4000
+      DB_HOST: db           # Nombre DNS interno en la red urbify-red
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-urbify_secret}
+      DB_NAME: urbify_db
+      JWT_SECRET: ${JWT_SECRET:-cambia_este_secreto_en_produccion}
+      JWT_EXPIRES_IN: 7d
+      CORS_ORIGIN: http://localhost
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy   # Espera que MySQL esté listo
+    networks:
+      - urbify-red
+
+  # ─────────────────────────────────────────────────────────────
+  # SERVICIO 3: Frontend React + Nginx
+  # ─────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: urbify-frontend
+    restart: unless-stopped
+    ports:
+      # La app queda disponible en http://localhost:80
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - urbify-red
+
+# ─────────────────────────────────────────────────────────────
+# RED PRIVADA (bridge): comunicación interna por nombre de servicio
+# ─────────────────────────────────────────────────────────────
+networks:
+  urbify-red:
+    driver: bridge
+
+# ─────────────────────────────────────────────────────────────
+# VOLUMEN NOMBRADO: persistencia de la base de datos
+# Los datos de MySQL se guardan aquí aunque el contenedor se elimine
+# ─────────────────────────────────────────────────────────────
+volumes:
+  mysql_data:
+    driver: local

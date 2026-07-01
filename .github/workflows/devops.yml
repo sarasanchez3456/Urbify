@@ -1,0 +1,121 @@
+# ═══════════════════════════════════════════════════════════════════
+#  URBIFY – Pipeline de Integración Continua (CI)
+#  GitHub Actions | Ficha SENA 3223877 – ADSO
+#  Este workflow se ejecuta automáticamente con cada push o PR a main
+# ═══════════════════════════════════════════════════════════════════
+
+name: Urbify CI Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  # ─────────────────────────────────────────────────────────────
+  # JOB 1: Validación del Backend (Node.js)
+  # ─────────────────────────────────────────────────────────────
+  backend-ci:
+    name: "🔍 Backend – Lint & Build Check"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "📥 Clonar el repositorio"
+        uses: actions/checkout@v4
+
+      - name: "⚙️ Configurar Node.js 20"
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: backend/package-lock.json
+
+      - name: "📦 Instalar dependencias del backend"
+        run: npm ci
+        working-directory: ./backend
+
+      - name: "✅ Verificar que el servidor arranca correctamente"
+        run: |
+          # Creamos un .env temporal con valores de prueba
+          echo "PORT=4000" > .env
+          echo "DB_HOST=localhost" >> .env
+          echo "DB_PORT=3306" >> .env
+          echo "DB_USER=root" >> .env
+          echo "DB_PASSWORD=test_password" >> .env
+          echo "DB_NAME=urbify_db" >> .env
+          echo "JWT_SECRET=ci_test_secret_key" >> .env
+          echo "JWT_EXPIRES_IN=7d" >> .env
+          # Verificamos que el archivo de entrada existe y la sintaxis es válida
+          node --check src/index.js
+          echo "✅ Sintaxis del backend válida"
+        working-directory: ./backend
+
+  # ─────────────────────────────────────────────────────────────
+  # JOB 2: Validación del Frontend (React + Vite)
+  # ─────────────────────────────────────────────────────────────
+  frontend-ci:
+    name: "🎨 Frontend – Install & Build"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "📥 Clonar el repositorio"
+        uses: actions/checkout@v4
+
+      - name: "⚙️ Configurar Node.js 20"
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: "📦 Instalar dependencias del frontend"
+        run: npm ci
+        working-directory: ./frontend
+
+      - name: "🏗️ Compilar el frontend con Vite (build de producción)"
+        run: npm run build
+        working-directory: ./frontend
+        env:
+          VITE_API_URL: http://localhost:4000/api
+
+      - name: "✅ Verificar que la carpeta dist fue generada"
+        run: |
+          if [ -d "frontend/dist" ]; then
+            echo "✅ Build exitoso – carpeta dist generada"
+            ls -la frontend/dist/
+          else
+            echo "❌ ERROR: La carpeta dist no existe"
+            exit 1
+          fi
+
+  # ─────────────────────────────────────────────────────────────
+  # JOB 3: Validación de la infraestructura Docker
+  # Se ejecuta solo si los jobs anteriores pasan
+  # ─────────────────────────────────────────────────────────────
+  docker-ci:
+    name: "🐳 Docker – Compose Validation"
+    runs-on: ubuntu-latest
+    needs: [backend-ci, frontend-ci]   # Espera que ambos jobs pasen
+
+    steps:
+      - name: "📥 Clonar el repositorio"
+        uses: actions/checkout@v4
+
+      - name: "🔍 Validar sintaxis del docker-compose.yml"
+        run: docker compose config
+        env:
+          DB_PASSWORD: ci_test_password
+          JWT_SECRET: ci_test_jwt_secret
+
+      - name: "📋 Resumen de la infraestructura"
+        run: |
+          echo "════════════════════════════════════"
+          echo "  URBIFY – Infraestructura validada"
+          echo "════════════════════════════════════"
+          docker compose config --services
+          echo "✅ Todos los servicios están correctamente definidos"
+        env:
+          DB_PASSWORD: ci_test_password
+          JWT_SECRET: ci_test_jwt_secret

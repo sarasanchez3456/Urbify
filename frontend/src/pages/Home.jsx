@@ -54,8 +54,8 @@ export default function Home() {
 
   // Carga inicial: estadísticas globales y servicios destacados desde la API
   useEffect(() => {
-    api.get('/stats').then(res => setStats(res.data)).catch(() => {});
-    api.get('/servicios/destacados').then(res => setDestacados(res.data)).catch(() => {});
+    api.get('/stats').then(res => setStats(res.data)).catch(() => {}); //obtiene: proveedores_activos, servicios_realizados, calificacion_media
+    api.get('/servicios/destacados').then(res => setDestacados(res.data)).catch(() => {}); //obtiene lista de servicios para mostrar, Si falla, no hace nada (.catch(() => {}))
   }, []);
 
   // Rota la palabra del hero cada 4 segundos
