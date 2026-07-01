@@ -3,3 +3,6 @@ node_modules/
 dist/
 .DS_Store
 stitch_urbify_interactive_service_marketplace/
+
+# Documentos privados / No subir al repositorio
+*.pdf
