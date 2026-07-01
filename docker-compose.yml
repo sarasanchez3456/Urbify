@@ -16,9 +16,9 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-urbify_secret}
       MYSQL_DATABASE: urbify_db
-    ports:
-      # Puerto nativo de MySQL: 3306 (host) → 3306 (contenedor)
-      - "3306:3306"
+    # Sin mapeo de puerto al host: MySQL solo es accesible desde la red
+    # interna urbify-red (por DNS: "db"). Esto es la práctica correcta
+    # en producción y evita conflictos con MySQL instalado localmente.
     volumes:
       # Volumen nombrado: los datos sobreviven aunque el contenedor se borre
       - mysql_data:/var/lib/mysql
