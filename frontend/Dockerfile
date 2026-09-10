@@ -15,8 +15,10 @@ RUN npm install
 # Copiamos el código fuente
 COPY . .
 
-# Variables de entorno de producción (el backend corre en el mismo host Docker)
-ENV VITE_API_URL=http://localhost:4000/api
+# API relativa: el navegador pide /api/* al propio Nginx, que hace de proxy
+# inverso hacia el contenedor backend (ver location /api/ en nginx.conf).
+# Evita depender del mapeo de puertos del host y de CORS entre orígenes.
+ENV VITE_API_URL=/api
 
 # Ejecutamos el build de producción → genera la carpeta /app/dist
 RUN npm run build
