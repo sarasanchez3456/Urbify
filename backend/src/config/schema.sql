@@ -1,4 +1,11 @@
-CREATE DATABASE IF NOT EXISTS urbify_db;
+-- Fuerza la codificación de la conexión: el cliente `mysql` del
+-- docker-entrypoint-initdb.d se conecta con latin1 por defecto y, sin esto,
+-- las tildes de los datos semilla se guardan doblemente codificadas (mojibake).
+SET NAMES utf8mb4;
+
+CREATE DATABASE IF NOT EXISTS urbify_db
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
 
 USE urbify_db;
 

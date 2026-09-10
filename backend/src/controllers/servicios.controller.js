@@ -8,10 +8,17 @@ exports.crearServicio = async (req, res) => {
 
     const { categoria_id, titulo, descripcion, tarifa, tipo_tarifa } = req.body;
 
+    if (!categoria_id || !titulo || tarifa === undefined || tarifa === null) {
+      return res.status(400).json({ error: 'categoria_id, titulo y tarifa son requeridos' });
+    }
+    if (tipo_tarifa && !['hora', 'fijo'].includes(tipo_tarifa)) {
+      return res.status(400).json({ error: "tipo_tarifa debe ser 'hora' o 'fijo'" });
+    }
+
     const [result] = await query(
       `INSERT INTO servicios (proveedor_id, categoria_id, titulo, descripcion, tarifa, tipo_tarifa)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [req.usuarioId, categoria_id, titulo, descripcion, tarifa, tipo_tarifa || 'hora']
+      [req.usuarioId, categoria_id, titulo, descripcion ?? null, tarifa, tipo_tarifa || 'hora']
     );
 
     res.status(201).json({

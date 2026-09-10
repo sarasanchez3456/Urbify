@@ -39,9 +39,8 @@ exports.registrar = async (req, res) => {
       'DELETE FROM tokens_sesion WHERE usuario_id = ? AND expira_en < NOW()',
       [usuarioId]
     );
-    const tokenDays = parseInt(process.env.JWT_EXPIRES_DAYS, 10) || 7;
     await query(
-      `INSERT INTO tokens_sesion (usuario_id, token, expira_en) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ${tokenDays} DAY))`,
+      'INSERT INTO tokens_sesion (usuario_id, token, expira_en) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))',
       [usuarioId, token]
     );
 
@@ -157,7 +156,7 @@ exports.login = async (req, res) => {
 exports.perfil = async (req, res) => {
   try {
     const [usuarios] = await query(
-      `SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, latitud, longitud, fecha_creacion
+      `SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, latitud, longitud, oficio, fecha_creacion
        FROM usuarios WHERE id = ?`,
       [req.usuarioId]
     );
@@ -175,18 +174,23 @@ exports.perfil = async (req, res) => {
 
 exports.actualizarPerfil = async (req, res) => {
   try {
-    const { nombre, apellido, telefono, direccion, latitud, longitud, foto_url } = req.body;
+    const { nombre, apellido, telefono, direccion, latitud, longitud, foto_url, oficio } = req.body;
 
     await query(
       `UPDATE usuarios SET nombre = COALESCE(?, nombre), apellido = COALESCE(?, apellido),
        telefono = COALESCE(?, telefono), direccion = COALESCE(?, direccion),
        latitud = COALESCE(?, latitud), longitud = COALESCE(?, longitud),
-       foto_url = COALESCE(?, foto_url)
+       foto_url = COALESCE(?, foto_url), oficio = COALESCE(?, oficio)
        WHERE id = ?`,
-      [nombre, apellido, telefono, direccion, latitud, longitud, foto_url, req.usuarioId]
+      [nombre, apellido, telefono, direccion, latitud, longitud, foto_url, oficio, req.usuarioId]
     );
 
-    res.json({ mensaje: 'Perfil actualizado exitosamente' });
+    const [usuarios] = await query(
+      `SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, latitud, longitud, oficio, fecha_creacion
+       FROM usuarios WHERE id = ?`,
+      [req.usuarioId]
+    );
+    res.json({ mensaje: 'Perfil actualizado exitosamente', usuario: usuarios[0] });
   } catch (err) {
     console.error('Error al actualizar perfil:', err);
     res.status(500).json({ error: 'Error al actualizar perfil' });

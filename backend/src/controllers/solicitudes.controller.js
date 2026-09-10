@@ -10,6 +10,10 @@ exports.crearSolicitud = async (req, res) => {
   try {
     const { proveedor_id, servicio_id, descripcion, fecha_servicio, direccion, latitud, longitud } = req.body;
 
+    if (!proveedor_id || !servicio_id) {
+      return res.status(400).json({ error: 'proveedor_id y servicio_id son requeridos' });
+    }
+
     if (req.usuarioId === Number(proveedor_id)) {
       return res.status(400).json({ error: 'No puedes solicitarte un servicio a ti mismo' });
     }
@@ -35,7 +39,7 @@ exports.crearSolicitud = async (req, res) => {
     const [result] = await query(
       `INSERT INTO solicitudes (cliente_id, proveedor_id, servicio_id, descripcion, fecha_servicio, direccion, latitud, longitud)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [req.usuarioId, proveedor_id, servicio_id, descripcion, fecha_servicio || null, direccion || null, latitud || null, longitud || null]
+      [req.usuarioId, proveedor_id, servicio_id, descripcion ?? null, fecha_servicio || null, direccion || null, latitud || null, longitud || null]
     );
 
     const solicitudId = result.insertId;

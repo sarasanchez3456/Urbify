@@ -37,7 +37,11 @@ async function conectarConReintentos(intento = 1) {
 conectarConReintentos();
 
 async function query(sql, params = []) {
-  const [result] = await pool.execute(sql, params);
+  // mysql2 `execute` (prepared statements) lanza si algún parámetro es `undefined`.
+  // Los controladores destructuran campos opcionales de req.body que pueden venir
+  // sin definir; normalizamos undefined -> null para que se traduzca a SQL NULL.
+  const safeParams = params.map((p) => (p === undefined ? null : p));
+  const [result] = await pool.execute(sql, safeParams);
   return [result];
 }
 
