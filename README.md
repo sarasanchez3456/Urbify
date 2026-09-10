@@ -224,6 +224,35 @@ Un volumen nombrado en Docker es como un **disco duro externo virtual** gestiona
 - Los contenedores son **efímeros** por diseño (si los borras, pierdes todo lo que estaba dentro).
 - El volumen `mysql_data` almacena los archivos de MySQL en el *host* de forma persistente.
 - Puedes hacer `docker compose down` y volver a levantar con `docker compose up` sin perder ningún usuario, servicio o solicitud registrada.
+- El volumen se llama `urbify_mysql_data` (el `name: urbify` del `docker-compose.yml` fija el prefijo, así que es el mismo sin importar desde qué carpeta se ejecute `docker compose`).
+
+---
+
+## 📱 App Móvil — repositorio aparte
+
+La app Android **no está en este repositorio**. Vive en un repo Git independiente:
+
+> **https://github.com/sarasanchez3456/Urbify-Mobile** — Android nativo (Kotlin + Jetpack Compose)
+
+Ambos repos son **proyectos separados** pero **dependen entre sí**: la app móvil consume exactamente esta misma API REST. Si trabajas en el móvil, clona y mantén actualizados **los dos**.
+
+### Cómo se conectan
+
+| | Backend (este repo) | App móvil (`Urbify-Mobile`) |
+|---|---|---|
+| Se ejecuta con | `docker compose up -d` | Android Studio → emulador |
+| La app apunta a | — | `http://10.0.2.2:4000/api/` (`10.0.2.2` = `localhost` del host visto desde el emulador) |
+| Requisito | — | backend y emulador en la **misma máquina** (si el backend está en otro PC, cambiar `BASE_URL` en `RetrofitClient.kt`) |
+
+### Al clonar en limpio
+
+1. `git clone` de **este** repo → `docker compose up -d --build` → se crea una base de datos **nueva y vacía**; el `schema.sql` solo siembra las **8 categorías**, sin usuarios ni servicios.
+2. `git clone` de **`Urbify-Mobile`** → compilar y ejecutar en el emulador.
+3. Cada dev registra sus propios usuarios y datos. **Los datos que tengas localmente viven solo en tu volumen `urbify_mysql_data`, nunca en el repositorio** — nadie los recibe al clonar.
+
+### Compatibilidad de versiones
+
+Los nombres de campo del JSON (`id`, `categoria_id`, `tarifa`, …) deben coincidir entre backend y app. **Usa siempre la versión más reciente de ambos repos**: una app antigua contra un backend nuevo (o viceversa) muestra campos vacíos o falla al crear servicios/solicitudes.
 
 ---
 
