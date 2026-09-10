@@ -6,3 +6,7 @@ stitch_urbify_interactive_service_marketplace/
 
 # Documentos privados / No subir al repositorio
 *.pdf
+
+# Logs de ejecución y scripts locales (pueden contener credenciales/datos)
+*.log
+backend/create_user.js
