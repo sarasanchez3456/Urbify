@@ -4,6 +4,11 @@
 #  Uso: docker compose up -d --build
 # ═══════════════════════════════════════════════════════════════════
 
+# Nombre fijo del proyecto: garantiza que los volúmenes se llamen
+# "urbify_*" sin importar desde qué carpeta se ejecute docker compose.
+# Así se reutiliza el volumen urbify_mysql_data con los datos ya existentes.
+name: urbify
+
 services:
 
   # ─────────────────────────────────────────────────────────────
