@@ -3,12 +3,17 @@ const jwt = require('jsonwebtoken');
 const { query } = require('../config/db');
 require('dotenv').config();
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 exports.registrar = async (req, res) => {
   try {
     const { nombre, apellido, correo, contrasena, telefono, rol, direccion, latitud, longitud, oficio } = req.body;
 
     if (!nombre || !apellido || !correo || !contrasena) {
       return res.status(400).json({ error: 'nombre, apellido, correo y contrasena son requeridos' });
+    }
+    if (!EMAIL_REGEX.test(correo)) {
+      return res.status(400).json({ error: 'El correo electrónico no tiene un formato válido' });
     }
     if (!rol || !['cliente', 'proveedor'].includes(rol)) {
       return res.status(400).json({ error: 'rol debe ser cliente o proveedor' });
