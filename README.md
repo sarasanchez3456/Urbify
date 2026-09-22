@@ -181,7 +181,7 @@ docker compose logs -f backend
 
 ```
 NAME                STATUS          PORTS
-urbify-db           Up (healthy)    0.0.0.0:3306->3306/tcp
+urbify-db           Up (healthy)    (solo red interna)
 urbify-backend      Up              0.0.0.0:4000->4000/tcp
 urbify-frontend     Up              0.0.0.0:80->80/tcp
 ```
@@ -192,7 +192,7 @@ urbify-frontend     Up              0.0.0.0:80->80/tcp
 |---|---|
 | 🌐 **Aplicación web** | http://localhost |
 | 🔌 **API REST** | http://localhost:4000/api/health |
-| 🐬 **MySQL** | `localhost:3306` (usuario: `root`) |
+| 🐬 **MySQL** | Solo dentro de Docker (no expuesto al host) |
 
 ### Paso 6 — Detener la aplicación
 
@@ -254,6 +254,27 @@ Ambos repos son **proyectos separados** pero **dependen entre sí**: la app móv
 
 Los nombres de campo del JSON (`id`, `categoria_id`, `tarifa`, …) deben coincidir entre backend y app. **Usa siempre la versión más reciente de ambos repos**: una app antigua contra un backend nuevo (o viceversa) muestra campos vacíos o falla al crear servicios/solicitudes.
 
+### Solicitudes programadas, tarifa histórica y chat
+
+- `POST /api/solicitudes` exige `fecha_servicio` futura en formato `YYYY-MM-DD HH:mm:ss`.
+- El proveedor se obtiene desde el servicio almacenado, no desde un valor enviado por el cliente.
+- Cada solicitud guarda `tarifa_acordada` y `tipo_tarifa_acordada`. Por eso, cambiar la tarifa de un servicio no modifica solicitudes ya creadas ni la billetera histórica.
+- Cliente y proveedor pueden leer y enviar mensajes en el chat privado vinculado a una solicitud.
+- La app Android presenta las citas en `America/Bogota` y muestra el contador después de la aceptación del proveedor.
+
+### Esquema y migración
+
+`backend/src/config/schema.sql` es el esquema canónico para Docker y una base nueva. Incluye las categorías iniciales, las columnas de tarifa histórica y la tabla `mensajes_solicitud`.
+
+Para una base existente usa la migración idempotente; agrega solo lo que falta y no borra datos:
+
+```bash
+cd backend
+npm run migrate
+```
+
+Consulta el [informe de cambios del 22 de septiembre de 2026](docs/INFORME_CAMBIOS_2026-09-22.md) para las validaciones y el detalle de ambos repositorios.
+
 ---
 
 ## 🔄 Pipeline de CI con GitHub Actions
@@ -310,6 +331,8 @@ JWT_SECRET=una_cadena_aleatoria_larga_y_segura
 | GET | `/api/categorias` | Listar categorías |
 | GET | `/api/servicios` | Listar servicios |
 | POST | `/api/solicitudes` | Crear solicitud |
+| GET | `/api/solicitudes/:id/mensajes` | Obtener historial del chat de una solicitud |
+| POST | `/api/solicitudes/:id/mensajes` | Enviar mensaje al participante de una solicitud |
 | GET | `/api/proveedores` | Buscar proveedores |
 | GET | `/api/stats` | Estadísticas del dashboard |
 | GET | `/api/notificaciones` | Notificaciones del usuario |

@@ -8,10 +8,25 @@ function escapeHtml(str) {
 
 exports.crearSolicitud = async (req, res) => {
   try {
-    const { proveedor_id, servicio_id, descripcion, fecha_servicio, direccion, latitud, longitud } = req.body;
+    const { servicio_id, descripcion, fecha_servicio, direccion, latitud, longitud } = req.body;
 
-    if (!proveedor_id || !servicio_id) {
-      return res.status(400).json({ error: 'proveedor_id y servicio_id son requeridos' });
+    const fechaServicio = typeof fecha_servicio === 'string' ? fecha_servicio.trim() : '';
+    const fechaServicioMillis = Date.parse(fechaServicio.replace(' ', 'T'));
+    if (!fechaServicio || Number.isNaN(fechaServicioMillis) || fechaServicioMillis <= Date.now()) {
+      return res.status(400).json({ error: 'Debes seleccionar una fecha y hora futura para el servicio' });
+    }
+
+    // El proveedor pertenece al servicio. Se resuelve en el servidor para que
+    // la solicitud no dependa de un proveedor_id enviado por el cliente.
+    const [servicio] = await query('SELECT * FROM servicios WHERE id = ?', [servicio_id]);
+    if (servicio.length === 0) {
+      return res.status(404).json({ error: 'Servicio no encontrado' });
+    }
+
+    const proveedor_id = servicio[0].proveedor_id;
+
+    if (!servicio_id) {
+      return res.status(400).json({ error: 'servicio_id es requerido' });
     }
 
     if (req.usuarioId === Number(proveedor_id)) {
@@ -26,20 +41,15 @@ exports.crearSolicitud = async (req, res) => {
       return res.status(404).json({ error: 'Proveedor no encontrado' });
     }
 
-    const [servicio] = await query('SELECT * FROM servicios WHERE id = ? AND proveedor_id = ?', [servicio_id, proveedor_id]);
-    if (servicio.length === 0) {
-      return res.status(404).json({ error: 'Servicio no encontrado' });
-    }
-
     const [cliente] = await query(
       'SELECT nombre, apellido, correo, direccion FROM usuarios WHERE id = ?',
       [req.usuarioId]
     );
 
     const [result] = await query(
-      `INSERT INTO solicitudes (cliente_id, proveedor_id, servicio_id, descripcion, fecha_servicio, direccion, latitud, longitud)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [req.usuarioId, proveedor_id, servicio_id, descripcion ?? null, fecha_servicio || null, direccion || null, latitud || null, longitud || null]
+      `INSERT INTO solicitudes (cliente_id, proveedor_id, servicio_id, tarifa_acordada, tipo_tarifa_acordada, descripcion, fecha_servicio, direccion, latitud, longitud)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [req.usuarioId, proveedor_id, servicio_id, servicio[0].tarifa, servicio[0].tipo_tarifa, descripcion ?? null, fechaServicio, direccion || null, latitud || null, longitud || null]
     );
 
     const solicitudId = result.insertId;
@@ -58,7 +68,7 @@ exports.crearSolicitud = async (req, res) => {
           <p><strong>Dirección:</strong> ${escapeHtml(cliente[0].direccion) || 'No especificada'}</p>
           <p><strong>Servicio solicitado:</strong> ${escapeHtml(servicio[0].titulo)}</p>
           <p><strong>Descripción:</strong> ${escapeHtml(descripcion) || 'Sin descripción'}</p>
-          <p><strong>Fecha acordada:</strong> ${fecha_servicio && !isNaN(new Date(fecha_servicio).getTime()) ? new Date(fecha_servicio).toLocaleDateString() : 'Por acordar'}</p>
+          <p><strong>Fecha acordada:</strong> ${new Date(fechaServicioMillis).toLocaleString()}</p>
           <hr>
           <p>Ingresa a tu panel de Urbify para gestionar esta solicitud.</p>
         `,
@@ -104,7 +114,7 @@ exports.crearSolicitud = async (req, res) => {
 exports.misSolicitudesComoCliente = async (req, res) => {
   try {
     const [solicitudes] = await query(
-      `SELECT sol.*, s.titulo AS servicio_titulo, s.tarifa,
+      `SELECT sol.*, s.titulo AS servicio_titulo, COALESCE(sol.tarifa_acordada, s.tarifa) AS tarifa,
        u.nombre AS proveedor_nombre, u.apellido AS proveedor_apellido, u.foto_url AS proveedor_foto
        FROM solicitudes sol
        JOIN servicios s ON sol.servicio_id = s.id
@@ -123,7 +133,7 @@ exports.misSolicitudesComoCliente = async (req, res) => {
 exports.misSolicitudesComoProveedor = async (req, res) => {
   try {
     const [solicitudes] = await query(
-      `SELECT sol.*, s.titulo AS servicio_titulo, s.tarifa,
+      `SELECT sol.*, s.titulo AS servicio_titulo, COALESCE(sol.tarifa_acordada, s.tarifa) AS tarifa,
        u.nombre AS cliente_nombre, u.apellido AS cliente_apellido, u.foto_url AS cliente_foto,
        u.direccion AS cliente_direccion, u.telefono AS cliente_telefono
        FROM solicitudes sol
@@ -192,9 +202,62 @@ exports.actualizarEstadoSolicitud = async (req, res) => {
 
     await query('UPDATE solicitudes SET estado = ? WHERE id = ?', [estado, id]);
     res.json({ mensaje: 'Estado actualizado exitosamente' });
+
   } catch (err) {
     console.error('Error al actualizar estado:', err);
     res.status(500).json({ error: 'Error al actualizar estado' });
+  }
+};
+async function solicitudDelParticipante(id, usuarioId) {
+  const [solicitudes] = await query(
+    'SELECT id, cliente_id, proveedor_id FROM solicitudes WHERE id = ?',
+    [id]
+  );
+  const solicitud = solicitudes[0];
+  if (!solicitud || (solicitud.cliente_id !== usuarioId && solicitud.proveedor_id !== usuarioId)) {
+    return null;
+  }
+  return solicitud;
+}
+
+exports.listarMensajes = async (req, res) => {
+  try {
+    const solicitud = await solicitudDelParticipante(req.params.id, req.usuarioId);
+    if (!solicitud) return res.status(404).json({ error: 'Solicitud no encontrada o no autorizada' });
+
+    const [mensajes] = await query(
+      `SELECT m.id, m.solicitud_id, m.remitente_id, m.contenido, m.fecha_envio,
+              u.nombre AS remitente_nombre, (m.remitente_id = ?) AS es_propio
+       FROM mensajes_solicitud m
+       JOIN usuarios u ON u.id = m.remitente_id
+       WHERE m.solicitud_id = ?
+       ORDER BY m.fecha_envio ASC, m.id ASC`,
+      [req.usuarioId, solicitud.id]
+    );
+    res.json(mensajes);
+  } catch (err) {
+    console.error('Error al listar mensajes:', err);
+    res.status(500).json({ error: 'No se pudieron cargar los mensajes' });
+  }
+};
+
+exports.enviarMensaje = async (req, res) => {
+  try {
+    const solicitud = await solicitudDelParticipante(req.params.id, req.usuarioId);
+    if (!solicitud) return res.status(404).json({ error: 'Solicitud no encontrada o no autorizada' });
+
+    const contenido = typeof req.body.contenido === 'string' ? req.body.contenido.trim() : '';
+    if (!contenido || contenido.length > 1000) {
+      return res.status(400).json({ error: 'El mensaje debe tener entre 1 y 1000 caracteres' });
+    }
+    const [result] = await query(
+      'INSERT INTO mensajes_solicitud (solicitud_id, remitente_id, contenido) VALUES (?, ?, ?)',
+      [solicitud.id, req.usuarioId, contenido]
+    );
+    res.status(201).json({ id: result.insertId, mensaje: 'Mensaje enviado' });
+  } catch (err) {
+    console.error('Error al enviar mensaje:', err);
+    res.status(500).json({ error: 'No se pudo enviar el mensaje' });
   }
 };
 

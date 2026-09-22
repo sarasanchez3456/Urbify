@@ -1,3 +1,5 @@
+-- Esquema canónico para instalaciones nuevas y Docker Compose.
+-- Los cambios sobre bases existentes se aplican con: npm run migrate
 -- Fuerza la codificación de la conexión: el cliente `mysql` del
 -- docker-entrypoint-initdb.d se conecta con latin1 por defecto y, sin esto,
 -- las tildes de los datos semilla se guardan doblemente codificadas (mojibake).
@@ -67,6 +69,8 @@ CREATE TABLE IF NOT EXISTS solicitudes (
   proveedor_id     INT NOT NULL,
   servicio_id      INT NOT NULL,
   descripcion      TEXT,
+  tarifa_acordada  DECIMAL(10,2),
+  tipo_tarifa_acordada VARCHAR(20),
   direccion        VARCHAR(255),
   latitud          DECIMAL(10,8),
   longitud         DECIMAL(11,8),
@@ -77,6 +81,18 @@ CREATE TABLE IF NOT EXISTS solicitudes (
   FOREIGN KEY (cliente_id)   REFERENCES usuarios(id),
   FOREIGN KEY (proveedor_id) REFERENCES usuarios(id),
   FOREIGN KEY (servicio_id)  REFERENCES servicios(id)
+);
+
+CREATE TABLE IF NOT EXISTS mensajes_solicitud (
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  solicitud_id    INT NOT NULL,
+  remitente_id    INT NOT NULL,
+  contenido       VARCHAR(1000) NOT NULL,
+  fecha_envio     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  leido           BOOLEAN NOT NULL DEFAULT 0,
+  FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id) ON DELETE CASCADE,
+  FOREIGN KEY (remitente_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  INDEX idx_mensajes_solicitud_fecha (solicitud_id, fecha_envio)
 );
 
 CREATE TABLE IF NOT EXISTS calificaciones (
@@ -92,6 +108,7 @@ CREATE TABLE IF NOT EXISTS calificaciones (
   FOREIGN KEY (proveedor_id)  REFERENCES usuarios(id)
 );
 
+
 CREATE TABLE IF NOT EXISTS tokens_sesion (
   id               INT AUTO_INCREMENT PRIMARY KEY,
   usuario_id       INT NOT NULL,
@@ -100,7 +117,6 @@ CREATE TABLE IF NOT EXISTS tokens_sesion (
   fecha_creacion        DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 );
-
 CREATE TABLE IF NOT EXISTS notificaciones (
   id               INT AUTO_INCREMENT PRIMARY KEY,
   usuario_id       INT NOT NULL,

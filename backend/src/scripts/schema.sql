@@ -1,3 +1,6 @@
+-- Esquema de arranque manual. Mantener alineado con ../config/schema.sql.
+-- Para una base ya existente usar: npm run migrate
+
 CREATE DATABASE IF NOT EXISTS urbify_db
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
@@ -58,6 +61,8 @@ CREATE TABLE IF NOT EXISTS solicitudes (
   proveedor_id INT NOT NULL,
   servicio_id INT NOT NULL,
   descripcion TEXT NULL,
+  tarifa_acordada DECIMAL(10, 2) NULL,
+  tipo_tarifa_acordada VARCHAR(20) NULL,
   fecha_servicio DATETIME NULL,
   direccion VARCHAR(500) NULL,
   latitud DECIMAL(10, 8) NULL,
@@ -68,6 +73,18 @@ CREATE TABLE IF NOT EXISTS solicitudes (
   FOREIGN KEY (cliente_id) REFERENCES usuarios(id),
   FOREIGN KEY (proveedor_id) REFERENCES usuarios(id),
   FOREIGN KEY (servicio_id) REFERENCES servicios(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS mensajes_solicitud (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  solicitud_id INT NOT NULL,
+  remitente_id INT NOT NULL,
+  contenido VARCHAR(1000) NOT NULL,
+  fecha_envio DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  leido TINYINT(1) NOT NULL DEFAULT 0,
+  FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id) ON DELETE CASCADE,
+  FOREIGN KEY (remitente_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  INDEX idx_mensajes_solicitud_fecha (solicitud_id, fecha_envio)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS calificaciones (

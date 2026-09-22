@@ -56,7 +56,7 @@ services:
       DB_NAME: urbify_db
       JWT_SECRET: ${JWT_SECRET:-cambia_este_secreto_en_produccion}
       JWT_EXPIRES_IN: 7d
-      CORS_ORIGIN: http://localhost
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
     ports:
       - "4000:4000"
     depends_on:

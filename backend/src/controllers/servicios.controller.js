@@ -8,17 +8,22 @@ exports.crearServicio = async (req, res) => {
 
     const { categoria_id, titulo, descripcion, tarifa, tipo_tarifa } = req.body;
 
-    if (!categoria_id || !titulo || tarifa === undefined || tarifa === null) {
-      return res.status(400).json({ error: 'categoria_id, titulo y tarifa son requeridos' });
+    if (!categoria_id || !titulo) {
+      return res.status(400).json({ error: 'categoria_id y titulo son requeridos' });
     }
     if (tipo_tarifa && !['hora', 'fijo'].includes(tipo_tarifa)) {
       return res.status(400).json({ error: "tipo_tarifa debe ser 'hora' o 'fijo'" });
     }
 
+    // MySQL2 no acepta parametros `undefined` de campos opcionales omitidos por Gson.
+    const descripcionNormalizada = descripcion ?? null;
+    const tarifaNormalizada = tarifa ?? 0;
+    const tipoTarifaNormalizado = tipo_tarifa ?? 'hora';
+
     const [result] = await query(
       `INSERT INTO servicios (proveedor_id, categoria_id, titulo, descripcion, tarifa, tipo_tarifa)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [req.usuarioId, categoria_id, titulo, descripcion ?? null, tarifa, tipo_tarifa || 'hora']
+      [req.usuarioId, categoria_id, titulo, descripcionNormalizada, tarifaNormalizada, tipoTarifaNormalizado]
     );
 
     res.status(201).json({
@@ -164,7 +169,14 @@ exports.actualizarServicio = async (req, res) => {
        tarifa = COALESCE(?, tarifa), tipo_tarifa = COALESCE(?, tipo_tarifa),
        disponible = COALESCE(?, disponible)
        WHERE id = ?`,
-      [titulo, descripcion, tarifa, tipo_tarifa, disponible, id]
+      [
+        titulo ?? null,
+        descripcion ?? null,
+        tarifa ?? null,
+        tipo_tarifa ?? null,
+        disponible ?? null,
+        id,
+      ]
     );
 
     res.json({ mensaje: 'Servicio actualizado exitosamente' });
@@ -181,6 +193,16 @@ exports.eliminarServicio = async (req, res) => {
     const [servicio] = await query('SELECT * FROM servicios WHERE id = ? AND proveedor_id = ?', [id, req.usuarioId]);
     if (servicio.length === 0) {
       return res.status(404).json({ error: 'Servicio no encontrado o no autorizado' });
+    }
+
+    const [resenas] = await query(
+      `SELECT cal.id FROM calificaciones cal
+       JOIN solicitudes sol ON sol.id = cal.solicitud_id
+       WHERE sol.servicio_id = ? LIMIT 1`,
+      [id]
+    );
+    if (resenas.length > 0) {
+      return res.status(409).json({ error: 'No se puede eliminar este servicio porque ya recibió una reseña.' });
     }
 
     await query('DELETE FROM servicios WHERE id = ?', [id]);
