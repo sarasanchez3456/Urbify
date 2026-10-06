@@ -1,5 +1,6 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import NotificationBell from "./NotificationBell";
 
 export function Navbar() {
   const { usuario, logout } = useAuth();
@@ -65,9 +66,10 @@ export function Navbar() {
       </ul>
 
       {!isAuth && (
-        <div className="nav-ctas flex gap-[10px]">
+        <div className="nav-ctas flex items-center gap-[10px]">
           {usuario ? (
             <>
+              <NotificationBell />
               <Link to="/perfil">
                 <button className="nav-btn-outline">Perfil</button>
               </Link>

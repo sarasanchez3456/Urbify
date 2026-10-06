@@ -51,6 +51,16 @@ exports.marcarLeida = async (req, res) => {
   }
 };
 
+exports.marcarTodasLeidas = async (req, res) => {
+  try {
+    await query('UPDATE notificaciones SET leida = 1 WHERE usuario_id = ?', [req.usuarioId]);
+    res.json({ mensaje: 'Todas las notificaciones marcadas como leídas' });
+  } catch (err) {
+    console.error('Error al marcar todas las notificaciones:', err);
+    res.status(500).json({ error: 'Error al marcar notificaciones' });
+  }
+};
+
 exports.eliminarNotificacion = async (req, res) => {
   try {
     const { id } = req.params;
@@ -66,5 +76,15 @@ exports.eliminarNotificacion = async (req, res) => {
   } catch (err) {
     console.error('Error al eliminar notificación:', err);
     res.status(500).json({ error: 'Error al eliminar notificación' });
+  }
+};
+
+exports.limpiarTodas = async (req, res) => {
+  try {
+    await query('DELETE FROM notificaciones WHERE usuario_id = ?', [req.usuarioId]);
+    res.json({ mensaje: 'Todas las notificaciones eliminadas' });
+  } catch (err) {
+    console.error('Error al limpiar notificaciones:', err);
+    res.status(500).json({ error: 'Error al limpiar notificaciones' });
   }
 };

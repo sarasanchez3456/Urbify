@@ -46,6 +46,7 @@ export default function MisSolicitudes() {
   const cambiarEstado = async (id, estado) => {
     try {
       await api.put(`/solicitudes/${id}/estado`, { estado });
+      window.dispatchEvent(new Event('notificacion_actualizada'));
       const endpoint = usuario?.rol === 'cliente' ? '/solicitudes/cliente' : '/solicitudes/proveedor';
       const res = await api.get(endpoint);
       setSolicitudes(res.data);

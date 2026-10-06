@@ -156,6 +156,7 @@ export default function SolicitarServicio() {
         latitud: latitud || null,
         longitud: longitud || null,
       });
+      window.dispatchEvent(new Event('notificacion_actualizada'));
       setExito(true);
     } catch (err) {
       setError(err.response?.data?.error || 'Error al enviar solicitud');

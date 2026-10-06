@@ -21,9 +21,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-urbify_secret}
       MYSQL_DATABASE: urbify_db
-    # Sin mapeo de puerto al host: MySQL solo es accesible desde la red
-    # interna urbify-red (por DNS: "db"). Esto es la práctica correcta
-    # en producción y evita conflictos con MySQL instalado localmente.
+    ports:
+      - "3306:3306"
     volumes:
       # Volumen nombrado: los datos sobreviven aunque el contenedor se borre
       - mysql_data:/var/lib/mysql

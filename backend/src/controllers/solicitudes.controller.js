@@ -44,6 +44,28 @@ exports.crearSolicitud = async (req, res) => {
 
     const solicitudId = result.insertId;
 
+    // Crear notificación para el proveedor
+    try {
+      await query(
+        'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
+        [
+          proveedor_id,
+          `Nueva solicitud de ${cliente[0].nombre} ${cliente[0].apellido} para el servicio "${servicio[0].titulo}"`
+        ]
+      );
+
+      // Crear notificación de confirmación para el cliente
+      await query(
+        'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
+        [
+          req.usuarioId,
+          `Enviaste una solicitud a ${proveedor[0].nombre} ${proveedor[0].apellido} para el servicio "${servicio[0].titulo}"`
+        ]
+      );
+    } catch (notifErr) {
+      console.error('Error al guardar notificación en BD:', notifErr);
+    }
+
     let emailOk = true;
 
     try {
@@ -159,7 +181,15 @@ exports.actualizarEstadoSolicitud = async (req, res) => {
     }
 
     const [solicitud] = await query(
-      'SELECT * FROM solicitudes WHERE id = ?',
+      `SELECT sol.*,
+              s.titulo AS servicio_titulo,
+              prov.nombre AS prov_nombre, prov.apellido AS prov_apellido, prov.correo AS prov_correo,
+              cli.nombre AS cli_nombre, cli.apellido AS cli_apellido, cli.correo AS cli_correo
+       FROM solicitudes sol
+       JOIN servicios s ON sol.servicio_id = s.id
+       JOIN usuarios prov ON sol.proveedor_id = prov.id
+       JOIN usuarios cli ON sol.cliente_id = cli.id
+       WHERE sol.id = ?`,
       [id]
     );
     if (solicitud.length === 0) {
@@ -191,6 +221,74 @@ exports.actualizarEstadoSolicitud = async (req, res) => {
     }
 
     await query('UPDATE solicitudes SET estado = ? WHERE id = ?', [estado, id]);
+
+    // Crear notificaciones en BD según el nuevo estado
+    try {
+      if (estado === 'aceptada') {
+        await query(
+          'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
+          [
+            solicitudActual.cliente_id,
+            `El proveedor ${solicitudActual.prov_nombre} ${solicitudActual.prov_apellido} aceptó tu solicitud para "${solicitudActual.servicio_titulo}"`
+          ]
+        );
+
+        // Notificar por correo al cliente si es posible
+        try {
+          await resend.emails.send({
+            from: process.env.EMAIL_FROM || 'Urbify <notificaciones@urbify.app>',
+            to: solicitudActual.cli_correo,
+            subject: '¡Tu solicitud de servicio fue aceptada!',
+            html: `
+              <h2>¡Solicitud aceptada!</h2>
+              <p>Hola ${escapeHtml(solicitudActual.cli_nombre)},</p>
+              <p>El proveedor <strong>${escapeHtml(solicitudActual.prov_nombre)} ${escapeHtml(solicitudActual.prov_apellido)}</strong> ha aceptado tu solicitud para el servicio <strong>${escapeHtml(solicitudActual.servicio_titulo)}</strong>.</p>
+              <hr>
+              <p>Ingresa a Urbify para ver el estado de tu servicio.</p>
+            `,
+          });
+        } catch (emailErr) {
+          console.error('Error al enviar correo de aceptación:', emailErr.message);
+        }
+      } else if (estado === 'en_proceso') {
+        await query(
+          'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
+          [
+            solicitudActual.cliente_id,
+            `El proveedor ${solicitudActual.prov_nombre} inició el trabajo para "${solicitudActual.servicio_titulo}"`
+          ]
+        );
+      } else if (estado === 'completada') {
+        await query(
+          'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
+          [
+            solicitudActual.cliente_id,
+            `El servicio "${solicitudActual.servicio_titulo}" fue completado por ${solicitudActual.prov_nombre}. ¡Ya puedes calificar su trabajo!`
+          ]
+        );
+      } else if (estado === 'cancelada') {
+        if (esProveedor) {
+          await query(
+            'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
+            [
+              solicitudActual.cliente_id,
+              `El proveedor ${solicitudActual.prov_nombre} canceló la solicitud para "${solicitudActual.servicio_titulo}"`
+            ]
+          );
+        } else {
+          await query(
+            'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
+            [
+              solicitudActual.proveedor_id,
+              `El cliente ${solicitudActual.cli_nombre} canceló su solicitud para "${solicitudActual.servicio_titulo}"`
+            ]
+          );
+        }
+      }
+    } catch (notifErr) {
+      console.error('Error al crear notificación tras cambio de estado:', notifErr);
+    }
+
     res.json({ mensaje: 'Estado actualizado exitosamente' });
   } catch (err) {
     console.error('Error al actualizar estado:', err);

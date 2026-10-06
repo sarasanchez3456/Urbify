@@ -17,6 +17,8 @@ import {
   Home,
 } from 'lucide-react';
 
+import NotificationBell from './NotificationBell';
+
 export default function DashboardLayout({ children, titulo, subtitulo }) {
   const { usuario, logout } = useAuth();
   const location = useLocation();
@@ -143,15 +145,7 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              className="relative p-2 rounded-full transition-colors"
-              style={{ color: 'oklch(0.45 0.03 240)' }}
-              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)'; e.currentTarget.style.color = 'oklch(0.25 0.06 240)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'oklch(0.45 0.03 240)'; }}
-            >
-              <Bell size={20} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ backgroundColor: 'oklch(0.40 0.18 255)', boxShadow: '0 0 0 2px white' }} />
-            </button>
+            <NotificationBell />
 
             <div className="relative">
               <button
