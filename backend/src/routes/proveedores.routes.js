@@ -1,7 +1,8 @@
 const router = require('express').Router();
 const { query } = require('../config/db');
+const { publicLimiter } = require('../middleware/rateLimit');
 
-router.get('/cercanos', async (req, res) => {
+router.get('/cercanos', publicLimiter, async (req, res) => {
   try {
     const { lat, lng, radio = 5 } = req.query;
 

@@ -30,6 +30,9 @@ exports.crearSolicitud = async (req, res) => {
     if (servicio.length === 0) {
       return res.status(404).json({ error: 'Servicio no encontrado' });
     }
+    if (!servicio[0].disponible) {
+      return res.status(400).json({ error: 'El servicio no está disponible' });
+    }
 
     const [cliente] = await query(
       'SELECT nombre, apellido, correo, direccion FROM usuarios WHERE id = ?',
@@ -220,7 +223,15 @@ exports.actualizarEstadoSolicitud = async (req, res) => {
       });
     }
 
-    await query('UPDATE solicitudes SET estado = ? WHERE id = ?', [estado, id]);
+    // El estado anterior va en el WHERE: si otra petición cambió la solicitud entre la
+    // lectura y la escritura, la transición ya no es válida y no se aplica.
+    const [actualizada] = await query(
+      'UPDATE solicitudes SET estado = ? WHERE id = ? AND estado = ?',
+      [estado, id, solicitudActual.estado]
+    );
+    if (actualizada.affectedRows === 0) {
+      return res.status(409).json({ error: 'La solicitud cambió de estado, vuelve a consultarla' });
+    }
 
     // Crear notificaciones en BD según el nuevo estado
     try {

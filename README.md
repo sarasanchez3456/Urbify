@@ -152,7 +152,14 @@ docker ps -a
 docker system prune -f
 ```
 
-### Paso 3 — Iniciar toda la aplicación
+### Paso 3 — Configurar las variables de entorno e iniciar la aplicación
+
+`docker-compose.yml` ya no trae contraseñas ni secretos por defecto. Copia la plantilla y completa `DB_PASSWORD` y `JWT_SECRET` (ver [Variables de Entorno](#️-variables-de-entorno)):
+
+```bash
+cp .env.example .env
+# Para trabajar en local sin HTTPS agrega también NODE_ENV=development
+```
 
 ```bash
 # Un solo comando: construye las imágenes e inicia los 3 servicios en segundo plano
@@ -289,14 +296,57 @@ Push a main
 
 ## 🛠️ Variables de Entorno
 
-Crea un archivo `.env` en la raíz del proyecto (o usa las variables directamente en el compose). Referencia en [`backend/.env.example`](backend/.env.example):
+Plantillas sin valores reales: [`.env.example`](.env.example) (raíz, para `docker compose`) y [`backend/.env.example`](backend/.env.example) (todas las variables del backend, para ejecutarlo sin Docker).
 
-```env
-DB_PASSWORD=tu_contraseña_segura
-JWT_SECRET=una_cadena_aleatoria_larga_y_segura
+El backend lee `backend/.env.<NODE_ENV>` (si existe) y luego `backend/.env`; las variables ya definidas en el proceso (Docker, la plataforma de despliegue) tienen prioridad.
+
+| Variable | development | staging / production |
+|---|---|---|
+| `NODE_ENV` | `development` (por defecto) | `staging` o `production` |
+| `JWT_SECRET` | opcional (avisa) | **obligatoria**, 32+ caracteres, sin valores de ejemplo |
+| `DB_HOST`, `DB_USER`, `DB_NAME`, `DB_PASSWORD` | por defecto de MySQL local | **obligatorias**; `DB_PASSWORD` sin valores de ejemplo |
+| `CORS_ORIGIN` | `http://localhost:5173,http://localhost` | **obligatoria**: orígenes separados por comas, sin `*`; `https` en production |
+| `EMAIL_FROM` | opcional | **obligatoria** |
+| `RESEND_API_KEY` | opcional | recomendada (sin ella no se envían correos) |
+| `BODY_LIMIT` | `100kb` | `100kb` (tamaño máximo del JSON) |
+| `TRUST_PROXY` | `0` | nº de proxys delante de la API (Nginx del compose = `1`) |
+| `FORCE_HTTPS` | `false` | `true` redirige a HTTPS y activa HSTS (requiere `TRUST_PROXY>=1`) |
+
+#### Límites de peticiones (rate limiting)
+
+Cuando se supera un límite la API responde `429` con `{"error", "bloqueado": true, "minutos_restantes"}` y las cabeceras `Retry-After`, `RateLimit` y `RateLimit-Policy`. Los valores por defecto no afectan el uso normal de la web ni de la app móvil; se ajustan por entorno:
+
+| Límite | Variable | Por defecto |
+|---|---|---|
+| Ventana de los límites generales y de login | `RATE_LIMIT_WINDOW_SECONDS` | `900` (15 min) |
+| Todas las rutas `/api` (excepto `/api/health`), por IP | `RATE_LIMIT_GLOBAL` | `1500` por ventana |
+| Lecturas públicas (búsqueda, cercanos, destacados, categorías, stats, calificaciones), por IP | `RATE_LIMIT_PUBLIC_PER_MINUTE` | `120` por minuto |
+| Registro, por IP | `RATE_LIMIT_REGISTER_PER_HOUR` | `10` por hora |
+| Login, por IP (cualquier intento) | `RATE_LIMIT_LOGIN_IP` | `30` por ventana |
+| Login, intentos **fallidos** a una misma cuenta desde una misma IP | `RATE_LIMIT_LOGIN_ACCOUNT_IP` | `5` por ventana |
+| Login, intentos **fallidos** a una cuenta desde cualquier IP | `RATE_LIMIT_LOGIN_ACCOUNT` | `20` por ventana |
+| Desactivar (solo desarrollo/pruebas) | `RATE_LIMIT_ENABLED=false` | activo |
+
+El antiguo bloqueo de cuenta (3 fallos = 5 min bloqueada) se eliminó: permitía que un tercero dejara fuera a cualquiera escribiendo su correo. Ahora los fallos limitan a la IP que los causa y la persona real puede entrar desde otra red; el tope por cuenta (20) solo se alcanza con un ataque distribuido. Los límites se guardan en memoria, así que valen para **una** instancia del backend; con varias hay que usar un almacén compartido (p. ej. Redis). Con `TRUST_PROXY` mal configurado todos los usuarios compartirían la IP del proxy.
+
+Si en `staging`/`production` falta algo o es un valor de ejemplo, el backend **no arranca** y lista qué corregir (sin imprimir los secretos). Genera un `JWT_SECRET` con:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
 
-> **Seguridad:** El archivo `.env` está en `.gitignore` y **nunca debe subirse** al repositorio.
+> **Seguridad:** Los archivos `.env` están en `.gitignore` y **nunca deben subirse** al repositorio. Despliega inyectando las variables desde la plataforma (secretos del proveedor), no en archivos del repo. Si el puerto 4000 del backend se expone directamente (sin Nginx/balanceador delante), deja `TRUST_PROXY=0`; con `TRUST_PROXY>=1` la IP del cliente se toma de `X-Forwarded-For`, que un cliente directo podría falsear.
+
+### Administrador
+
+El rol `admin` no se puede crear desde el registro público (`POST /api/auth/registro` solo acepta `cliente` y `proveedor`). El primer administrador se crea desde el servidor, con credenciales tomadas del entorno:
+
+```bash
+cd backend
+ADMIN_EMAIL=admin@ejemplo.com ADMIN_PASSWORD='clave-larga-de-12+' npm run create-admin
+```
+
+Si el correo ya existe, ese usuario se promueve a `admin`. En una base de datos anterior, ejecuta antes `npm run migrate` para que el esquema acepte el rol `admin`.
 
 ---
 
@@ -307,11 +357,13 @@ JWT_SECRET=una_cadena_aleatoria_larga_y_segura
 | GET | `/api/health` | Estado del servidor |
 | POST | `/api/auth/register` | Registro de usuario |
 | POST | `/api/auth/login` | Inicio de sesión |
+| POST | `/api/auth/logout` | Cierra la sesión: elimina el token enviado en `Authorization: Bearer` de `tokens_sesion`. Responde `200 {"mensaje"}`; después, ese token recibe `401` (web y app móvil deben llamarla antes de borrar el token local) |
 | GET | `/api/categorias` | Listar categorías |
 | GET | `/api/servicios` | Listar servicios |
 | POST | `/api/solicitudes` | Crear solicitud |
 | GET | `/api/proveedores` | Buscar proveedores |
-| GET | `/api/stats` | Estadísticas del dashboard |
+| GET | `/api/stats` | Estadísticas públicas de la página de inicio (3 cifras) |
+| GET | `/api/stats/admin` | Estadísticas completas del sistema (solo `admin`) |
 | GET | `/api/notificaciones` | Notificaciones del usuario |
 
 ---

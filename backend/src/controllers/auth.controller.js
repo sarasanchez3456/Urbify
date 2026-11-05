@@ -69,7 +69,7 @@ exports.login = async (req, res) => {
     }
 
     const [usuarios] = await query(
-      'SELECT id, nombre, apellido, correo, contrasena, telefono, rol, foto_url, direccion, latitud, longitud, intentos_fallidos, bloqueado_hasta FROM usuarios WHERE correo = ? AND activo = 1',
+      'SELECT id, nombre, apellido, correo, contrasena, telefono, rol, foto_url, direccion, latitud, longitud FROM usuarios WHERE correo = ? AND activo = 1',
       [correo]
     );
     if (usuarios.length === 0) {
@@ -78,48 +78,12 @@ exports.login = async (req, res) => {
 
     const usuario = usuarios[0];
 
-    if (usuario.bloqueado_hasta && new Date(usuario.bloqueado_hasta) > new Date()) {
-      const restante = Math.ceil((new Date(usuario.bloqueado_hasta) - new Date()) / 60000);
-      return res.status(429).json({
-        error: `Demasiados intentos fallidos. Intenta de nuevo en ${restante} minuto${restante !== 1 ? 's' : ''}.`,
-        bloqueado: true,
-        minutos_restantes: restante,
-      });
-    }
-
+    // Los intentos fallidos se limitan por IP y por cuenta en middleware/rateLimit.js, no con un
+    // bloqueo de la cuenta: así un tercero no puede dejar fuera a otra persona solo escribiendo su correo.
     const valido = await bcrypt.compare(contrasena, usuario.contrasena);
     if (!valido) {
-      await query(
-        'UPDATE usuarios SET intentos_fallidos = intentos_fallidos + 1 WHERE id = ?',
-        [usuario.id]
-      );
-
-      const [updated] = await query(
-        'SELECT intentos_fallidos FROM usuarios WHERE id = ?',
-        [usuario.id]
-      );
-      const nuevosIntentos = updated[0].intentos_fallidos;
-
-      if (nuevosIntentos >= 3) {
-        await query(
-          'UPDATE usuarios SET intentos_fallidos = 0, bloqueado_hasta = DATE_ADD(NOW(), INTERVAL 5 MINUTE) WHERE id = ?',
-          [usuario.id]
-        );
-        return res.status(429).json({
-          error: 'Demasiados intentos fallidos. Cuenta bloqueada por 5 minutos.',
-          bloqueado: true,
-          minutos_restantes: 5,
-          intentos_restantes: 0,
-        });
-      }
-
-      return res.status(401).json({
-        error: `Credenciales inválidas. Te quedan ${3 - nuevosIntentos} intento${3 - nuevosIntentos !== 1 ? 's' : ''}.`,
-        intentos_restantes: 3 - nuevosIntentos,
-      });
+      return res.status(401).json({ error: 'Credenciales inválidas' });
     }
-
-    await query('UPDATE usuarios SET intentos_fallidos = 0, bloqueado_hasta = NULL WHERE id = ?', [usuario.id]);
 
     const token = jwt.sign(
       { id: usuario.id, rol: usuario.rol },
@@ -155,6 +119,18 @@ exports.login = async (req, res) => {
   } catch (err) {
     console.error('Error en login:', err);
     res.status(500).json({ error: 'Error al iniciar sesión' });
+  }
+};
+
+// Invalida solo el token de esta petición (la sesión de este dispositivo);
+// otras sesiones del mismo usuario siguen activas.
+exports.logout = async (req, res) => {
+  try {
+    await query('DELETE FROM tokens_sesion WHERE token = ? AND usuario_id = ?', [req.token, req.usuarioId]);
+    res.json({ mensaje: 'Sesión cerrada exitosamente' });
+  } catch (err) {
+    console.error('Error en logout:', err);
+    res.status(500).json({ error: 'Error al cerrar sesión' });
   }
 };
 
@@ -237,14 +213,22 @@ exports.eliminarUsuario = async (req, res) => {
     if (Number(id) === req.usuarioId) {
       return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta' });
     }
-    const [existe] = await query('SELECT id FROM usuarios WHERE id = ?', [id]);
+    const [existe] = await query('SELECT id, rol FROM usuarios WHERE id = ?', [id]);
     if (existe.length === 0) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    // Un admin no puede borrar a otro admin: evita que una cuenta admin comprometida
+    // desmonte la administración. Los admins solo se gestionan desde el servidor (create-admin).
+    if (existe[0].rol === 'admin') {
+      return res.status(403).json({ error: 'No se puede eliminar a un administrador desde la API' });
     }
     await query('DELETE FROM usuarios WHERE id = ?', [id]);
     res.json({ mensaje: 'Usuario eliminado exitosamente' });
   } catch (err) {
     console.error('Error al eliminar usuario:', err);
+    if (err.errno === 1451) {
+      return res.status(409).json({ error: 'No se puede eliminar el usuario porque tiene solicitudes o calificaciones asociadas' });
+    }
     res.status(500).json({ error: 'Error al eliminar usuario' });
   }
 };
