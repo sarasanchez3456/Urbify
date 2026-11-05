@@ -19,10 +19,12 @@ services:
     container_name: urbify-db
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-urbify_secret}
+      # Sin valor por defecto: define DB_PASSWORD en el .env de la raíz (ver .env.example)
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en el archivo .env}
       MYSQL_DATABASE: urbify_db
     ports:
-      - "3306:3306"
+      # Solo accesible desde la propia máquina; el backend usa la red interna
+      - "127.0.0.1:3306:3306"
     volumes:
       # Volumen nombrado: los datos sobreviven aunque el contenedor se borre
       - mysql_data:/var/lib/mysql
@@ -31,7 +33,7 @@ services:
     networks:
       - urbify-red
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-urbify_secret}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -47,15 +49,24 @@ services:
     container_name: urbify-backend
     restart: unless-stopped
     environment:
+      # production exige secretos reales; usa NODE_ENV=development en el .env para trabajar en local
+      NODE_ENV: ${NODE_ENV:-production}
       PORT: 4000
       DB_HOST: db           # Nombre DNS interno en la red urbify-red
       DB_PORT: 3306
       DB_USER: root
-      DB_PASSWORD: ${DB_PASSWORD:-urbify_secret}
+      DB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en el archivo .env}
       DB_NAME: urbify_db
-      JWT_SECRET: ${JWT_SECRET:-cambia_este_secreto_en_produccion}
+      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en el archivo .env}
       JWT_EXPIRES_IN: 7d
-      CORS_ORIGIN: http://localhost
+      # Orígenes permitidos, separados por comas. En producción usa https.
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
+      EMAIL_FROM: ${EMAIL_FROM:-Urbify <notificaciones@urbify.app>}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      BODY_LIMIT: ${BODY_LIMIT:-100kb}
+      # Nginx (servicio frontend) va delante de la API: 1 proxy de confianza
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+      FORCE_HTTPS: ${FORCE_HTTPS:-false}
     ports:
       - "4000:4000"
     depends_on:
