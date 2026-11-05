@@ -158,6 +158,18 @@ exports.login = async (req, res) => {
   }
 };
 
+// Invalida solo el token de esta petición (la sesión de este dispositivo);
+// otras sesiones del mismo usuario siguen activas.
+exports.logout = async (req, res) => {
+  try {
+    await query('DELETE FROM tokens_sesion WHERE token = ? AND usuario_id = ?', [req.token, req.usuarioId]);
+    res.json({ mensaje: 'Sesión cerrada exitosamente' });
+  } catch (err) {
+    console.error('Error en logout:', err);
+    res.status(500).json({ error: 'Error al cerrar sesión' });
+  }
+};
+
 exports.perfil = async (req, res) => {
   try {
     const [usuarios] = await query(

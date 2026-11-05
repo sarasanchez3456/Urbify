@@ -4,6 +4,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 
 router.post('/registro', authController.registrar);
 router.post('/login', authController.login);
+router.post('/logout', authenticate, authController.logout);
 router.get('/perfil', authenticate, authController.perfil);
 router.put('/perfil', authenticate, authController.actualizarPerfil);
 router.get('/', authenticate, authorize('admin'), authController.listarUsuarios);
