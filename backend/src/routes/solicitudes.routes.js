@@ -6,6 +6,6 @@ router.post('/', authenticate, authorize('cliente'), solicitudesController.crear
 router.get('/cliente', authenticate, authorize('cliente'), solicitudesController.misSolicitudesComoCliente);
 router.get('/proveedor', authenticate, authorize('proveedor'), solicitudesController.misSolicitudesComoProveedor);
 router.put('/:id/estado', authenticate, authorize('proveedor', 'cliente'), solicitudesController.actualizarEstadoSolicitud);
-router.delete('/:id', authenticate, solicitudesController.eliminarSolicitud);
+router.delete('/:id', authenticate, authorize('cliente', 'proveedor'), solicitudesController.eliminarSolicitud);
 
 module.exports = router;

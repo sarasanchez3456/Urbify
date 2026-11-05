@@ -298,6 +298,17 @@ JWT_SECRET=una_cadena_aleatoria_larga_y_segura
 
 > **Seguridad:** El archivo `.env` está en `.gitignore` y **nunca debe subirse** al repositorio.
 
+### Administrador
+
+El rol `admin` no se puede crear desde el registro público (`POST /api/auth/registro` solo acepta `cliente` y `proveedor`). El primer administrador se crea desde el servidor, con credenciales tomadas del entorno:
+
+```bash
+cd backend
+ADMIN_EMAIL=admin@ejemplo.com ADMIN_PASSWORD='clave-larga-de-12+' npm run create-admin
+```
+
+Si el correo ya existe, ese usuario se promueve a `admin`. En una base de datos anterior, ejecuta antes `npm run migrate` para que el esquema acepte el rol `admin`.
+
 ---
 
 ## 📡 Endpoints de la API REST
@@ -307,11 +318,13 @@ JWT_SECRET=una_cadena_aleatoria_larga_y_segura
 | GET | `/api/health` | Estado del servidor |
 | POST | `/api/auth/register` | Registro de usuario |
 | POST | `/api/auth/login` | Inicio de sesión |
+| POST | `/api/auth/logout` | Cierra la sesión: elimina el token enviado en `Authorization: Bearer` de `tokens_sesion`. Responde `200 {"mensaje"}`; después, ese token recibe `401` (web y app móvil deben llamarla antes de borrar el token local) |
 | GET | `/api/categorias` | Listar categorías |
 | GET | `/api/servicios` | Listar servicios |
 | POST | `/api/solicitudes` | Crear solicitud |
 | GET | `/api/proveedores` | Buscar proveedores |
-| GET | `/api/stats` | Estadísticas del dashboard |
+| GET | `/api/stats` | Estadísticas públicas de la página de inicio (3 cifras) |
+| GET | `/api/stats/admin` | Estadísticas completas del sistema (solo `admin`) |
 | GET | `/api/notificaciones` | Notificaciones del usuario |
 
 ---
