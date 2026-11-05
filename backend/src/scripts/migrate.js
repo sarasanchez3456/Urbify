@@ -6,10 +6,10 @@
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
-require('dotenv').config();
+const { db: dbConfig } = require('../config/env');
 
 const SCHEMA_PATH = path.join(__dirname, '..', 'config', 'schema.sql');
-const DB_NAME = process.env.DB_NAME || 'urbify_db';
+const DB_NAME = dbConfig.name;
 
 // Columnas añadidas después de la primera versión del esquema.
 const COLUMNAS = [
@@ -59,10 +59,10 @@ async function migrate() {
   // Conexión propia con multipleStatements: schema.sql trae varias sentencias
   // y el pool de db.js usa prepared statements (una sola sentencia).
   const conn = await mysql.createConnection({
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT) || 3306,
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
+    host: dbConfig.host,
+    port: dbConfig.port,
+    user: dbConfig.user,
+    password: dbConfig.password,
     multipleStatements: true,
     charset: 'utf8mb4',
   });

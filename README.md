@@ -152,7 +152,14 @@ docker ps -a
 docker system prune -f
 ```
 
-### Paso 3 — Iniciar toda la aplicación
+### Paso 3 — Configurar las variables de entorno e iniciar la aplicación
+
+`docker-compose.yml` ya no trae contraseñas ni secretos por defecto. Copia la plantilla y completa `DB_PASSWORD` y `JWT_SECRET` (ver [Variables de Entorno](#️-variables-de-entorno)):
+
+```bash
+cp .env.example .env
+# Para trabajar en local sin HTTPS agrega también NODE_ENV=development
+```
 
 ```bash
 # Un solo comando: construye las imágenes e inicia los 3 servicios en segundo plano
@@ -289,14 +296,29 @@ Push a main
 
 ## 🛠️ Variables de Entorno
 
-Crea un archivo `.env` en la raíz del proyecto (o usa las variables directamente en el compose). Referencia en [`backend/.env.example`](backend/.env.example):
+Plantillas sin valores reales: [`.env.example`](.env.example) (raíz, para `docker compose`) y [`backend/.env.example`](backend/.env.example) (todas las variables del backend, para ejecutarlo sin Docker).
 
-```env
-DB_PASSWORD=tu_contraseña_segura
-JWT_SECRET=una_cadena_aleatoria_larga_y_segura
+El backend lee `backend/.env.<NODE_ENV>` (si existe) y luego `backend/.env`; las variables ya definidas en el proceso (Docker, la plataforma de despliegue) tienen prioridad.
+
+| Variable | development | staging / production |
+|---|---|---|
+| `NODE_ENV` | `development` (por defecto) | `staging` o `production` |
+| `JWT_SECRET` | opcional (avisa) | **obligatoria**, 32+ caracteres, sin valores de ejemplo |
+| `DB_HOST`, `DB_USER`, `DB_NAME`, `DB_PASSWORD` | por defecto de MySQL local | **obligatorias**; `DB_PASSWORD` sin valores de ejemplo |
+| `CORS_ORIGIN` | `http://localhost:5173,http://localhost` | **obligatoria**: orígenes separados por comas, sin `*`; `https` en production |
+| `EMAIL_FROM` | opcional | **obligatoria** |
+| `RESEND_API_KEY` | opcional | recomendada (sin ella no se envían correos) |
+| `BODY_LIMIT` | `100kb` | `100kb` (tamaño máximo del JSON) |
+| `TRUST_PROXY` | `0` | nº de proxys delante de la API (Nginx del compose = `1`) |
+| `FORCE_HTTPS` | `false` | `true` redirige a HTTPS y activa HSTS (requiere `TRUST_PROXY>=1`) |
+
+Si en `staging`/`production` falta algo o es un valor de ejemplo, el backend **no arranca** y lista qué corregir (sin imprimir los secretos). Genera un `JWT_SECRET` con:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
 
-> **Seguridad:** El archivo `.env` está en `.gitignore` y **nunca debe subirse** al repositorio.
+> **Seguridad:** Los archivos `.env` están en `.gitignore` y **nunca deben subirse** al repositorio. Despliega inyectando las variables desde la plataforma (secretos del proveedor), no en archivos del repo. Si el puerto 4000 del backend se expone directamente (sin Nginx/balanceador delante), deja `TRUST_PROXY=0`; con `TRUST_PROXY>=1` la IP del cliente se toma de `X-Forwarded-For`, que un cliente directo podría falsear.
 
 ### Administrador
 
