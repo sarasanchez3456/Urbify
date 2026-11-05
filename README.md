@@ -322,7 +322,8 @@ Si el correo ya existe, ese usuario se promueve a `admin`. En una base de datos 
 | GET | `/api/servicios` | Listar servicios |
 | POST | `/api/solicitudes` | Crear solicitud |
 | GET | `/api/proveedores` | Buscar proveedores |
-| GET | `/api/stats` | Estadísticas del dashboard |
+| GET | `/api/stats` | Estadísticas públicas de la página de inicio (3 cifras) |
+| GET | `/api/stats/admin` | Estadísticas completas del sistema (solo `admin`) |
 | GET | `/api/notificaciones` | Notificaciones del usuario |
 
 ---
