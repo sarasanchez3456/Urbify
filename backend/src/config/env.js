@@ -142,6 +142,9 @@ const rateLimit = {
   publico: entero('RATE_LIMIT_PUBLIC_PER_MINUTE', 120),
   // Registros por IP y por hora.
   registro: entero('RATE_LIMIT_REGISTER_PER_HOUR', 10),
+  // Recuperación de contraseña: solicitudes de código por IP y por correo, y envíos de código por IP, por hora.
+  recuperacionIp: entero('RATE_LIMIT_RECOVERY_IP_PER_HOUR', 10),
+  recuperacionCorreo: entero('RATE_LIMIT_RECOVERY_EMAIL_PER_HOUR', 3),
   // Intentos de login (cualquier resultado) por IP.
   loginIp: entero('RATE_LIMIT_LOGIN_IP', 30),
   // Intentos fallidos contra una misma cuenta desde una misma IP.

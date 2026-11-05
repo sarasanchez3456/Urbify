@@ -110,6 +110,19 @@ CREATE TABLE IF NOT EXISTS tokens_sesion (
   INDEX idx_tokens_sesion_token (usuario_id, expira_en)
 );
 
+-- Códigos de recuperación de contraseña: solo se guarda el hash, vencen y son de un solo uso.
+CREATE TABLE IF NOT EXISTS recuperaciones_contrasena (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  usuario_id       INT NOT NULL,
+  codigo_hash      VARCHAR(255) NOT NULL,
+  expira_en        DATETIME NOT NULL,
+  intentos         INT NOT NULL DEFAULT 0,
+  usado            BOOLEAN NOT NULL DEFAULT 0,
+  fecha_creacion   DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  INDEX idx_recuperaciones_usuario (usuario_id, expira_en)
+);
+
 CREATE TABLE IF NOT EXISTS notificaciones (
   id               INT AUTO_INCREMENT PRIMARY KEY,
   usuario_id       INT NOT NULL,

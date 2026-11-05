@@ -55,6 +55,27 @@ const registroLimiter = crearLimitador({
   key: ip,
 });
 
+// Recuperación de contraseña. Se limita por IP y por correo para que nadie pueda llenar de
+// correos la bandeja de otra persona ni probar códigos en masa.
+// Cada ruta tiene sus propios contadores. Restablecer admite más intentos (el código se
+// invalida solo tras 5 errores, en el controlador).
+const limitadoresRecuperacion = (factor) => [
+  crearLimitador({
+    ventanaMs: HORA_MS,
+    max: cfg.recuperacionIp * factor,
+    mensaje: 'Demasiadas solicitudes de recuperación desde esta red. Intenta de nuevo más tarde.',
+    key: ip,
+  }),
+  crearLimitador({
+    ventanaMs: HORA_MS,
+    max: cfg.recuperacionCorreo * factor,
+    mensaje: 'Demasiadas solicitudes para este correo. Intenta de nuevo más tarde.',
+    key: correoDe,
+  }),
+];
+const olvidoLimiters = limitadoresRecuperacion(1);
+const restablecerLimiters = limitadoresRecuperacion(3);
+
 // Login: tres límites en cadena. Los dos por cuenta solo cuentan los intentos fallidos,
 // así un inicio de sesión correcto no consume cupo.
 //  1) por IP (cualquier intento): frena el barrido de muchas cuentas desde un origen.
@@ -85,4 +106,4 @@ const loginLimiters = [
   }),
 ];
 
-module.exports = { globalLimiter, publicLimiter, registroLimiter, loginLimiters };
+module.exports = { globalLimiter, publicLimiter, registroLimiter, loginLimiters, olvidoLimiters, restablecerLimiters };
