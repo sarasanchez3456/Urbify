@@ -1,55 +1,110 @@
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import api from '../api/axios';
+import {
+  getToken,
+  setToken,
+  clearSession,
+  endSession,
+  tokenExpiresAt,
+  isTokenExpired,
+  onSessionEnded,
+  onTokenChangedInOtherTab,
+} from '../api/session';
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
+  // Los datos del usuario solo viven en memoria; en el navegador únicamente se guarda el token.
   const [usuario, setUsuario] = useState(null);
   const [cargando, setCargando] = useState(true);
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+  // Pide el perfil con el token actual. Sin token o con token vencido no hay sesión.
+  const restaurarSesion = useCallback(() => {
+    const token = getToken();
+    if (!token || isTokenExpired(token)) {
+      if (token) clearSession();
+      setUsuario(null);
       setCargando(false);
       return;
     }
     api.get('/auth/perfil')
-      .then((res) => {
-        setUsuario(res.data);
-        localStorage.setItem('usuario', JSON.stringify(res.data));
-      })
+      .then((res) => setUsuario(res.data))
       .catch((err) => {
-        if (err.response?.status === 401 || err.response?.status === 404) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('usuario');
-          setUsuario(null);
+        // 401 ya lo gestiona el interceptor (limpia el token y avisa). Un 404 significa que
+        // el usuario ya no existe. Otros errores (red caída) conservan la sesión.
+        if (err.response?.status === 404) {
+          endSession();
         }
       })
       .finally(() => setCargando(false));
   }, []);
 
-  const login = useCallback(async (correo, contrasena) => {
-    const res = await api.post('/auth/login', { correo, contrasena });
-    const { token, usuario: user } = res.data;
-    localStorage.setItem('token', token);
-    localStorage.setItem('usuario', JSON.stringify(user));
+  useEffect(() => {
+    restaurarSesion();
+  }, [restaurarSesion]);
+
+  // La sesión terminó en esta pestaña (401 o token vencido): olvidar al usuario.
+  useEffect(() => onSessionEnded(() => setUsuario(null)), []);
+
+  // Sincronización entre pestañas: login o logout hechos en otra pestaña se reflejan aquí.
+  useEffect(
+    () =>
+      onTokenChangedInOtherTab((token) => {
+        if (!token) {
+          setUsuario(null);
+        } else {
+          restaurarSesion();
+        }
+      }),
+    [restaurarSesion]
+  );
+
+  // Cierra la sesión local cuando el token vence, aunque la pestaña esté abierta y en reposo.
+  useEffect(() => {
+    if (!usuario) return undefined;
+    const token = getToken();
+    const expiraEn = token ? tokenExpiresAt(token) : null;
+    if (expiraEn === null) return undefined;
+
+    const comprobar = () => {
+      const actual = getToken();
+      if (!actual || isTokenExpired(actual)) endSession();
+    };
+    // setTimeout admite hasta ~24.8 días; el JWT dura 7, pero se acota por seguridad.
+    const timer = setTimeout(comprobar, Math.min(Math.max(expiraEn - Date.now(), 0), 2 ** 31 - 1));
+    // Los timers se retrasan con la pestaña en segundo plano: se comprueba al volver.
+    document.addEventListener('visibilitychange', comprobar);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', comprobar);
+    };
+  }, [usuario]);
+
+  const iniciarSesion = useCallback((token, user) => {
+    setToken(token);
     setUsuario(user);
     return user;
   }, []);
+
+  const login = useCallback(async (correo, contrasena) => {
+    const res = await api.post('/auth/login', { correo, contrasena });
+    return iniciarSesion(res.data.token, res.data.usuario);
+  }, [iniciarSesion]);
 
   const registrar = useCallback(async (datos) => {
     const res = await api.post('/auth/registro', datos);
-    const { token, usuario: user } = res.data;
-    localStorage.setItem('token', token);
-    localStorage.setItem('usuario', JSON.stringify(user));
-    setUsuario(user);
-    return user;
-  }, []);
+    return iniciarSesion(res.data.token, res.data.usuario);
+  }, [iniciarSesion]);
 
+  // Logout local inmediato + revocación del token en el servidor (POST /auth/logout).
+  // Si el servidor no responde, la sesión local igual queda cerrada.
   const logout = useCallback(() => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('usuario');
+    const token = getToken();
+    clearSession();
     setUsuario(null);
+    if (token) {
+      api.post('/auth/logout', null, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+    }
   }, []);
 
   const value = useMemo(() => ({ usuario, cargando, login, registrar, logout }), [usuario, cargando, login, registrar, logout]);
