@@ -18,16 +18,22 @@ const authenticate = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.usuarioId = decoded.id;
-    req.usuarioRol = decoded.rol;
+    req.token = token;
 
     try {
+      // El rol y el estado de la cuenta se leen de la base de datos, no del token:
+      // un cambio de rol o una cuenta desactivada surten efecto de inmediato.
       const [rows] = await query(
-        'SELECT id FROM tokens_sesion WHERE token = ? AND usuario_id = ? AND expira_en > NOW()',
+        `SELECT u.rol, u.activo
+           FROM tokens_sesion t
+           JOIN usuarios u ON u.id = t.usuario_id
+          WHERE t.token = ? AND t.usuario_id = ? AND t.expira_en > NOW()`,
         [token, decoded.id]
       );
-      if (rows.length === 0) {
+      if (rows.length === 0 || !rows[0].activo) {
         return res.status(401).json({ error: 'Token inválido o expirado' });
       }
+      req.usuarioRol = rows[0].rol;
     } catch (dbErr) {
       console.error('Error al verificar token en DB:', dbErr);
       return res.status(500).json({ error: 'Error al verificar sesión' });
