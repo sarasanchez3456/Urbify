@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   correo        VARCHAR(150) NOT NULL UNIQUE,
   contrasena    VARCHAR(255) NOT NULL,
   telefono      VARCHAR(20),
-  rol           VARCHAR(20) NOT NULL CHECK (rol IN ('cliente', 'proveedor')),
+  rol           VARCHAR(20) NOT NULL,
   foto_url      VARCHAR(255),
   categoria_id  INT NULL,
   latitud       DECIMAL(10,8),
@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   intentos_fallidos INT DEFAULT 0,
   bloqueado_hasta   DATETIME NULL,
   fecha_creacion     DATETIME DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT chk_usuarios_rol CHECK (rol IN ('cliente', 'proveedor', 'admin')),
   FOREIGN KEY (categoria_id) REFERENCES categorias(id),
   INDEX idx_usuarios_geo (latitud, longitud),
   INDEX idx_usuarios_rol_activo (rol, activo)

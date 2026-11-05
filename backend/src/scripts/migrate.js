@@ -31,6 +31,30 @@ const INDICES = [
   { tabla: 'tokens_sesion', nombre: 'idx_tokens_sesion_token', columnas: 'usuario_id, expira_en' },
 ];
 
+// Las bases creadas antes solo aceptaban 'cliente' y 'proveedor' en usuarios.rol
+// (CHECK con nombre automático). Se reemplaza por chk_usuarios_rol, que incluye 'admin'.
+async function asegurarRolAdmin(conn) {
+  const [checks] = await conn.query(
+    `SELECT cc.CONSTRAINT_NAME AS nombre, cc.CHECK_CLAUSE AS clausula
+       FROM INFORMATION_SCHEMA.CHECK_CONSTRAINTS cc
+       JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+         ON tc.CONSTRAINT_SCHEMA = cc.CONSTRAINT_SCHEMA AND tc.CONSTRAINT_NAME = cc.CONSTRAINT_NAME
+      WHERE tc.TABLE_SCHEMA = ? AND tc.TABLE_NAME = 'usuarios' AND tc.CONSTRAINT_TYPE = 'CHECK'
+        AND cc.CHECK_CLAUSE LIKE '%rol%'`,
+    [DB_NAME]
+  );
+
+  if (checks.some((c) => c.nombre === 'chk_usuarios_rol' && c.clausula.includes('admin'))) return;
+
+  for (const { nombre } of checks) {
+    await conn.query(`ALTER TABLE usuarios DROP CHECK \`${nombre}\``);
+  }
+  await conn.query(
+    "ALTER TABLE usuarios ADD CONSTRAINT chk_usuarios_rol CHECK (rol IN ('cliente', 'proveedor', 'admin'))"
+  );
+  console.log('Migración: rol admin permitido en usuarios.rol');
+}
+
 async function migrate() {
   // Conexión propia con multipleStatements: schema.sql trae varias sentencias
   // y el pool de db.js usa prepared statements (una sola sentencia).
@@ -68,6 +92,8 @@ async function migrate() {
         console.log(`Migración: índice ${nombre} creado`);
       }
     }
+
+    await asegurarRolAdmin(conn);
 
     console.log('Migración completada exitosamente');
   } catch (err) {
