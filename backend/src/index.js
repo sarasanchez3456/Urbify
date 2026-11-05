@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 
+const { globalLimiter } = require('./middleware/rateLimit');
 const authRoutes = require('./routes/auth.routes');
 const categoriasRoutes = require('./routes/categorias.routes');
 const serviciosRoutes = require('./routes/servicios.routes');
@@ -47,6 +48,9 @@ app.use(express.json({ limit: config.bodyLimit }));
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', version: '1.0.0', nombre: 'Urbify API' });
 });
+
+// Después de /api/health, que debe poder consultarse siempre.
+app.use('/api', globalLimiter);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/categorias', categoriasRoutes);
