@@ -1,31 +1,48 @@
 const { query } = require('../config/db');
 
+const puntuacionValida = (p) => Number.isInteger(p) && p >= 1 && p <= 5;
+
 exports.crearCalificacion = async (req, res) => {
   try {
     const { solicitud_id, puntuacion, comentario } = req.body;
 
-    if (!puntuacion || puntuacion < 1 || puntuacion > 5) {
-      return res.status(400).json({ error: 'La puntuación debe ser entre 1 y 5' });
+    if (!puntuacionValida(puntuacion)) {
+      return res.status(400).json({ error: 'La puntuación debe ser un entero entre 1 y 5' });
+    }
+    if (!solicitud_id) {
+      return res.status(400).json({ error: 'solicitud_id es requerido' });
     }
 
-    const [solicitud] = await query(
-      "SELECT * FROM solicitudes WHERE id = ? AND cliente_id = ? AND estado = 'completada'",
-      [solicitud_id, req.usuarioId]
-    );
+    const [solicitud] = await query('SELECT cliente_id, proveedor_id, estado FROM solicitudes WHERE id = ?', [solicitud_id]);
     if (solicitud.length === 0) {
-      return res.status(404).json({ error: 'Solicitud no encontrada, no autorizada o no completada' });
+      return res.status(404).json({ error: 'Solicitud no encontrada' });
+    }
+    if (solicitud[0].cliente_id !== req.usuarioId) {
+      return res.status(403).json({ error: 'Solo el cliente de la solicitud puede calificarla' });
+    }
+    if (solicitud[0].estado !== 'completada') {
+      return res.status(400).json({ error: 'Solo se pueden calificar solicitudes completadas' });
     }
 
     const [existente] = await query('SELECT id FROM calificaciones WHERE solicitud_id = ?', [solicitud_id]);
     if (existente.length > 0) {
-      return res.status(400).json({ error: 'Esta solicitud ya ha sido calificada' });
+      return res.status(409).json({ error: 'Esta solicitud ya ha sido calificada' });
     }
 
-    const [result] = await query(
-      `INSERT INTO calificaciones (solicitud_id, cliente_id, proveedor_id, puntuacion, comentario)
-       VALUES (?, ?, ?, ?, ?)`,
-      [solicitud_id, req.usuarioId, solicitud[0].proveedor_id, puntuacion, comentario || null]
-    );
+    let result;
+    try {
+      [result] = await query(
+        `INSERT INTO calificaciones (solicitud_id, cliente_id, proveedor_id, puntuacion, comentario)
+         VALUES (?, ?, ?, ?, ?)`,
+        [solicitud_id, req.usuarioId, solicitud[0].proveedor_id, puntuacion, comentario || null]
+      );
+    } catch (dupErr) {
+      // UNIQUE(solicitud_id): dos peticiones simultáneas no pueden calificar dos veces.
+      if (dupErr.code === 'ER_DUP_ENTRY') {
+        return res.status(409).json({ error: 'Esta solicitud ya ha sido calificada' });
+      }
+      throw dupErr;
+    }
 
     res.status(201).json({
       mensaje: 'Calificación creada exitosamente',
@@ -70,12 +87,15 @@ exports.actualizarCalificacion = async (req, res) => {
   try {
     const { id } = req.params;
     const { puntuacion, comentario } = req.body;
-    if (puntuacion && (puntuacion < 1 || puntuacion > 5)) {
-      return res.status(400).json({ error: 'La puntuación debe ser entre 1 y 5' });
+    if (puntuacion !== undefined && puntuacion !== null && !puntuacionValida(puntuacion)) {
+      return res.status(400).json({ error: 'La puntuación debe ser un entero entre 1 y 5' });
     }
-    const [existe] = await query('SELECT * FROM calificaciones WHERE id = ? AND cliente_id = ?', [id, req.usuarioId]);
+    const [existe] = await query('SELECT cliente_id FROM calificaciones WHERE id = ?', [id]);
     if (existe.length === 0) {
-      return res.status(404).json({ error: 'Calificación no encontrada o no autorizada' });
+      return res.status(404).json({ error: 'Calificación no encontrada' });
+    }
+    if (existe[0].cliente_id !== req.usuarioId) {
+      return res.status(403).json({ error: 'No autorizado para modificar esta calificación' });
     }
     await query(
       'UPDATE calificaciones SET puntuacion = COALESCE(?, puntuacion), comentario = COALESCE(?, comentario) WHERE id = ?',
@@ -91,9 +111,12 @@ exports.actualizarCalificacion = async (req, res) => {
 exports.eliminarCalificacion = async (req, res) => {
   try {
     const { id } = req.params;
-    const [existe] = await query('SELECT * FROM calificaciones WHERE id = ? AND cliente_id = ?', [id, req.usuarioId]);
+    const [existe] = await query('SELECT cliente_id FROM calificaciones WHERE id = ?', [id]);
     if (existe.length === 0) {
-      return res.status(404).json({ error: 'Calificación no encontrada o no autorizada' });
+      return res.status(404).json({ error: 'Calificación no encontrada' });
+    }
+    if (existe[0].cliente_id !== req.usuarioId) {
+      return res.status(403).json({ error: 'No autorizado para eliminar esta calificación' });
     }
     await query('DELETE FROM calificaciones WHERE id = ?', [id]);
     res.json({ mensaje: 'Calificación eliminada exitosamente' });
