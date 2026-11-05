@@ -1,7 +1,10 @@
-require('dotenv').config();
+// Debe ir primero: carga el .env del entorno y valida la configuración antes de arrancar.
+const config = require('./config/env');
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 
+const { globalLimiter } = require('./middleware/rateLimit');
 const authRoutes = require('./routes/auth.routes');
 const categoriasRoutes = require('./routes/categorias.routes');
 const serviciosRoutes = require('./routes/servicios.routes');
@@ -12,17 +15,42 @@ const statsRoutes = require('./routes/stats.routes');
 const notificacionesRoutes = require('./routes/notificaciones.routes');
 
 const app = express();
-const PORT = process.env.PORT || 4000;
 
+app.disable('x-powered-by');
+if (config.trustProxy > 0) {
+  app.set('trust proxy', config.trustProxy);
+}
+
+if (config.forceHttps) {
+  app.use((req, res, next) => {
+    if (req.secure) return next();
+    // /api/health queda exento para que los balanceadores puedan comprobar el servicio por HTTP.
+    if (req.path === '/api/health') return next();
+    return res.redirect(308, `https://${req.headers.host}${req.originalUrl}`);
+  });
+}
+
+// Cabeceras de seguridad (HSTS, nosniff, frameguard, etc.). La API solo devuelve JSON,
+// así que la CSP por defecto de helmet es suficiente.
+app.use(helmet({ hsts: config.forceHttps }));
+
+// Solo se aceptan los orígenes de CORS_ORIGIN. Las peticiones sin cabecera Origin
+// (app móvil nativa, curl, comprobaciones de salud) no son de navegador y pasan.
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin(origin, callback) {
+    if (!origin || config.corsOrigenes.includes(origin)) return callback(null, true);
+    return callback(null, false);
+  },
   credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({ limit: config.bodyLimit }));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', version: '1.0.0', nombre: 'Urbify API' });
 });
+
+// Después de /api/health, que debe poder consultarse siempre.
+app.use('/api', globalLimiter);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/categorias', categoriasRoutes);
@@ -38,10 +66,17 @@ app.use('/api/*', (req, res) => {
 });
 
 app.use((err, req, res, next) => {
+  // Body demasiado grande o JSON mal formado: son errores del cliente, no del servidor.
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'El cuerpo de la petición es demasiado grande' });
+  }
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'JSON inválido' });
+  }
   console.error('Error no manejado:', err);
   res.status(500).json({ error: 'Error interno del servidor' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Urbify API corriendo en puerto ${PORT}`);
+app.listen(config.port, () => {
+  console.log(`Urbify API corriendo en puerto ${config.port} (${config.NODE_ENV})`);
 });
