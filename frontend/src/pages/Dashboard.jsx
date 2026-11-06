@@ -17,6 +17,7 @@ import {
   DollarSign,
   CheckCircle,
 } from 'lucide-react';
+import { logError } from '../utils/log';
 
 const glassCard = {
   backgroundColor: 'rgba(255, 255, 255, 0.6)',
@@ -49,7 +50,7 @@ export default function Dashboard() {
         setStats(statsRes.data);
         setSolicitudes(sols);
       } catch (err) {
-        console.error('Error al cargar dashboard:', err);
+        logError('Error al cargar dashboard:', err);
       } finally {
         setCargando(false);
       }

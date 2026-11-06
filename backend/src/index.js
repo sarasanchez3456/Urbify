@@ -4,7 +4,9 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 
+const { query } = require('./config/db');
 const { globalLimiter } = require('./middleware/rateLimit');
+const { errorHandler } = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth.routes');
 const categoriasRoutes = require('./routes/categorias.routes');
 const serviciosRoutes = require('./routes/servicios.routes');
@@ -43,10 +45,25 @@ app.use(cors({
   },
   credentials: true,
 }));
-app.use(express.json({ limit: config.bodyLimit }));
+// strict:false acepta cuerpos JSON que no son objeto (p. ej. `null`, que axios envía en un POST sin datos).
+// Luego se normaliza a {} para que los controladores puedan desestructurar req.body sin lanzar.
+app.use(express.json({ limit: config.bodyLimit, strict: false }));
+app.use((req, res, next) => {
+  if (req.body === null || typeof req.body !== 'object' || Array.isArray(req.body)) req.body = {};
+  next();
+});
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', version: '1.0.0', nombre: 'Urbify API' });
+// /api/health responde siempre (el proceso está vivo). Con ?deep=1 comprueba también la base de datos y
+// responde 503 si no contesta: es el endpoint adecuado para el healthcheck de un orquestador.
+app.get('/api/health', async (req, res) => {
+  const base = { status: 'ok', version: '1.0.0', nombre: 'Urbify API' };
+  if (req.query.deep !== '1') return res.json(base);
+  try {
+    await query('SELECT 1');
+    return res.json({ ...base, db: 'ok' });
+  } catch {
+    return res.status(503).json({ ...base, status: 'degraded', db: 'error' });
+  }
 });
 
 // Después de /api/health, que debe poder consultarse siempre.
@@ -65,17 +82,8 @@ app.use('/api/*', (req, res) => {
   res.status(404).json({ error: `Ruta ${req.originalUrl} no encontrada` });
 });
 
-app.use((err, req, res, next) => {
-  // Body demasiado grande o JSON mal formado: son errores del cliente, no del servidor.
-  if (err.type === 'entity.too.large') {
-    return res.status(413).json({ error: 'El cuerpo de la petición es demasiado grande' });
-  }
-  if (err.type === 'entity.parse.failed') {
-    return res.status(400).json({ error: 'JSON inválido' });
-  }
-  console.error('Error no manejado:', err);
-  res.status(500).json({ error: 'Error interno del servidor' });
-});
+// Manejador global: errores de MySQL por datos del usuario -> 400/409; cuerpo grande -> 413; JSON malo -> 400.
+app.use(errorHandler);
 
 app.listen(config.port, () => {
   console.log(`Urbify API corriendo en puerto ${config.port} (${config.NODE_ENV})`);

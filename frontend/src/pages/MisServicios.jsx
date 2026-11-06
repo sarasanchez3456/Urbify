@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../api/axios';
 import DashboardLayout from '../components/DashboardLayout';
 import { Plus, ToggleLeft, ToggleRight, Trash2, Wrench, AlertCircle } from 'lucide-react';
+import { logError } from '../utils/log';
 
 const glassCard = {
   backgroundColor: 'rgba(255, 255, 255, 0.6)',
@@ -33,13 +34,13 @@ export default function MisServicios() {
   const cargarServicios = () => {
     api.get('/servicios/mios')
       .then((res) => setServicios(res.data))
-      .catch((err) => console.error('Error al cargar servicios:', err))
+      .catch((err) => logError('Error al cargar servicios:', err))
       .finally(() => setCargando(false));
   };
 
   useEffect(() => {
     cargarServicios();
-    api.get('/categorias').then((res) => setCategorias(res.data)).catch((err) => console.error('Error al cargar categorías:', err));
+    api.get('/categorias').then((res) => setCategorias(res.data)).catch((err) => logError('Error al cargar categorías:', err));
   }, []);
 
   const handleCrear = async (e) => {
@@ -60,7 +61,7 @@ export default function MisServicios() {
       await api.put(`/servicios/${servicio.id}`, { disponible: servicio.disponible ? 0 : 1 });
       cargarServicios();
     } catch (err) {
-      console.error(err);
+      logError(err);
     }
   };
 
@@ -70,7 +71,7 @@ export default function MisServicios() {
       await api.delete(`/servicios/${id}`);
       cargarServicios();
     } catch (err) {
-      console.error(err);
+      logError(err);
     }
   };
 

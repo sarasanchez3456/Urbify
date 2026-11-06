@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import DashboardLayout from '../components/DashboardLayout';
+import { logError } from '../utils/log';
 import './ServicioDetalle.css';
 
 export default function ServicioDetalle() {
@@ -14,7 +15,7 @@ export default function ServicioDetalle() {
   useEffect(() => {
     api.get(`/servicios/${id}`)
       .then((res) => setServicio(res.data))
-      .catch((err) => console.error('Error al cargar servicio:', err))
+      .catch((err) => logError('Error al cargar servicio:', err))
       .finally(() => setCargando(false));
   }, [id]);
 
@@ -79,6 +80,12 @@ export default function ServicioDetalle() {
               <h3>{servicio.nombre} {servicio.apellido}</h3>
               {servicio.direccion && <p className="proveedor-direccion">📍 {servicio.direccion}</p>}
               {servicio.telefono && <p className="proveedor-telefono">📞 {servicio.telefono}</p>}
+              {/* El teléfono y la dirección solo los devuelve la API a clientes (y admin) con sesión */}
+              {!servicio.direccion && !servicio.telefono && (
+                <p className="proveedor-contacto-oculto">
+                  🔒 {usuario ? 'El contacto solo lo ven los clientes' : 'Inicia sesión para ver el contacto'}
+                </p>
+              )}
             </div>
 
             {usuario?.rol === 'cliente' && (

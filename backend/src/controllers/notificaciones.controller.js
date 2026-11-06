@@ -1,6 +1,6 @@
 const { query } = require('../config/db');
 
-exports.listarNotificaciones = async (req, res) => {
+exports.listarNotificaciones = async (req, res, next) => {
   try {
     const [notificaciones] = await query(
       'SELECT * FROM notificaciones WHERE usuario_id = ? ORDER BY fecha_creacion DESC',
@@ -8,12 +8,11 @@ exports.listarNotificaciones = async (req, res) => {
     );
     res.json(notificaciones);
   } catch (err) {
-    console.error('Error al listar notificaciones:', err);
-    res.status(500).json({ error: 'Error al listar notificaciones' });
+    return next(err);
   }
 };
 
-exports.crearNotificacion = async (req, res) => {
+exports.crearNotificacion = async (req, res, next) => {
   try {
     const { usuario_id, mensaje } = req.body;
     if (!usuario_id || !mensaje) {
@@ -28,12 +27,11 @@ exports.crearNotificacion = async (req, res) => {
     );
     res.status(201).json({ mensaje: 'Notificación creada exitosamente', id: result.insertId });
   } catch (err) {
-    console.error('Error al crear notificación:', err);
-    res.status(500).json({ error: 'Error al crear notificación' });
+    return next(err);
   }
 };
 
-exports.marcarLeida = async (req, res) => {
+exports.marcarLeida = async (req, res, next) => {
   try {
     const { id } = req.params;
     const [existe] = await query('SELECT usuario_id FROM notificaciones WHERE id = ?', [id]);
@@ -46,22 +44,20 @@ exports.marcarLeida = async (req, res) => {
     await query('UPDATE notificaciones SET leida = 1 WHERE id = ?', [id]);
     res.json({ mensaje: 'Notificación marcada como leída' });
   } catch (err) {
-    console.error('Error al marcar notificación:', err);
-    res.status(500).json({ error: 'Error al marcar notificación' });
+    return next(err);
   }
 };
 
-exports.marcarTodasLeidas = async (req, res) => {
+exports.marcarTodasLeidas = async (req, res, next) => {
   try {
     await query('UPDATE notificaciones SET leida = 1 WHERE usuario_id = ?', [req.usuarioId]);
     res.json({ mensaje: 'Todas las notificaciones marcadas como leídas' });
   } catch (err) {
-    console.error('Error al marcar todas las notificaciones:', err);
-    res.status(500).json({ error: 'Error al marcar notificaciones' });
+    return next(err);
   }
 };
 
-exports.eliminarNotificacion = async (req, res) => {
+exports.eliminarNotificacion = async (req, res, next) => {
   try {
     const { id } = req.params;
     const [existe] = await query('SELECT usuario_id FROM notificaciones WHERE id = ?', [id]);
@@ -74,17 +70,15 @@ exports.eliminarNotificacion = async (req, res) => {
     await query('DELETE FROM notificaciones WHERE id = ?', [id]);
     res.json({ mensaje: 'Notificación eliminada exitosamente' });
   } catch (err) {
-    console.error('Error al eliminar notificación:', err);
-    res.status(500).json({ error: 'Error al eliminar notificación' });
+    return next(err);
   }
 };
 
-exports.limpiarTodas = async (req, res) => {
+exports.limpiarTodas = async (req, res, next) => {
   try {
     await query('DELETE FROM notificaciones WHERE usuario_id = ?', [req.usuarioId]);
     res.json({ mensaje: 'Todas las notificaciones eliminadas' });
   } catch (err) {
-    console.error('Error al limpiar notificaciones:', err);
-    res.status(500).json({ error: 'Error al limpiar notificaciones' });
+    return next(err);
   }
 };
