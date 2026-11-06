@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 
+const { query } = require('./config/db');
 const { globalLimiter } = require('./middleware/rateLimit');
 const { errorHandler } = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth.routes');
@@ -52,8 +53,17 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', version: '1.0.0', nombre: 'Urbify API' });
+// /api/health responde siempre (el proceso está vivo). Con ?deep=1 comprueba también la base de datos y
+// responde 503 si no contesta: es el endpoint adecuado para el healthcheck de un orquestador.
+app.get('/api/health', async (req, res) => {
+  const base = { status: 'ok', version: '1.0.0', nombre: 'Urbify API' };
+  if (req.query.deep !== '1') return res.json(base);
+  try {
+    await query('SELECT 1');
+    return res.json({ ...base, db: 'ok' });
+  } catch {
+    return res.status(503).json({ ...base, status: 'degraded', db: 'error' });
+  }
 });
 
 // Después de /api/health, que debe poder consultarse siempre.

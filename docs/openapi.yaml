@@ -75,10 +75,13 @@ paths:
     get:
       tags: [Salud]
       summary: Estado del servidor
+      description: Sin parámetros responde siempre 200 (el proceso está vivo). Con `deep=1` comprueba también la base de datos y responde 503 si no contesta; úsalo en el healthcheck de un orquestador.
       security: []
+      parameters:
+        - { name: deep, in: query, description: '1 = comprobar también la base de datos', schema: { type: string, enum: ['1'] } }
       responses:
         '200':
-          description: Servidor activo
+          description: Servidor activo (con `deep=1`, también la base de datos)
           content:
             application/json:
               schema:
@@ -87,6 +90,18 @@ paths:
                   status: { type: string, example: ok }
                   version: { type: string, example: 1.0.0 }
                   nombre: { type: string, example: Urbify API }
+                  db: { type: string, enum: [ok], description: 'Solo con deep=1' }
+        '503':
+          description: Con `deep=1`, la base de datos no responde
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: degraded }
+                  version: { type: string }
+                  nombre: { type: string }
+                  db: { type: string, enum: [error] }
 
   # ---------------------------------------------------------------- Auth
   /auth/registro:
