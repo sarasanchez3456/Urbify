@@ -2,12 +2,12 @@ const router = require('express').Router();
 const serviciosController = require('../controllers/servicios.controller');
 const { authenticate, authorize } = require('../middleware/auth');
 const { publicLimiter } = require('../middleware/rateLimit');
-const { validarBody, idParams } = require('../middleware/validate');
+const { validarBody, validarQuery, idParams } = require('../middleware/validate');
 
 idParams(router, 'id', 'categoria_id');
 
 router.get('/destacados', publicLimiter, serviciosController.destacados);
-router.get('/buscar', publicLimiter, serviciosController.buscarServicios);
+router.get('/buscar', publicLimiter, validarQuery('consultaBuscar'), serviciosController.buscarServicios);
 router.get('/categoria/:categoria_id', publicLimiter, serviciosController.serviciosPorCategoria);
 router.get('/mios', authenticate, authorize('proveedor'), serviciosController.misServicios);
 router.get('/:id', publicLimiter, serviciosController.detalleServicio);

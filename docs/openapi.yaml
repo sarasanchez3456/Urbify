@@ -388,7 +388,7 @@ paths:
       security: []
       x-roles: [público]
       parameters:
-        - { name: q, in: query, description: 'Texto en título, descripción o categoría', schema: { type: string } }
+        - { name: q, in: query, description: 'Texto en título, descripción o categoría (máx. 100 caracteres; repetir el parámetro o usar q[]= responde 400)', schema: { type: string, maxLength: 100 } }
         - { name: categoria_id, in: query, schema: { type: integer } }
         - { name: disponible, in: query, description: '0 o 1; otro valor responde 400', schema: { type: integer, enum: [0, 1] } }
       responses:
