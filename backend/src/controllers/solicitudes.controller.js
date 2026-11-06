@@ -1,10 +1,6 @@
 const { query } = require('../config/db');
 const resend = require('../config/resend');
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-}
+const { escapeHtml } = require('../utils/html');
 
 // Zona horaria de fecha_servicio. Se guarda en UTC (la conexión usa time_zone +00:00) y se responde
 // en ISO 8601 con "Z". Urbify opera en Colombia (UTC-5, sin horario de verano): un valor SIN zona

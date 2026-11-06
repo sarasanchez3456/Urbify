@@ -6,6 +6,7 @@ const { query } = require('../config/db');
 const resend = require('../config/resend');
 const { emailFrom } = require('../config/env');
 const { normalizarTelefono, MENSAJE_TELEFONO } = require('../utils/telefono');
+const { escapeHtml } = require('../utils/html');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -178,7 +179,7 @@ exports.olvidoContrasena = async (req, res, next) => {
       subject: 'Tu código para restablecer la contraseña de Urbify',
       html: `
         <h2>Restablecer contraseña</h2>
-        <p>Hola ${usuarios[0].nombre.replace(/[<>&"']/g, '')},</p>
+        <p>Hola ${escapeHtml(usuarios[0].nombre)},</p>
         <p>Tu código es: <strong style="font-size:24px;letter-spacing:4px">${codigo}</strong></p>
         <p>Vence en ${CODIGO_EXPIRA_MIN} minutos y solo sirve una vez. Si no lo pediste, ignora este correo.</p>
       `,
