@@ -365,7 +365,7 @@ Si el correo ya existe, ese usuario se promueve a `admin`. En una base de datos 
 | POST | `/api/auth/restablecer-contrasena` | Cambia la contraseña con `{correo, codigo, nueva_contrasena}` y cierra las sesiones |
 | GET | `/api/categorias` | Listar categorías |
 | GET | `/api/servicios` | Listar servicios |
-| POST | `/api/solicitudes` | Crear solicitud (`servicio_id` y `fecha_servicio` futura obligatorios; el proveedor se toma del servicio) |
+| POST | `/api/solicitudes` | Crear solicitud (`servicio_id` y `fecha_servicio` futura obligatorios; el proveedor se toma del servicio; fechas en UTC, y una fecha sin zona se toma como hora de Colombia, ver `docs/openapi.yaml`) |
 | GET / POST | `/api/solicitudes/:id/mensajes` | Chat de la solicitud: solo su cliente y su proveedor (`{contenido}`, 1–1000 caracteres) |
 | GET | `/api/proveedores` | Buscar proveedores |
 | GET | `/api/stats` | Estadísticas públicas de la página de inicio (3 cifras) |

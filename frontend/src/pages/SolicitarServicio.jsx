@@ -150,7 +150,8 @@ export default function SolicitarServicio() {
       await api.post('/solicitudes', {
         servicio_id: Number(id),
         descripcion,
-        fecha_servicio: fecha,
+        // datetime-local no lleva zona: se convierte a ISO con offset (UTC) para que el servidor no la adivine
+        fecha_servicio: new Date(fecha).toISOString(),
         direccion: direccion || null,
         latitud: latitud || null,
         longitud: longitud || null,
