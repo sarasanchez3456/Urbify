@@ -1,4 +1,5 @@
 const { query } = require('../config/db');
+const { veContactoExacto, protegerContacto, protegerLista } = require('../utils/privacidad');
 
 exports.crearServicio = async (req, res, next) => {
   try {
@@ -75,7 +76,7 @@ exports.serviciosPorCategoria = async (req, res, next) => {
        ORDER BY s.fecha_creacion DESC`,
       [categoria_id]
     );
-    res.json(servicios);
+    res.json(protegerLista(servicios, veContactoExacto(req)));
   } catch (err) {
     return next(err);
   }
@@ -121,7 +122,7 @@ exports.buscarServicios = async (req, res, next) => {
     sql += ` ORDER BY s.fecha_creacion DESC`;
 
     const [servicios] = await query(sql, params);
-    res.json(servicios);
+    res.json(protegerLista(servicios, veContactoExacto(req)));
   } catch (err) {
     return next(err);
   }
@@ -263,7 +264,7 @@ exports.detalleServicio = async (req, res, next) => {
       console.error('Error al obtener comentarios:', err2);
     }
 
-    res.json({ ...servicios[0], comentarios });
+    res.json({ ...protegerContacto(servicios[0], veContactoExacto(req)), comentarios });
   } catch (err) {
     return next(err);
   }

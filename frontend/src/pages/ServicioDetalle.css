@@ -192,6 +192,14 @@
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
+.proveedor-contacto-oculto {
+  color: oklch(0.55 0.03 240);
+  font-size: 0.85rem;
+  margin: 0.25rem 0;
+  font-style: italic;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
 @media (max-width: 768px) {
   .detalle-page {
     padding: 1rem 0;

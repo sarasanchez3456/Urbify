@@ -1,12 +1,14 @@
 const router = require('express').Router();
 const { query } = require('../config/db');
 const { publicLimiter } = require('../middleware/rateLimit');
+const { authenticateOptional } = require('../middleware/auth');
+const { veContactoExacto, protegerContacto } = require('../utils/privacidad');
 
 // Número decimal estricto ("6.25", "-75.5"): rechaza Infinity, NaN, notación científica, arrays (lat[]=1) y basura.
 const DECIMAL = /^-?\d+(\.\d+)?$/;
 const numero = (v) => (typeof v === 'string' && DECIMAL.test(v.trim()) ? Number(v) : NaN);
 
-router.get('/cercanos', publicLimiter, async (req, res, next) => {
+router.get('/cercanos', publicLimiter, authenticateOptional, async (req, res, next) => {
   try {
     const { lat, lng, radio = '5' } = req.query;
 
@@ -76,7 +78,18 @@ router.get('/cercanos', publicLimiter, async (req, res, next) => {
       }
     }
 
-    res.json(proveedores);
+    // La distancia y el filtro por radio se calculan arriba con las coordenadas REALES. Quien no es cliente/admin
+    // recibe latitud/longitud aproximadas, sin teléfono ni dirección, y la distancia redondeada a 0,5 km (con
+    // la distancia exacta desde 3 puntos se podría recuperar la ubicación exacta).
+    const exacto = veContactoExacto(req);
+    res.json(
+      exacto
+        ? proveedores
+        : proveedores.map((p) => ({
+            ...protegerContacto(p, false),
+            distancia_km: Math.max(0.5, Math.round(Number(p.distancia_km) * 2) / 2),
+          }))
+    );
   } catch (err) {
     return next(err);
   }

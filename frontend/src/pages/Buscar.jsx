@@ -99,6 +99,7 @@ const accentGradient = 'linear-gradient(135deg, oklch(0.40 0.18 255), oklch(0.72
 // ── Main page component ─────────────────────────────────────────────────
 function BuscarContent() {
   const [searchParams] = useSearchParams();
+  const { usuario } = useAuth();
 
   // Service list state
   const [categorias, setCategorias] = useState([]);
@@ -323,9 +324,14 @@ function BuscarContent() {
                     ${parseFloat(s.tarifa || 0).toFixed(2)}
                     <span className="text-xs font-normal ml-1" style={textMuted}>/{s.tipo_tarifa}</span>
                   </span>
-                  {s.direccion && (
+                  {s.direccion ? (
                     <span className="flex items-center gap-1 text-xs" style={textMuted}>
                       <MapPin size={11} />{s.direccion}
+                    </span>
+                  ) : (
+                    // La API solo devuelve la dirección a clientes (y admin) con sesión
+                    <span className="flex items-center gap-1 text-xs" style={textMuted}>
+                      <MapPin size={11} />{usuario ? 'Contacto solo para clientes' : 'Inicia sesión para ver el contacto'}
                     </span>
                   )}
                 </div>

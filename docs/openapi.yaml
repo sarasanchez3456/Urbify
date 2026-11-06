@@ -30,6 +30,8 @@ info:
     Colombia (UTC-5, America/Bogota)**, nunca como la hora del servidor. Los correos muestran la hora
     de Colombia.
 
+    **Privacidad del contacto.** En las rutas públicas de servicios y proveedores, con sesión de **cliente o admin** se devuelven teléfono, dirección y coordenadas exactas; **sin sesión, con un token inválido o con sesión de proveedor** `telefono` y `direccion` **no vienen** en la respuesta y `latitud`/`longitud` se redondean a 2 decimales (≈ 1 km). Un token inválido o vencido no produce 401 en esta ruta: se trata como anónimo. Los clientes de la app móvil deben tolerar que esos campos falten.
+
     **Decimales.** Las columnas `DECIMAL` de MySQL (`tarifa`, `latitud`, `longitud`, promedios) se
     **responden como texto** (`"50000.00"`, `"4.5000"`); en las peticiones se aceptan números. Los
     clientes deben convertirlos.
@@ -400,6 +402,7 @@ paths:
     get:
       tags: [Servicios]
       summary: Buscar servicios
+      description: 'Contacto del proveedor: con sesión de **cliente o admin** se devuelven teléfono, dirección y coordenadas exactas; **sin sesión, con un token inválido o con sesión de proveedor** `telefono` y `direccion` **no vienen** en la respuesta y `latitud`/`longitud` se redondean a 2 decimales (≈ 1 km). Un token inválido o vencido no produce 401 en esta ruta: se trata como anónimo.'
       security: []
       x-roles: [público]
       parameters:
@@ -420,6 +423,7 @@ paths:
     get:
       tags: [Servicios]
       summary: Servicios disponibles de una categoría
+      description: 'Contacto del proveedor: con sesión de **cliente o admin** se devuelven teléfono, dirección y coordenadas exactas; **sin sesión, con un token inválido o con sesión de proveedor** `telefono` y `direccion` **no vienen** en la respuesta y `latitud`/`longitud` se redondean a 2 decimales (≈ 1 km). Un token inválido o vencido no produce 401 en esta ruta: se trata como anónimo.'
       security: []
       x-roles: [público]
       parameters:
@@ -480,6 +484,7 @@ paths:
     get:
       tags: [Servicios]
       summary: Detalle de un servicio con sus últimos 10 comentarios
+      description: 'Contacto del proveedor: con sesión de **cliente o admin** se devuelven teléfono, dirección y coordenadas exactas; **sin sesión, con un token inválido o con sesión de proveedor** `telefono` y `direccion` **no vienen** en la respuesta y `latitud`/`longitud` se redondean a 2 decimales (≈ 1 km). Un token inválido o vencido no produce 401 en esta ruta: se trata como anónimo.'
       security: []
       x-roles: [público]
       responses:
@@ -776,6 +781,7 @@ paths:
     get:
       tags: [Proveedores]
       summary: Proveedores cerca de un punto
+      description: 'Contacto del proveedor: con sesión de **cliente o admin** se devuelven teléfono, dirección y coordenadas exactas; **sin sesión, con un token inválido o con sesión de proveedor** `telefono` y `direccion` **no vienen** en la respuesta y `latitud`/`longitud` se redondean a 2 decimales (≈ 1 km). Un token inválido o vencido no produce 401 en esta ruta: se trata como anónimo.'
       security: []
       x-roles: [público]
       parameters:
@@ -1139,9 +1145,9 @@ components:
         nombre: { type: string }
         apellido: { type: string }
         foto_url: { type: string, nullable: true }
-        direccion: { type: string, nullable: true }
-        latitud: { $ref: '#/components/schemas/DecimalNulo' }
-        longitud: { $ref: '#/components/schemas/DecimalNulo' }
+        direccion: { type: string, nullable: true, description: 'Solo con sesión de cliente/admin' }
+        latitud: { $ref: '#/components/schemas/DecimalNulo', description: 'Exacta para cliente/admin; redondeada a 2 decimales para el resto' }
+        longitud: { $ref: '#/components/schemas/DecimalNulo', description: 'Exacta para cliente/admin; redondeada a 2 decimales para el resto' }
         calificacion_promedio: { $ref: '#/components/schemas/Decimal' }
         total_calificaciones: { type: integer }
     ServicioDetalle:
@@ -1149,7 +1155,7 @@ components:
         - $ref: '#/components/schemas/ServicioPublico'
         - type: object
           properties:
-            telefono: { type: string, nullable: true }
+            telefono: { type: string, nullable: true, description: 'Solo con sesión de cliente/admin (no viene para el resto)' }
             comentarios:
               type: array
               items:
@@ -1236,13 +1242,13 @@ components:
         nombre: { type: string }
         apellido: { type: string }
         foto_url: { type: string, nullable: true }
-        direccion: { type: string, nullable: true }
-        latitud: { $ref: '#/components/schemas/Decimal' }
-        longitud: { $ref: '#/components/schemas/Decimal' }
-        telefono: { type: string, nullable: true }
+        direccion: { type: string, nullable: true, description: 'Solo con sesión de cliente/admin (no viene para el resto)' }
+        latitud: { $ref: '#/components/schemas/Decimal', description: 'Exacta para cliente/admin; redondeada a 2 decimales para el resto' }
+        longitud: { $ref: '#/components/schemas/Decimal', description: 'Exacta para cliente/admin; redondeada a 2 decimales para el resto' }
+        telefono: { type: string, nullable: true, description: 'Solo con sesión de cliente/admin (no viene para el resto)' }
         calificacion_promedio: { $ref: '#/components/schemas/Decimal' }
         total_calificaciones: { type: integer }
-        distancia_km: { type: number }
+        distancia_km: { type: number, description: 'Calculada con las coordenadas reales; para quien no es cliente/admin se redondea a múltiplos de 0,5 km (mínimo 0,5)' }
         servicios:
           type: array
           items:

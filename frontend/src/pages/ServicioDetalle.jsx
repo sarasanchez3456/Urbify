@@ -80,6 +80,12 @@ export default function ServicioDetalle() {
               <h3>{servicio.nombre} {servicio.apellido}</h3>
               {servicio.direccion && <p className="proveedor-direccion">📍 {servicio.direccion}</p>}
               {servicio.telefono && <p className="proveedor-telefono">📞 {servicio.telefono}</p>}
+              {/* El teléfono y la dirección solo los devuelve la API a clientes (y admin) con sesión */}
+              {!servicio.direccion && !servicio.telefono && (
+                <p className="proveedor-contacto-oculto">
+                  🔒 {usuario ? 'El contacto solo lo ven los clientes' : 'Inicia sesión para ver el contacto'}
+                </p>
+              )}
             </div>
 
             {usuario?.rol === 'cliente' && (
