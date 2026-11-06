@@ -10,6 +10,15 @@ const dotenv = require('dotenv');
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
+// Un NODE_ENV desconocido (p. ej. "prod" o "Production") dejaría la validación estricta desactivada sin
+// avisar, así que se rechaza. Se comprueba antes de leer los archivos .env.<entorno>.
+const ENTORNOS = ['development', 'staging', 'production', 'test'];
+if (!ENTORNOS.includes(NODE_ENV)) {
+  console.error(`Configuración inválida: NODE_ENV="${NODE_ENV}" no es un entorno conocido.`);
+  console.error(`Usa exactamente uno de: ${ENTORNOS.join(', ')} (en minúsculas).`);
+  process.exit(1);
+}
+
 // Capas: .env.<entorno> (si existe) y luego .env. Las variables ya definidas en el
 // proceso (Docker, la plataforma de despliegue) tienen prioridad sobre ambos archivos.
 dotenv.config({ path: path.join(__dirname, '..', '..', `.env.${NODE_ENV}`) });

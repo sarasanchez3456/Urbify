@@ -302,7 +302,7 @@ El backend lee `backend/.env.<NODE_ENV>` (si existe) y luego `backend/.env`; las
 
 | Variable | development | staging / production |
 |---|---|---|
-| `NODE_ENV` | `development` (por defecto) | `staging` o `production` |
+| `NODE_ENV` | `development` (por defecto) | `staging` o `production` (cualquier valor distinto de `development`, `staging`, `production` o `test` impide arrancar) |
 | `JWT_SECRET` | opcional (avisa) | **obligatoria**, 32+ caracteres, sin valores de ejemplo |
 | `DB_HOST`, `DB_USER`, `DB_NAME`, `DB_PASSWORD` | por defecto de MySQL local | **obligatorias**; `DB_PASSWORD` sin valores de ejemplo |
 | `CORS_ORIGIN` | `http://localhost:5173,http://localhost` | **obligatoria**: orígenes separados por comas, sin `*`; `https` en production |
