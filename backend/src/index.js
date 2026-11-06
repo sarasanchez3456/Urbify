@@ -43,7 +43,13 @@ app.use(cors({
   },
   credentials: true,
 }));
-app.use(express.json({ limit: config.bodyLimit }));
+// strict:false acepta cuerpos JSON que no son objeto (p. ej. `null`, que axios envía en un POST sin datos).
+// Luego se normaliza a {} para que los controladores puedan desestructurar req.body sin lanzar.
+app.use(express.json({ limit: config.bodyLimit, strict: false }));
+app.use((req, res, next) => {
+  if (req.body === null || typeof req.body !== 'object' || Array.isArray(req.body)) req.body = {};
+  next();
+});
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', version: '1.0.0', nombre: 'Urbify API' });
