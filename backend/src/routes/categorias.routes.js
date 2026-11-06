@@ -1,8 +1,9 @@
 const router = require('express').Router();
 const categoriasController = require('../controllers/categorias.controller');
 const { authenticate, authorize } = require('../middleware/auth');
+const { publicLimiter } = require('../middleware/rateLimit');
 
-router.get('/', categoriasController.listarCategorias);
+router.get('/', publicLimiter, categoriasController.listarCategorias);
 router.post('/', authenticate, authorize('admin'), categoriasController.crearCategoria);
 router.put('/:id', authenticate, authorize('admin'), categoriasController.actualizarCategoria);
 router.delete('/:id', authenticate, authorize('admin'), categoriasController.eliminarCategoria);

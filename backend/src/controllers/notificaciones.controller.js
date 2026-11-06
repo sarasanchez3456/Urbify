@@ -36,12 +36,12 @@ exports.crearNotificacion = async (req, res) => {
 exports.marcarLeida = async (req, res) => {
   try {
     const { id } = req.params;
-    const [existe] = await query(
-      'SELECT id FROM notificaciones WHERE id = ? AND usuario_id = ?',
-      [id, req.usuarioId]
-    );
+    const [existe] = await query('SELECT usuario_id FROM notificaciones WHERE id = ?', [id]);
     if (existe.length === 0) {
       return res.status(404).json({ error: 'Notificación no encontrada' });
+    }
+    if (existe[0].usuario_id !== req.usuarioId) {
+      return res.status(403).json({ error: 'No autorizado para esta notificación' });
     }
     await query('UPDATE notificaciones SET leida = 1 WHERE id = ?', [id]);
     res.json({ mensaje: 'Notificación marcada como leída' });
@@ -64,12 +64,12 @@ exports.marcarTodasLeidas = async (req, res) => {
 exports.eliminarNotificacion = async (req, res) => {
   try {
     const { id } = req.params;
-    const [existe] = await query(
-      'SELECT id FROM notificaciones WHERE id = ? AND usuario_id = ?',
-      [id, req.usuarioId]
-    );
+    const [existe] = await query('SELECT usuario_id FROM notificaciones WHERE id = ?', [id]);
     if (existe.length === 0) {
       return res.status(404).json({ error: 'Notificación no encontrada' });
+    }
+    if (existe[0].usuario_id !== req.usuarioId) {
+      return res.status(403).json({ error: 'No autorizado para esta notificación' });
     }
     await query('DELETE FROM notificaciones WHERE id = ?', [id]);
     res.json({ mensaje: 'Notificación eliminada exitosamente' });

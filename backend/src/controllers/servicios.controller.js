@@ -8,17 +8,26 @@ exports.crearServicio = async (req, res) => {
 
     const { categoria_id, titulo, descripcion, tarifa, tipo_tarifa } = req.body;
 
-    if (!categoria_id || !titulo || tarifa === undefined || tarifa === null) {
-      return res.status(400).json({ error: 'categoria_id, titulo y tarifa son requeridos' });
+    if (!categoria_id || !titulo) {
+      return res.status(400).json({ error: 'categoria_id y titulo son requeridos' });
     }
     if (tipo_tarifa && !['hora', 'fijo'].includes(tipo_tarifa)) {
       return res.status(400).json({ error: "tipo_tarifa debe ser 'hora' o 'fijo'" });
+    }
+    // La app móvil omite la tarifa cuando está vacía: se guarda como 0.
+    const tarifaFinal = tarifa ?? 0;
+    if (!Number.isFinite(Number(tarifaFinal)) || Number(tarifaFinal) < 0) {
+      return res.status(400).json({ error: 'tarifa debe ser un número mayor o igual a 0' });
+    }
+    const [categoria] = await query('SELECT id FROM categorias WHERE id = ?', [categoria_id]);
+    if (categoria.length === 0) {
+      return res.status(404).json({ error: 'Categoría no encontrada' });
     }
 
     const [result] = await query(
       `INSERT INTO servicios (proveedor_id, categoria_id, titulo, descripcion, tarifa, tipo_tarifa)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [req.usuarioId, categoria_id, titulo, descripcion ?? null, tarifa, tipo_tarifa || 'hora']
+      [req.usuarioId, categoria_id, titulo, descripcion ?? null, tarifaFinal, tipo_tarifa || 'hora']
     );
 
     res.status(201).json({
@@ -154,9 +163,19 @@ exports.actualizarServicio = async (req, res) => {
     const { id } = req.params;
     const { titulo, descripcion, tarifa, tipo_tarifa, disponible } = req.body;
 
-    const [servicio] = await query('SELECT * FROM servicios WHERE id = ? AND proveedor_id = ?', [id, req.usuarioId]);
+    if (tipo_tarifa !== undefined && tipo_tarifa !== null && !['hora', 'fijo'].includes(tipo_tarifa)) {
+      return res.status(400).json({ error: "tipo_tarifa debe ser 'hora' o 'fijo'" });
+    }
+    if (tarifa !== undefined && tarifa !== null && (!Number.isFinite(Number(tarifa)) || Number(tarifa) < 0)) {
+      return res.status(400).json({ error: 'tarifa debe ser un número mayor o igual a 0' });
+    }
+
+    const [servicio] = await query('SELECT proveedor_id FROM servicios WHERE id = ?', [id]);
     if (servicio.length === 0) {
-      return res.status(404).json({ error: 'Servicio no encontrado o no autorizado' });
+      return res.status(404).json({ error: 'Servicio no encontrado' });
+    }
+    if (servicio[0].proveedor_id !== req.usuarioId) {
+      return res.status(403).json({ error: 'No autorizado para modificar este servicio' });
     }
 
     await query(
@@ -178,9 +197,22 @@ exports.eliminarServicio = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [servicio] = await query('SELECT * FROM servicios WHERE id = ? AND proveedor_id = ?', [id, req.usuarioId]);
+    const [servicio] = await query('SELECT proveedor_id FROM servicios WHERE id = ?', [id]);
     if (servicio.length === 0) {
-      return res.status(404).json({ error: 'Servicio no encontrado o no autorizado' });
+      return res.status(404).json({ error: 'Servicio no encontrado' });
+    }
+    if (servicio[0].proveedor_id !== req.usuarioId) {
+      return res.status(403).json({ error: 'No autorizado para eliminar este servicio' });
+    }
+
+    const [resenas] = await query(
+      `SELECT cal.id FROM calificaciones cal
+       JOIN solicitudes sol ON sol.id = cal.solicitud_id
+       WHERE sol.servicio_id = ? LIMIT 1`,
+      [id]
+    );
+    if (resenas.length > 0) {
+      return res.status(409).json({ error: 'No se puede eliminar este servicio porque ya recibió una reseña.' });
     }
 
     await query('DELETE FROM servicios WHERE id = ?', [id]);
