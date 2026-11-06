@@ -36,6 +36,17 @@ const INDICES = [
 // Las bases creadas antes solo aceptaban 'cliente' y 'proveedor' en usuarios.rol
 // (CHECK con nombre automático). Se reemplaza por chk_usuarios_rol, que incluye 'admin'.
 async function asegurarRolAdmin(conn) {
+  // Bases creadas con el antiguo scripts/schema.sql tienen rol ENUM('cliente','proveedor'): el CHECK no basta,
+  // la columna misma rechazaría 'admin' ("Data truncated"). Se convierte a VARCHAR(20), como en schema.sql.
+  const [tipo] = await conn.query(
+    "SELECT DATA_TYPE AS tipo FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'usuarios' AND COLUMN_NAME = 'rol'",
+    [DB_NAME]
+  );
+  if (tipo.length > 0 && String(tipo[0].tipo).toLowerCase() === 'enum') {
+    await conn.query('ALTER TABLE usuarios MODIFY COLUMN rol VARCHAR(20) NOT NULL');
+    console.log('Migración: usuarios.rol convertido de ENUM a VARCHAR(20)');
+  }
+
   const [checks] = await conn.query(
     `SELECT cc.CONSTRAINT_NAME AS nombre, cc.CHECK_CLAUSE AS clausula
        FROM INFORMATION_SCHEMA.CHECK_CONSTRAINTS cc
