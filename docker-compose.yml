@@ -68,7 +68,8 @@ services:
       TRUST_PROXY: ${TRUST_PROXY:-1}
       FORCE_HTTPS: ${FORCE_HTTPS:-false}
     ports:
-      - "4000:4000"
+      # Solo la propia máquina: la web llega por Nginx (/api) y TRUST_PROXY=1 confía en ese proxy
+      - "127.0.0.1:4000:4000"
     depends_on:
       db:
         condition: service_healthy   # Espera que MySQL esté listo
