@@ -1,5 +1,9 @@
 node_modules/
 .env
+.env.development
+.env.staging
+.env.production
+!frontend/.env.production
 dist/
 .DS_Store
 stitch_urbify_interactive_service_marketplace/

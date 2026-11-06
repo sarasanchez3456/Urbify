@@ -29,6 +29,7 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
   const isActive = (path) => location.pathname === path;
 
   const navItems = [
+    { path: '/admin', label: 'Panel de administración', icon: LayoutDashboard, roles: ['admin'] },
     { path: '/dashboard', label: 'Inicio', icon: LayoutDashboard, roles: ['cliente', 'proveedor'] },
     { path: '/perfil', label: 'Mi Perfil', icon: User, roles: ['cliente', 'proveedor'] },
     { path: '/mis-solicitudes', label: usuario?.rol === 'proveedor' ? 'Notificaciones' : 'Mis Solicitudes', icon: ClipboardList, roles: ['cliente', 'proveedor'] },

@@ -69,8 +69,8 @@ export default function Auth() {
     setBloqueado(false);
     setCargando(true);
     try {
-      await login(loginCorreo, loginContrasena);
-      navigate('/dashboard');
+      const user = await login(loginCorreo, loginContrasena);
+      navigate(user.rol === 'admin' ? '/admin' : '/dashboard');
     } catch (err) {
       const data = err.response?.data;
       if (data?.bloqueado) {

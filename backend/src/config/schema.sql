@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   correo        VARCHAR(150) NOT NULL UNIQUE,
   contrasena    VARCHAR(255) NOT NULL,
   telefono      VARCHAR(20),
-  rol           VARCHAR(20) NOT NULL CHECK (rol IN ('cliente', 'proveedor')),
+  rol           VARCHAR(20) NOT NULL,
   foto_url      VARCHAR(255),
   categoria_id  INT NULL,
   latitud       DECIMAL(10,8),
@@ -44,7 +44,10 @@ CREATE TABLE IF NOT EXISTS usuarios (
   intentos_fallidos INT DEFAULT 0,
   bloqueado_hasta   DATETIME NULL,
   fecha_creacion     DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (categoria_id) REFERENCES categorias(id)
+  CONSTRAINT chk_usuarios_rol CHECK (rol IN ('cliente', 'proveedor', 'admin')),
+  FOREIGN KEY (categoria_id) REFERENCES categorias(id),
+  INDEX idx_usuarios_geo (latitud, longitud),
+  INDEX idx_usuarios_rol_activo (rol, activo)
 );
 
 CREATE TABLE IF NOT EXISTS servicios (
@@ -58,7 +61,9 @@ CREATE TABLE IF NOT EXISTS servicios (
   disponible       BOOLEAN DEFAULT 1,
   fecha_creacion       DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (proveedor_id) REFERENCES usuarios(id) ON DELETE CASCADE,
-  FOREIGN KEY (categoria_id) REFERENCES categorias(id)
+  FOREIGN KEY (categoria_id) REFERENCES categorias(id),
+  INDEX idx_servicios_categoria (categoria_id, disponible),
+  INDEX idx_servicios_proveedor (proveedor_id)
 );
 
 CREATE TABLE IF NOT EXISTS solicitudes (
@@ -67,6 +72,8 @@ CREATE TABLE IF NOT EXISTS solicitudes (
   proveedor_id     INT NOT NULL,
   servicio_id      INT NOT NULL,
   descripcion      TEXT,
+  tarifa_acordada  DECIMAL(10,2),
+  tipo_tarifa_acordada VARCHAR(20),
   direccion        VARCHAR(255),
   latitud          DECIMAL(10,8),
   longitud         DECIMAL(11,8),
@@ -76,7 +83,21 @@ CREATE TABLE IF NOT EXISTS solicitudes (
   correo_enviado   BOOLEAN DEFAULT 0,
   FOREIGN KEY (cliente_id)   REFERENCES usuarios(id),
   FOREIGN KEY (proveedor_id) REFERENCES usuarios(id),
-  FOREIGN KEY (servicio_id)  REFERENCES servicios(id)
+  FOREIGN KEY (servicio_id)  REFERENCES servicios(id),
+  INDEX idx_solicitudes_cliente (cliente_id),
+  INDEX idx_solicitudes_proveedor (proveedor_id)
+);
+
+CREATE TABLE IF NOT EXISTS mensajes_solicitud (
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  solicitud_id    INT NOT NULL,
+  remitente_id    INT NOT NULL,
+  contenido       VARCHAR(1000) NOT NULL,
+  fecha_envio     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  leido           BOOLEAN NOT NULL DEFAULT 0,
+  FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id) ON DELETE CASCADE,
+  FOREIGN KEY (remitente_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  INDEX idx_mensajes_solicitud_fecha (solicitud_id, fecha_envio)
 );
 
 CREATE TABLE IF NOT EXISTS calificaciones (
@@ -89,7 +110,8 @@ CREATE TABLE IF NOT EXISTS calificaciones (
   fecha_creacion        DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (solicitud_id)  REFERENCES solicitudes(id),
   FOREIGN KEY (cliente_id)    REFERENCES usuarios(id),
-  FOREIGN KEY (proveedor_id)  REFERENCES usuarios(id)
+  FOREIGN KEY (proveedor_id)  REFERENCES usuarios(id),
+  INDEX idx_calificaciones_proveedor (proveedor_id)
 );
 
 CREATE TABLE IF NOT EXISTS tokens_sesion (
@@ -98,7 +120,21 @@ CREATE TABLE IF NOT EXISTS tokens_sesion (
   token            VARCHAR(512) NOT NULL,
   expira_en        DATETIME NOT NULL,
   fecha_creacion        DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  INDEX idx_tokens_sesion_token (usuario_id, expira_en)
+);
+
+-- Códigos de recuperación de contraseña: solo se guarda el hash, vencen y son de un solo uso.
+CREATE TABLE IF NOT EXISTS recuperaciones_contrasena (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  usuario_id       INT NOT NULL,
+  codigo_hash      VARCHAR(255) NOT NULL,
+  expira_en        DATETIME NOT NULL,
+  intentos         INT NOT NULL DEFAULT 0,
+  usado            BOOLEAN NOT NULL DEFAULT 0,
+  fecha_creacion   DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  INDEX idx_recuperaciones_usuario (usuario_id, expira_en)
 );
 
 CREATE TABLE IF NOT EXISTS notificaciones (
