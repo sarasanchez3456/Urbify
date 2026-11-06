@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import DashboardLayout from '../components/DashboardLayout';
+import { logError } from '../utils/log';
 import './ServicioDetalle.css';
 
 export default function ServicioDetalle() {
@@ -14,7 +15,7 @@ export default function ServicioDetalle() {
   useEffect(() => {
     api.get(`/servicios/${id}`)
       .then((res) => setServicio(res.data))
-      .catch((err) => console.error('Error al cargar servicio:', err))
+      .catch((err) => logError('Error al cargar servicio:', err))
       .finally(() => setCargando(false));
   }, [id]);
 

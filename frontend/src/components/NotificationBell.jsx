@@ -14,6 +14,7 @@ import {
   X,
   Inbox,
 } from 'lucide-react';
+import { logError } from '../utils/log';
 
 function formatearTiempo(fechaStr) {
   if (!fechaStr) return '';
@@ -64,7 +65,7 @@ export default function NotificationBell() {
       const res = await api.get('/notificaciones');
       setNotificaciones(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
-      console.error('Error al cargar notificaciones:', err);
+      logError('Error al cargar notificaciones:', err);
     }
   };
 
@@ -109,7 +110,7 @@ export default function NotificationBell() {
         prev.map((n) => (n.id === id ? { ...n, leida: 1 } : n))
       );
     } catch (err) {
-      console.error('Error al marcar leída:', err);
+      logError('Error al marcar leída:', err);
     }
   };
 
@@ -119,7 +120,7 @@ export default function NotificationBell() {
       await api.put('/notificaciones/leer-todas');
       setNotificaciones((prev) => prev.map((n) => ({ ...n, leida: 1 })));
     } catch (err) {
-      console.error('Error al marcar todas leídas:', err);
+      logError('Error al marcar todas leídas:', err);
     } finally {
       setCargando(false);
     }
@@ -131,7 +132,7 @@ export default function NotificationBell() {
       await api.delete(`/notificaciones/${id}`);
       setNotificaciones((prev) => prev.filter((n) => n.id !== id));
     } catch (err) {
-      console.error('Error al eliminar notificación:', err);
+      logError('Error al eliminar notificación:', err);
     }
   };
 

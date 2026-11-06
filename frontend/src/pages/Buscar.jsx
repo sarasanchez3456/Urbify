@@ -12,6 +12,7 @@ import {
   COLOMBIA_BOUNDS,
   geocodificarDireccion,
 } from '../utils/colombia';
+import { logError } from '../utils/log';
 
 // ── Leaflet icon setup ──────────────────────────────────────────────────────
 delete L.Icon.Default.prototype._getIconUrl;
@@ -145,7 +146,7 @@ function BuscarContent() {
       setCargandoServicios(true);
       api.get(`/servicios/buscar?${params}`, { signal: ctrl.signal })
         .then((r) => setServicios(r.data))
-        .catch((e) => { if (e.name !== 'CanceledError') console.error(e); })
+        .catch((e) => { if (e.name !== 'CanceledError') logError(e); })
         .finally(() => setCargandoServicios(false));
     }, 300);
     return () => { clearTimeout(debounceRef.current); abortRef.current?.abort(); };
@@ -171,7 +172,7 @@ function BuscarContent() {
       const res = await api.get(`/proveedores/cercanos?lat=${lat}&lng=${lng}&radio=${r}`);
       setProveedores(res.data);
     } catch (e) {
-      console.error('Error al cargar proveedores:', e);
+      logError('Error al cargar proveedores:', e);
     } finally {
       setCargandoMapa(false);
     }
@@ -204,7 +205,7 @@ function BuscarContent() {
           alert('No se encontró la dirección. Intenta ser más general o añadir la ciudad.');
         }
       } catch (e) {
-        console.error(e);
+        logError(e);
       }
       setBuscandoDir(false);
     }

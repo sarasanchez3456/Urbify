@@ -16,6 +16,7 @@ import {
   Clock,
   MapPin,
 } from 'lucide-react';
+import { logError } from '../utils/log';
 
 const glassCard = {
   backgroundColor: 'rgba(255, 255, 255, 0.6)',
@@ -39,7 +40,7 @@ export default function MisSolicitudes() {
     const endpoint = usuario?.rol === 'cliente' ? '/solicitudes/cliente' : '/solicitudes/proveedor';
     api.get(endpoint)
       .then((res) => setSolicitudes(res.data))
-      .catch((err) => console.error('Error al cargar solicitudes:', err))
+      .catch((err) => logError('Error al cargar solicitudes:', err))
       .finally(() => setCargando(false));
   }, [usuario]);
 
@@ -51,7 +52,7 @@ export default function MisSolicitudes() {
       const res = await api.get(endpoint);
       setSolicitudes(res.data);
     } catch (err) {
-      console.error(err);
+      logError(err);
     }
   };
 

@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import DashboardLayout from '../components/DashboardLayout';
 import { COLOMBIA_CENTER, COLOMBIA_ZOOM, COLOMBIA_BOUNDS } from '../utils/colombia';
+import { logError } from '../utils/log';
 import './Mapa.css';
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -74,7 +75,7 @@ function MapaContent() {
       const res = await api.get(`/proveedores/cercanos?lat=${lat}&lng=${lng}&radio=${currentRadio}`);
       setProveedores(res.data);
     } catch (err) {
-      console.error('Error al cargar proveedores:', err);
+      logError('Error al cargar proveedores:', err);
     } finally {
       setCargando(false);
     }
