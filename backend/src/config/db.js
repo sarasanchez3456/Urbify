@@ -1,16 +1,24 @@
 const mysql = require('mysql2/promise');
-require('dotenv').config();
+const { db: dbConfig } = require('./env');
 
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT) || 3306,
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'urbify_db',
+  host: dbConfig.host,
+  port: dbConfig.port,
+  user: dbConfig.user,
+  password: dbConfig.password,
+  database: dbConfig.name,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
   charset: 'utf8mb4',
+  // Las fechas (DATETIME) se leen y escriben en UTC y se serializan como ISO 8601 con "Z".
+  timezone: 'Z',
+});
+
+// Mismo huso en MySQL, para que NOW()/CURRENT_TIMESTAMP también queden en UTC aunque el servidor
+// de base de datos use otra zona (p. ej. XAMPP en hora local).
+pool.pool.on('connection', (conn) => {
+  conn.query("SET time_zone = '+00:00'");
 });
 
 // Reintenta la conexión hasta MAX_INTENTOS veces con una pausa entre cada uno.

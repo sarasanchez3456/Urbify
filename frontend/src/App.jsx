@@ -16,6 +16,9 @@ import MisServicios from './pages/MisServicios';
 import MisSolicitudes from './pages/MisSolicitudes';
 import Calificar from './pages/Calificar';
 import Dashboard from './pages/Dashboard';
+import AdminPanel from './pages/AdminPanel';
+
+const inicioDe = (usuario) => (usuario?.rol === 'admin' ? '/admin' : '/dashboard');
 
 function RutaProtegida({ children, rol }) {
   const { usuario, cargando } = useAuth();
@@ -25,7 +28,7 @@ function RutaProtegida({ children, rol }) {
   return children;
 }
 
-const rutasDashboard = ['/dashboard', '/perfil', '/mis-servicios', '/mis-solicitudes', '/solicitar', '/calificar', '/buscar', '/mapa', '/servicio'];
+const rutasDashboard = ['/dashboard', '/admin', '/perfil', '/mis-servicios', '/mis-solicitudes', '/solicitar', '/calificar', '/buscar', '/mapa', '/servicio'];
 
 export default function App() {
   const navigate = useNavigate();
@@ -46,7 +49,7 @@ export default function App() {
 
       <main className={`relative z-10 ${!esDashboard && !isAuth ? 'pt-20' : ''}`}>
         <Routes>
-          <Route path="/" element={usuario ? <Navigate to="/dashboard" /> : <Home />} />
+          <Route path="/" element={usuario ? <Navigate to={inicioDe(usuario)} /> : <Home />} />
           <Route path="/login" element={<Auth />} />
           <Route path="/registro" element={<Auth />} />
           <Route path="/buscar" element={<Buscar />} />
@@ -64,7 +67,15 @@ export default function App() {
             path="/dashboard"
             element={
               <RutaProtegida>
-                <Dashboard />
+                {usuario?.rol === 'admin' ? <Navigate to="/admin" /> : <Dashboard />}
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <RutaProtegida rol="admin">
+                <AdminPanel />
               </RutaProtegida>
             }
           />

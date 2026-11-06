@@ -1,0 +1,1286 @@
+openapi: 3.0.3
+info:
+  title: Urbify API
+  version: 1.0.0
+  description: |
+    Contrato único de la API REST de Urbify para el backend, el frontend web y la app móvil
+    (Urbify-Mobile). Cuando el código y este documento difieran, es un error de uno de los dos:
+    corrígelo en el mismo PR.
+
+    ## Convenciones
+
+    **Autenticación.** `POST /auth/login` y `POST /auth/registro` devuelven un JWT. Se envía en
+    `Authorization: Bearer <token>`. El token dura `JWT_EXPIRES_IN` (7 días) y es revocable: vive en
+    `tokens_sesion` y `POST /auth/logout` lo borra. Un token inválido, vencido o cerrado responde `401`.
+
+    **Roles.** `cliente`, `proveedor` y `admin`. El registro público solo crea `cliente` y `proveedor`.
+    Cada operación indica sus roles en `x-roles` y en la descripción. El rol se lee de la base de datos
+    en cada petición. Detalle y reglas de pertenencia: `docs/AUTORIZACION.md`.
+
+    **Errores.** Siempre `{"error": "mensaje"}`. Los `429` añaden `bloqueado: true` y `minutos_restantes`
+    y las cabeceras `Retry-After` y `RateLimit`. Códigos: `400` datos o estado inválido, `401` sin sesión
+    válida, `403` sin permiso (rol o recurso ajeno), `404` no existe, `409` conflicto de estado, `413`
+    body mayor que `BODY_LIMIT`, `429` límite de peticiones, `500` error interno.
+
+    **Fechas y zona horaria.** Todas las fechas se guardan y responden en UTC, en ISO 8601 con `Z`
+    (`2026-11-05T14:30:00.000Z`); los clientes las convierten a la hora local para mostrarlas.
+    `fecha_servicio` (futura, obligatoria) se envía **preferiblemente con zona**
+    (`2026-12-01T15:00:00.000Z` o `2026-12-01T10:00:00-05:00`; la web usa `toISOString()`). Si llega
+    **sin zona** (`2026-12-01 10:00:00`, como envía la app móvil) se interpreta como **hora de
+    Colombia (UTC-5, America/Bogota)**, nunca como la hora del servidor. Los correos muestran la hora
+    de Colombia.
+
+    **Decimales.** Las columnas `DECIMAL` de MySQL (`tarifa`, `latitud`, `longitud`, promedios) se
+    **responden como texto** (`"50000.00"`, `"4.5000"`); en las peticiones se aceptan números. Los
+    clientes deben convertirlos.
+
+    **Coordenadas.** `latitud` y `longitud` en grados decimales (WGS84); la web restringe las
+    direcciones a Colombia.
+
+    **Opcionales.** Los campos opcionales ausentes o `null` se guardan como `NULL`; la app móvil omite
+    los vacíos.
+
+    **Paginación.** Hoy los listados no se paginan. Cuando se agregue será compatible hacia atrás:
+    parámetros opcionales `limite` y `desplazamiento` (valores por defecto = comportamiento actual).
+
+    ## Versionado
+
+    La versión de este documento (`info.version`) sigue SemVer. Cambios **compatibles** (nueva ruta,
+    campo opcional nuevo, campo nuevo en una respuesta) suben la versión menor. Cambios
+    **incompatibles** (quitar o renombrar un campo o ruta, volver obligatorio un campo, cambiar un
+    tipo o un código de estado) exigen: subir la versión mayor, publicar la ruta nueva bajo un prefijo
+    nuevo (`/api/v2/...`) manteniendo la anterior mientras haya clientes que la usen, avisar a
+    Urbify-Mobile y al frontend, y registrar el cambio en este archivo.
+  contact:
+    name: Equipo Urbify
+servers:
+  - url: http://localhost:4000/api
+    description: Desarrollo local (backend directo)
+  - url: /api
+    description: Mismo origen (Nginx del frontend en Docker)
+tags:
+  - name: Salud
+  - name: Auth
+  - name: Usuarios
+  - name: Categorías
+  - name: Servicios
+  - name: Solicitudes
+  - name: Calificaciones
+  - name: Proveedores
+  - name: Estadísticas
+  - name: Notificaciones
+
+paths:
+  /health:
+    get:
+      tags: [Salud]
+      summary: Estado del servidor
+      security: []
+      responses:
+        '200':
+          description: Servidor activo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  version: { type: string, example: 1.0.0 }
+                  nombre: { type: string, example: Urbify API }
+
+  # ---------------------------------------------------------------- Auth
+  /auth/registro:
+    post:
+      tags: [Auth]
+      summary: Registrar un usuario (cliente o proveedor)
+      description: Límite por IP (ver README). No permite crear administradores.
+      security: []
+      x-roles: [público]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegistroRequest' }
+            example:
+              nombre: Ana
+              apellido: Pérez
+              correo: ana@ejemplo.com
+              contrasena: ClaveSegura123
+              rol: cliente
+      responses:
+        '201':
+          description: Usuario creado y sesión iniciada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+              example:
+                mensaje: Usuario registrado exitosamente
+                token: eyJhbGciOi...
+                usuario: { id: 12, nombre: Ana, apellido: Pérez, correo: ana@ejemplo.com, rol: cliente }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Iniciar sesión
+      description: |
+        Los intentos fallidos se limitan por IP y por cuenta (no hay bloqueo de la cuenta).
+        Un `401` aquí significa credenciales incorrectas, no sesión caducada.
+      security: []
+      x-roles: [público]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [correo, contrasena]
+              properties:
+                correo: { type: string, format: email }
+                contrasena: { type: string }
+      responses:
+        '200':
+          description: Sesión iniciada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Cerrar sesión (revoca el token enviado)
+      description: Borra el token de la petición de `tokens_sesion`. Después, ese token recibe `401`. Otras sesiones del usuario siguen activas.
+      x-roles: [cliente, proveedor, admin]
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/olvido-contrasena:
+    post:
+      tags: [Auth]
+      summary: Pedir un código de recuperación de contraseña
+      description: |
+        Envía por correo un código de 6 dígitos (vence en 15 minutos, un solo uso). Responde igual
+        exista o no la cuenta. Límites por IP y por correo.
+      security: []
+      x-roles: [público]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [correo]
+              properties:
+                correo: { type: string, format: email }
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/restablecer-contrasena:
+    post:
+      tags: [Auth]
+      summary: Cambiar la contraseña con el código recibido
+      description: El código se invalida tras 5 errores. Al restablecer se cierran todas las sesiones de la cuenta.
+      security: []
+      x-roles: [público]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [correo, codigo, nueva_contrasena]
+              properties:
+                correo: { type: string, format: email }
+                codigo: { type: string, pattern: '^[0-9]{6}$' }
+                nueva_contrasena: { type: string, minLength: 8, maxLength: 72 }
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '400':
+          description: Código inválido o expirado, o contraseña fuera de 8–72 caracteres
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: Código inválido o expirado }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/perfil:
+    get:
+      tags: [Auth]
+      summary: Perfil del usuario autenticado
+      x-roles: [cliente, proveedor, admin]
+      responses:
+        '200':
+          description: Perfil
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Usuario' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Auth]
+      summary: Actualizar el propio perfil
+      description: Solo se modifican los campos enviados. El rol y el correo no son editables.
+      x-roles: [cliente, proveedor, admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre: { type: string }
+                apellido: { type: string }
+                telefono: { type: string }
+                direccion: { type: string }
+                latitud: { type: number }
+                longitud: { type: number }
+                foto_url: { type: string }
+                oficio: { type: string }
+      responses:
+        '200':
+          description: Perfil actualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje: { type: string }
+                  usuario: { $ref: '#/components/schemas/Usuario' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  # ------------------------------------------------------------ Usuarios
+  /auth:
+    get:
+      tags: [Usuarios]
+      summary: Listar usuarios
+      x-roles: [admin]
+      responses:
+        '200':
+          description: Todos los usuarios, del más reciente al más antiguo
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/UsuarioResumen' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /auth/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Usuarios]
+      summary: Ver un usuario
+      x-roles: [admin]
+      responses:
+        '200':
+          description: Usuario
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Usuario' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Usuarios]
+      summary: Eliminar un usuario
+      description: No se puede eliminar la propia cuenta (400) ni a un administrador (403). Con solicitudes o calificaciones asociadas responde 409.
+      x-roles: [admin]
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # ---------------------------------------------------------- Categorías
+  /categorias:
+    get:
+      tags: [Categorías]
+      summary: Listar categorías
+      security: []
+      x-roles: [público]
+      responses:
+        '200':
+          description: Categorías ordenadas por nombre
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Categoria' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+    post:
+      tags: [Categorías]
+      summary: Crear una categoría
+      x-roles: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CategoriaRequest' }
+      responses:
+        '201':
+          description: Categoría creada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje: { type: string }
+                  id: { type: integer }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /categorias/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    put:
+      tags: [Categorías]
+      summary: Actualizar una categoría
+      x-roles: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CategoriaRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Categorías]
+      summary: Eliminar una categoría
+      description: Responde 409 si tiene servicios asociados.
+      x-roles: [admin]
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # ------------------------------------------------------------ Servicios
+  /servicios/destacados:
+    get:
+      tags: [Servicios]
+      summary: Los 3 servicios mejor calificados
+      security: []
+      x-roles: [público]
+      responses:
+        '200':
+          description: Servicios destacados
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 3
+                items: { $ref: '#/components/schemas/ServicioPublico' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /servicios/buscar:
+    get:
+      tags: [Servicios]
+      summary: Buscar servicios
+      security: []
+      x-roles: [público]
+      parameters:
+        - { name: q, in: query, description: 'Texto en título, descripción o categoría', schema: { type: string } }
+        - { name: categoria_id, in: query, schema: { type: integer } }
+        - { name: disponible, in: query, description: '0 o 1; otro valor responde 400', schema: { type: integer, enum: [0, 1] } }
+      responses:
+        '200':
+          description: Servicios de proveedores activos
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ServicioPublico' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /servicios/categoria/{categoria_id}:
+    get:
+      tags: [Servicios]
+      summary: Servicios disponibles de una categoría
+      security: []
+      x-roles: [público]
+      parameters:
+        - { name: categoria_id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: Servicios disponibles de proveedores activos
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ServicioPublico' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /servicios/mios:
+    get:
+      tags: [Servicios]
+      summary: Servicios del proveedor autenticado
+      x-roles: [proveedor]
+      responses:
+        '200':
+          description: Servicios propios
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ServicioPropio' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /servicios:
+    post:
+      tags: [Servicios]
+      summary: Crear un servicio
+      description: Se crea a nombre del proveedor autenticado. La categoría debe existir. Si se omite `tarifa` se guarda 0.
+      x-roles: [proveedor]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ServicioRequest' }
+            example: { categoria_id: 2, titulo: Reparación de tuberías, tarifa: 50000, tipo_tarifa: hora }
+      responses:
+        '201':
+          description: Servicio creado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje: { type: string }
+                  servicio: { $ref: '#/components/schemas/ServicioCreado' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /servicios/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Servicios]
+      summary: Detalle de un servicio con sus últimos 10 comentarios
+      security: []
+      x-roles: [público]
+      responses:
+        '200':
+          description: Servicio
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServicioDetalle' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+    put:
+      tags: [Servicios]
+      summary: Actualizar un servicio propio
+      description: Solo los campos enviados cambian. 403 si el servicio es de otro proveedor.
+      x-roles: [proveedor]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                titulo: { type: string }
+                descripcion: { type: string }
+                tarifa: { type: number, minimum: 0 }
+                tipo_tarifa: { type: string, enum: [hora, fijo] }
+                disponible: { type: boolean }
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Servicios]
+      summary: Eliminar un servicio propio
+      description: 409 si tiene solicitudes o reseñas asociadas (márcalo como no disponible).
+      x-roles: [proveedor]
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # ---------------------------------------------------------- Solicitudes
+  /solicitudes:
+    post:
+      tags: [Solicitudes]
+      summary: Crear una solicitud de servicio
+      description: |
+        El proveedor se toma del servicio (no se envía `proveedor_id`). `fecha_servicio` es obligatoria
+        y debe ser futura. Se guarda la tarifa vigente (`tarifa_acordada`), se notifica a ambas partes
+        y se envían correos (best-effort).
+      x-roles: [cliente]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SolicitudRequest' }
+            example:
+              servicio_id: 5
+              descripcion: Fuga en el baño
+              fecha_servicio: '2026-12-01T15:00:00.000Z'
+              direccion: 'Calle 10 # 5-20, Bogotá'
+      responses:
+        '201':
+          description: Solicitud creada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje: { type: string }
+                  solicitud:
+                    type: object
+                    properties:
+                      id: { type: integer }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /solicitudes/cliente:
+    get:
+      tags: [Solicitudes]
+      summary: Solicitudes del cliente autenticado
+      x-roles: [cliente]
+      responses:
+        '200':
+          description: Solicitudes propias, de la más reciente a la más antigua
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SolicitudCliente' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /solicitudes/proveedor:
+    get:
+      tags: [Solicitudes]
+      summary: Solicitudes recibidas por el proveedor autenticado
+      x-roles: [proveedor]
+      responses:
+        '200':
+          description: Solicitudes recibidas
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SolicitudProveedor' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /solicitudes/{id}/estado:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    put:
+      tags: [Solicitudes]
+      summary: Cambiar el estado de una solicitud
+      description: |
+        Solo las partes de la solicitud. Transiciones: `pendiente` → `aceptada`|`cancelada`;
+        `aceptada` → `en_proceso`|`cancelada`; `en_proceso` → `completada`; `completada` y `cancelada`
+        son finales. El cliente solo puede cancelar y solo en `pendiente`. Si otra petición cambió el
+        estado en paralelo responde 409.
+      x-roles: [cliente, proveedor]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [estado]
+              properties:
+                estado: { $ref: '#/components/schemas/EstadoSolicitud' }
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /solicitudes/{id}/mensajes:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Solicitudes]
+      summary: Mensajes del chat de la solicitud
+      description: Solo el cliente y el proveedor de la solicitud.
+      x-roles: [cliente, proveedor]
+      responses:
+        '200':
+          description: Mensajes en orden cronológico
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Mensaje' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Solicitudes]
+      summary: Enviar un mensaje en el chat de la solicitud
+      x-roles: [cliente, proveedor]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [contenido]
+              properties:
+                contenido: { type: string, minLength: 1, maxLength: 1000 }
+      responses:
+        '201':
+          description: Mensaje enviado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: integer }
+                  mensaje: { type: string }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /solicitudes/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    delete:
+      tags: [Solicitudes]
+      summary: Eliminar una solicitud
+      description: Solo las partes, y solo en estado `pendiente` o `cancelada`.
+      x-roles: [cliente, proveedor]
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # -------------------------------------------------------- Calificaciones
+  /calificaciones:
+    post:
+      tags: [Calificaciones]
+      summary: Calificar una solicitud completada
+      description: Solo el cliente de la solicitud, una sola vez (409 si ya fue calificada).
+      x-roles: [cliente]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [solicitud_id, puntuacion]
+              properties:
+                solicitud_id: { type: integer }
+                puntuacion: { type: integer, minimum: 1, maximum: 5 }
+                comentario: { type: string }
+      responses:
+        '201':
+          description: Calificación creada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje: { type: string }
+                  calificacion:
+                    type: object
+                    properties:
+                      id: { type: integer }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /calificaciones/proveedor/{proveedor_id}:
+    get:
+      tags: [Calificaciones]
+      summary: Calificaciones de un proveedor
+      security: []
+      x-roles: [público]
+      parameters:
+        - { name: proveedor_id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: Calificaciones y promedio
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  calificaciones:
+                    type: array
+                    items: { $ref: '#/components/schemas/CalificacionPublica' }
+                  promedio: { $ref: '#/components/schemas/Decimal' }
+                  total: { type: integer }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /calificaciones/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    put:
+      tags: [Calificaciones]
+      summary: Editar una calificación propia
+      x-roles: [cliente]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                puntuacion: { type: integer, minimum: 1, maximum: 5 }
+                comentario: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Calificaciones]
+      summary: Eliminar una calificación propia
+      x-roles: [cliente]
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ------------------------------------------------------------ Proveedores
+  /proveedores/cercanos:
+    get:
+      tags: [Proveedores]
+      summary: Proveedores cerca de un punto
+      security: []
+      x-roles: [público]
+      parameters:
+        - { name: lat, in: query, required: true, schema: { type: number } }
+        - { name: lng, in: query, required: true, schema: { type: number } }
+        - { name: radio, in: query, description: Kilómetros (por defecto 5), schema: { type: number, exclusiveMinimum: true, minimum: 0, default: 5 } }
+      responses:
+        '200':
+          description: Proveedores activos con coordenadas dentro del radio, del más cercano al más lejano
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ProveedorCercano' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  # ------------------------------------------------------------ Estadísticas
+  /stats:
+    get:
+      tags: [Estadísticas]
+      summary: Cifras públicas de la página de inicio
+      security: []
+      x-roles: [público]
+      responses:
+        '200':
+          description: Tres cifras
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StatsPublicas' }
+              example: { proveedores_activos: 12, servicios_realizados: 87, calificacion_media: '4.6' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /stats/admin:
+    get:
+      tags: [Estadísticas]
+      summary: Estadísticas completas del sistema
+      x-roles: [admin]
+      responses:
+        '200':
+          description: Cifras completas (todas las claves siempre presentes)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StatsAdmin' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  # ----------------------------------------------------------- Notificaciones
+  /notificaciones:
+    get:
+      tags: [Notificaciones]
+      summary: Notificaciones del usuario autenticado
+      x-roles: [cliente, proveedor, admin]
+      responses:
+        '200':
+          description: Notificaciones, de la más reciente a la más antigua
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Notificacion' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Notificaciones]
+      summary: Crear una notificación para uno mismo
+      description: '`usuario_id` debe ser el del usuario autenticado (403 en otro caso).'
+      x-roles: [cliente, proveedor, admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [usuario_id, mensaje]
+              properties:
+                usuario_id: { type: integer }
+                mensaje: { type: string }
+      responses:
+        '201':
+          description: Notificación creada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje: { type: string }
+                  id: { type: integer }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    delete:
+      tags: [Notificaciones]
+      summary: Eliminar todas las notificaciones propias
+      x-roles: [cliente, proveedor, admin]
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /notificaciones/leer-todas:
+    put:
+      tags: [Notificaciones]
+      summary: Marcar todas las notificaciones propias como leídas
+      x-roles: [cliente, proveedor, admin]
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /notificaciones/{id}/leer:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    put:
+      tags: [Notificaciones]
+      summary: Marcar una notificación propia como leída
+      x-roles: [cliente, proveedor, admin]
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /notificaciones/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    delete:
+      tags: [Notificaciones]
+      summary: Eliminar una notificación propia
+      x-roles: [cliente, proveedor, admin]
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+  responses:
+    Mensaje:
+      description: Operación realizada
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              mensaje: { type: string }
+    BadRequest:
+      description: Datos inválidos o acción no válida en el estado actual
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Sin sesión válida (token ausente, inválido, vencido o cerrado) o credenciales incorrectas en login
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Sesión válida pero sin permiso (rol no permitido o recurso de otro usuario)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: El recurso no existe
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Conflicto con el estado actual (ya calificada, estado cambiado en paralelo, dependencias)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    TooManyRequests:
+      description: Límite de peticiones superado
+      headers:
+        Retry-After:
+          description: Segundos hasta poder reintentar
+          schema: { type: integer }
+        RateLimit:
+          description: Estado del límite (limit, remaining, reset)
+          schema: { type: string }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorLimite' }
+          example: { error: Demasiados intentos fallidos. Intenta de nuevo más tarde., bloqueado: true, minutos_restantes: 12 }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+    ErrorLimite:
+      type: object
+      required: [error, bloqueado, minutos_restantes]
+      properties:
+        error: { type: string }
+        bloqueado: { type: boolean, enum: [true] }
+        minutos_restantes: { type: integer, minimum: 1 }
+    Decimal:
+      type: string
+      description: Decimal de MySQL serializado como texto
+      pattern: '^-?[0-9]+(\.[0-9]+)?$'
+      example: '50000.00'
+    Fecha:
+      type: string
+      format: date-time
+      description: ISO 8601 en UTC
+    DecimalNulo:
+      type: string
+      nullable: true
+      pattern: '^-?[0-9]+(\.[0-9]+)?$'
+      description: Decimal de MySQL serializado como texto, o null
+    FechaNula:
+      type: string
+      format: date-time
+      nullable: true
+      description: ISO 8601 en UTC, o null
+    TipoTarifaNulo:
+      type: string
+      nullable: true
+      enum: [hora, fijo]
+      description: hora, fijo o null
+    Rol:
+      type: string
+      enum: [cliente, proveedor, admin]
+    EstadoSolicitud:
+      type: string
+      enum: [pendiente, aceptada, en_proceso, completada, cancelada]
+    TipoTarifa:
+      type: string
+      enum: [hora, fijo]
+    RegistroRequest:
+      type: object
+      required: [nombre, apellido, correo, contrasena, rol]
+      properties:
+        nombre: { type: string }
+        apellido: { type: string }
+        correo: { type: string, format: email }
+        contrasena: { type: string, minLength: 8, maxLength: 72 }
+        telefono: { type: string, nullable: true }
+        rol: { type: string, enum: [cliente, proveedor], description: 'admin se rechaza con 400' }
+        direccion: { type: string, nullable: true }
+        latitud: { type: number, nullable: true }
+        longitud: { type: number, nullable: true }
+        oficio: { type: string, nullable: true }
+    AuthResponse:
+      type: object
+      required: [token, usuario]
+      properties:
+        mensaje: { type: string }
+        token: { type: string }
+        usuario: { $ref: '#/components/schemas/UsuarioSesion' }
+    UsuarioSesion:
+      type: object
+      description: Usuario devuelto al iniciar sesión o registrarse (los campos opcionales dependen de la ruta)
+      required: [id, nombre, apellido, correo, rol]
+      properties:
+        id: { type: integer }
+        nombre: { type: string }
+        apellido: { type: string }
+        correo: { type: string }
+        rol: { $ref: '#/components/schemas/Rol' }
+        telefono: { type: string, nullable: true }
+        foto_url: { type: string, nullable: true }
+        direccion: { type: string, nullable: true }
+        latitud: { $ref: '#/components/schemas/DecimalNulo' }
+        longitud: { $ref: '#/components/schemas/DecimalNulo' }
+        oficio: { type: string, nullable: true }
+    Usuario:
+      type: object
+      required: [id, nombre, apellido, correo, rol]
+      properties:
+        id: { type: integer }
+        nombre: { type: string }
+        apellido: { type: string }
+        correo: { type: string }
+        telefono: { type: string, nullable: true }
+        rol: { $ref: '#/components/schemas/Rol' }
+        foto_url: { type: string, nullable: true }
+        direccion: { type: string, nullable: true }
+        latitud: { $ref: '#/components/schemas/DecimalNulo' }
+        longitud: { $ref: '#/components/schemas/DecimalNulo' }
+        oficio: { type: string, nullable: true }
+        activo: { type: integer, description: 'Solo en GET /auth/{id}' }
+        fecha_creacion: { $ref: '#/components/schemas/Fecha' }
+    UsuarioResumen:
+      type: object
+      properties:
+        id: { type: integer }
+        nombre: { type: string }
+        apellido: { type: string }
+        correo: { type: string }
+        telefono: { type: string, nullable: true }
+        rol: { $ref: '#/components/schemas/Rol' }
+        activo: { type: integer }
+        fecha_creacion: { $ref: '#/components/schemas/Fecha' }
+    Categoria:
+      type: object
+      properties:
+        id: { type: integer }
+        nombre: { type: string }
+        icono_url: { type: string, nullable: true }
+        descripcion: { type: string, nullable: true }
+    CategoriaRequest:
+      type: object
+      properties:
+        nombre: { type: string, description: Obligatorio al crear }
+        descripcion: { type: string }
+        icono_url: { type: string }
+    ServicioRequest:
+      type: object
+      required: [categoria_id, titulo]
+      properties:
+        categoria_id: { type: integer }
+        titulo: { type: string }
+        descripcion: { type: string, nullable: true }
+        tarifa: { type: number, minimum: 0, default: 0 }
+        tipo_tarifa: { $ref: '#/components/schemas/TipoTarifa' }
+    ServicioCreado:
+      type: object
+      properties:
+        id: { type: integer }
+        proveedor_id: { type: integer }
+        categoria_id: { type: integer }
+        titulo: { type: string }
+        descripcion: { type: string, nullable: true }
+        tarifa: { type: number }
+    ServicioPropio:
+      type: object
+      properties:
+        id: { type: integer }
+        proveedor_id: { type: integer }
+        categoria_id: { type: integer }
+        categoria_nombre: { type: string }
+        titulo: { type: string }
+        descripcion: { type: string, nullable: true }
+        tarifa: { $ref: '#/components/schemas/Decimal' }
+        tipo_tarifa: { $ref: '#/components/schemas/TipoTarifa' }
+        disponible: { type: integer, enum: [0, 1] }
+        fecha_creacion: { $ref: '#/components/schemas/Fecha' }
+    ServicioPublico:
+      type: object
+      description: Servicio con datos de su proveedor y su calificación (`destacados` no incluye dirección ni coordenadas)
+      properties:
+        id: { type: integer }
+        categoria_id: { type: integer }
+        categoria_nombre: { type: string }
+        titulo: { type: string }
+        descripcion: { type: string, nullable: true }
+        tarifa: { $ref: '#/components/schemas/Decimal' }
+        tipo_tarifa: { $ref: '#/components/schemas/TipoTarifa' }
+        disponible: { type: integer, enum: [0, 1] }
+        fecha_creacion: { $ref: '#/components/schemas/Fecha' }
+        proveedor_id: { type: integer }
+        nombre: { type: string }
+        apellido: { type: string }
+        foto_url: { type: string, nullable: true }
+        direccion: { type: string, nullable: true }
+        latitud: { $ref: '#/components/schemas/DecimalNulo' }
+        longitud: { $ref: '#/components/schemas/DecimalNulo' }
+        calificacion_promedio: { $ref: '#/components/schemas/Decimal' }
+        total_calificaciones: { type: integer }
+    ServicioDetalle:
+      allOf:
+        - $ref: '#/components/schemas/ServicioPublico'
+        - type: object
+          properties:
+            telefono: { type: string, nullable: true }
+            comentarios:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: integer }
+                  puntuacion: { type: integer }
+                  comentario: { type: string, nullable: true }
+                  fecha_creacion: { $ref: '#/components/schemas/Fecha' }
+                  nombre: { type: string }
+                  apellido: { type: string }
+                  foto_url: { type: string, nullable: true }
+    SolicitudRequest:
+      type: object
+      required: [servicio_id, fecha_servicio]
+      properties:
+        servicio_id: { type: integer }
+        fecha_servicio: { type: string, example: '2026-12-01T15:00:00.000Z', description: 'Fecha y hora futura. ISO 8601 con zona (preferido); sin zona se interpreta como hora de Colombia (UTC-5).' }
+        descripcion: { type: string, nullable: true }
+        direccion: { type: string, nullable: true }
+        latitud: { type: number, nullable: true }
+        longitud: { type: number, nullable: true }
+    Solicitud:
+      type: object
+      properties:
+        id: { type: integer }
+        cliente_id: { type: integer }
+        proveedor_id: { type: integer }
+        servicio_id: { type: integer }
+        descripcion: { type: string, nullable: true }
+        tarifa_acordada: { $ref: '#/components/schemas/DecimalNulo' }
+        tipo_tarifa_acordada: { $ref: '#/components/schemas/TipoTarifaNulo' }
+        direccion: { type: string, nullable: true }
+        latitud: { $ref: '#/components/schemas/DecimalNulo' }
+        longitud: { $ref: '#/components/schemas/DecimalNulo' }
+        fecha_solicitud: { $ref: '#/components/schemas/Fecha' }
+        fecha_servicio: { $ref: '#/components/schemas/FechaNula' }
+        estado: { $ref: '#/components/schemas/EstadoSolicitud' }
+        correo_enviado: { type: integer, enum: [0, 1] }
+        servicio_titulo: { type: string }
+        tarifa: { $ref: '#/components/schemas/Decimal' }
+    SolicitudCliente:
+      allOf:
+        - $ref: '#/components/schemas/Solicitud'
+        - type: object
+          properties:
+            proveedor_nombre: { type: string }
+            proveedor_apellido: { type: string }
+            proveedor_foto: { type: string, nullable: true }
+    SolicitudProveedor:
+      allOf:
+        - $ref: '#/components/schemas/Solicitud'
+        - type: object
+          properties:
+            cliente_nombre: { type: string }
+            cliente_apellido: { type: string }
+            cliente_foto: { type: string, nullable: true }
+            cliente_direccion: { type: string, nullable: true }
+            cliente_telefono: { type: string, nullable: true }
+    Mensaje:
+      type: object
+      properties:
+        id: { type: integer }
+        solicitud_id: { type: integer }
+        remitente_id: { type: integer }
+        contenido: { type: string }
+        fecha_envio: { $ref: '#/components/schemas/Fecha' }
+        remitente_nombre: { type: string }
+        es_propio: { type: integer, enum: [0, 1], description: 1 si lo envió el usuario autenticado }
+    CalificacionPublica:
+      type: object
+      properties:
+        puntuacion: { type: integer, minimum: 1, maximum: 5 }
+        comentario: { type: string, nullable: true }
+        fecha_creacion: { $ref: '#/components/schemas/Fecha' }
+        nombre: { type: string }
+        apellido: { type: string }
+        foto_url: { type: string, nullable: true }
+        servicio_titulo: { type: string }
+    ProveedorCercano:
+      type: object
+      properties:
+        id: { type: integer }
+        nombre: { type: string }
+        apellido: { type: string }
+        foto_url: { type: string, nullable: true }
+        direccion: { type: string, nullable: true }
+        latitud: { $ref: '#/components/schemas/Decimal' }
+        longitud: { $ref: '#/components/schemas/Decimal' }
+        telefono: { type: string, nullable: true }
+        calificacion_promedio: { $ref: '#/components/schemas/Decimal' }
+        total_calificaciones: { type: integer }
+        distancia_km: { type: number }
+        servicios:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              titulo: { type: string }
+              tarifa: { $ref: '#/components/schemas/Decimal' }
+              tipo_tarifa: { $ref: '#/components/schemas/TipoTarifa' }
+              proveedor_id: { type: integer }
+              categoria_nombre: { type: string }
+    StatsPublicas:
+      type: object
+      required: [proveedores_activos, servicios_realizados, calificacion_media]
+      properties:
+        proveedores_activos: { type: integer }
+        servicios_realizados: { type: integer }
+        calificacion_media: { type: string, description: 'Un decimal en texto, "0.0" si no hay calificaciones', example: '4.6' }
+    StatsAdmin:
+      type: object
+      required: [usuarios_por_rol, servicios, solicitudes_por_estado, calificaciones]
+      properties:
+        usuarios_por_rol:
+          type: object
+          required: [cliente, proveedor, admin]
+          properties:
+            cliente: { type: integer }
+            proveedor: { type: integer }
+            admin: { type: integer }
+        servicios:
+          type: object
+          required: [total, disponibles]
+          properties:
+            total: { type: integer }
+            disponibles: { type: integer }
+        solicitudes_por_estado:
+          type: object
+          required: [pendiente, aceptada, en_proceso, completada, cancelada]
+          properties:
+            pendiente: { type: integer }
+            aceptada: { type: integer }
+            en_proceso: { type: integer }
+            completada: { type: integer }
+            cancelada: { type: integer }
+        calificaciones:
+          type: object
+          required: [total, media]
+          properties:
+            total: { type: integer }
+            media: { type: number, description: 'Un decimal; 0 si no hay calificaciones' }
+    Notificacion:
+      type: object
+      properties:
+        id: { type: integer }
+        usuario_id: { type: integer }
+        mensaje: { type: string }
+        leida: { type: integer, enum: [0, 1] }
+        fecha_creacion: { $ref: '#/components/schemas/Fecha' }

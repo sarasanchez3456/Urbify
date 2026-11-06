@@ -148,10 +148,10 @@ export default function SolicitarServicio() {
     setEnviando(true);
     try {
       await api.post('/solicitudes', {
-        proveedor_id: servicio.proveedor_id,
         servicio_id: Number(id),
         descripcion,
-        fecha_servicio: fecha || null,
+        // datetime-local no lleva zona: se convierte a ISO con offset (UTC) para que el servidor no la adivine
+        fecha_servicio: new Date(fecha).toISOString(),
         direccion: direccion || null,
         latitud: latitud || null,
         longitud: longitud || null,
@@ -269,10 +269,12 @@ export default function SolicitarServicio() {
             <div>
               <label className="block text-sm mb-1.5" style={{ color: 'oklch(0.45 0.03 240)' }}>
                 <Calendar size={14} className="inline mr-1" />
-                Fecha preferida (opcional)
+                Fecha y hora del servicio
               </label>
               <input
                 type="datetime-local"
+                required
+                min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
                 value={fecha}
                 onChange={(e) => setFecha(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-lg transition-colors"

@@ -18,6 +18,8 @@ export default function Auth() {
   const [cargando, setCargando] = useState(false);
   const [bloqueado, setBloqueado] = useState(false);
   const [minutosRestantes, setMinutosRestantes] = useState(0);
+  // Texto del 429 tal como lo envía la API: distingue "desde esta red" de "esta cuenta".
+  const [mensajeBloqueo, setMensajeBloqueo] = useState('');
   const bloqueadoRef = useRef();
 
   const [loginCorreo, setLoginCorreo] = useState('');
@@ -69,12 +71,13 @@ export default function Auth() {
     setBloqueado(false);
     setCargando(true);
     try {
-      await login(loginCorreo, loginContrasena);
-      navigate('/dashboard');
+      const user = await login(loginCorreo, loginContrasena);
+      navigate(user.rol === 'admin' ? '/admin' : '/dashboard');
     } catch (err) {
       const data = err.response?.data;
       if (data?.bloqueado) {
         setBloqueado(true);
+        setMensajeBloqueo(data.error || '');
         setMinutosRestantes(data.minutos_restantes || 15);
       }
       setError(data?.error || 'Error al iniciar sesión');
@@ -186,8 +189,8 @@ export default function Auth() {
                   <path clipRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" fillRule="evenodd" />
                 </svg>
                 <div>
-                  <strong>Cuenta bloqueada temporalmente</strong>
-                  <span>Intenta de nuevo en {minutosRestantes} minuto{minutosRestantes !== 1 ? 's' : ''}</span>
+                  <strong>{mensajeBloqueo || 'Demasiados intentos'}</strong>
+                  <span>Puedes volver a intentarlo en {minutosRestantes} minuto{minutosRestantes !== 1 ? 's' : ''}</span>
                 </div>
               </div>
             ) : error ? (
@@ -282,7 +285,9 @@ export default function Auth() {
                     id="reg_password"
                     type="password"
                     name="contrasena"
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Entre 8 y 72 caracteres"
+                    minLength={8}
+                    maxLength={72}
                     value={regForm.contrasena}
                     onChange={handleRegChange}
                     required
