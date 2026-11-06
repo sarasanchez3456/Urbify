@@ -366,10 +366,10 @@ Si el correo ya existe, ese usuario se promueve a `admin`. En una base de datos 
 | POST | `/api/auth/olvido-contrasena` | Envía un código de 6 dígitos al correo (respuesta genérica); ver [`docs/RUTAS_MOVIL.md`](docs/RUTAS_MOVIL.md) |
 | POST | `/api/auth/restablecer-contrasena` | Cambia la contraseña con `{correo, codigo, nueva_contrasena}` y cierra las sesiones |
 | GET | `/api/categorias` | Listar categorías |
-| GET | `/api/servicios` | Listar servicios |
+| GET | `/api/servicios/buscar` | Buscar servicios (`q`, `categoria_id`, `disponible`); también `/api/servicios/destacados`, `/api/servicios/categoria/:id` y `/api/servicios/:id` |
 | POST | `/api/solicitudes` | Crear solicitud (`servicio_id` y `fecha_servicio` futura obligatorios; el proveedor se toma del servicio; fechas en UTC, y una fecha sin zona se toma como hora de Colombia, ver `docs/openapi.yaml`) |
 | GET / POST | `/api/solicitudes/:id/mensajes` | Chat de la solicitud: solo su cliente y su proveedor (`{contenido}`, 1–1000 caracteres) |
-| GET | `/api/proveedores` | Buscar proveedores |
+| GET | `/api/proveedores/cercanos` | Proveedores cerca de un punto (`lat`, `lng`, `radio` en km) |
 | GET | `/api/stats` | Estadísticas públicas de la página de inicio (3 cifras) |
 | GET | `/api/stats/admin` | Estadísticas completas del sistema (solo `admin`) |
 | GET | `/api/notificaciones` | Notificaciones del usuario |
