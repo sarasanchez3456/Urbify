@@ -330,6 +330,8 @@ Cuando se supera un límite la API responde `429` con `{"error", "bloqueado": tr
 
 El antiguo bloqueo de cuenta (3 fallos = 5 min bloqueada) se eliminó: permitía que un tercero dejara fuera a cualquiera escribiendo su correo. Ahora los fallos limitan a la IP que los causa y la persona real puede entrar desde otra red; el tope por cuenta (20) solo se alcanza con un ataque distribuido. Los límites se guardan en memoria, así que valen para **una** instancia del backend; con varias hay que usar un almacén compartido (p. ej. Redis). Con `TRUST_PROXY` mal configurado todos los usuarios compartirían la IP del proxy.
 
+Los valores numéricos (límites, `TRUST_PROXY`), los booleanos (`true`/`false`, en minúsculas) y `BODY_LIMIT` (número con `b`, `kb` o `mb`, de 1 byte a 10 mb) se validan siempre: un valor inválido, un límite de `0` o una ventana fuera de rango impide arrancar, en lugar de aceptarse en silencio o dejar la API sin responder.
+
 Si en `staging`/`production` falta algo o es un valor de ejemplo, el backend **no arranca** y lista qué corregir (sin imprimir los secretos). Genera un `JWT_SECRET` con:
 
 ```bash

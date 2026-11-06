@@ -82,15 +82,42 @@ function parsearOrigenes(lista) {
   return origenes;
 }
 
-function entero(nombre, porDefecto) {
+// Entero decimal dentro de [min, max]. Valores como "abc", "1e3", "0x10", "-1" o fuera de rango se rechazan
+// (y el proceso no arranca) en lugar de aceptarse o dejar la API inutilizable (p. ej. un límite de 0).
+function entero(nombre, porDefecto, { min = 0, max = 2147483647 } = {}) {
   const crudo = process.env[nombre];
   if (crudo === undefined || crudo === '') return porDefecto;
-  const n = Number(crudo);
-  if (!Number.isInteger(n) || n < 0) {
-    errores.push(`${nombre} debe ser un entero mayor o igual a 0`);
+  const n = /^\d+$/.test(crudo.trim()) ? Number(crudo.trim()) : NaN;
+  if (!Number.isSafeInteger(n) || n < min || n > max) {
+    errores.push(`${nombre} debe ser un entero entre ${min} y ${max}`);
     return porDefecto;
   }
   return n;
+}
+
+// Booleano estricto: solo "true" o "false" (un "True" o "1" no se interpreta en silencio como falso).
+function booleano(nombre, porDefecto) {
+  const crudo = process.env[nombre];
+  if (crudo === undefined || crudo === '') return porDefecto;
+  if (crudo !== 'true' && crudo !== 'false') {
+    errores.push(`${nombre} debe ser "true" o "false"`);
+    return porDefecto;
+  }
+  return crudo === 'true';
+}
+
+// Tamaño máximo del cuerpo JSON: número con unidad opcional (b, kb, mb), mayor que 0 y hasta 10 mb.
+// body-parser acepta cualquier texto y, con uno inválido, desactiva el límite sin avisar.
+function limiteDeCuerpo(nombre, porDefecto) {
+  const crudo = (process.env[nombre] || '').trim();
+  if (!crudo) return porDefecto;
+  const m = /^(\d+(?:\.\d+)?)\s*(b|kb|mb)?$/i.exec(crudo);
+  const bytes = m ? Number(m[1]) * { b: 1, kb: 1024, mb: 1024 * 1024 }[(m[2] || 'b').toLowerCase()] : NaN;
+  if (!Number.isFinite(bytes) || bytes < 1 || bytes > 10 * 1024 * 1024) {
+    errores.push(`${nombre} debe ser un tamaño válido entre 1b y 10mb (por ejemplo 100kb)`);
+    return porDefecto;
+  }
+  return crudo;
 }
 
 // --- JWT -------------------------------------------------------------------
@@ -143,23 +170,24 @@ if (ESTRICTO) {
 // --- Rate limiting ---------------------------------------------------------
 // Todos los límites son por ventana de RATE_LIMIT_WINDOW_SECONDS, salvo los marcados.
 const rateLimit = {
-  habilitado: process.env.RATE_LIMIT_ENABLED !== 'false',
-  ventanaMs: entero('RATE_LIMIT_WINDOW_SECONDS', 15 * 60) * 1000,
+  habilitado: booleano('RATE_LIMIT_ENABLED', true),
+  // La ventana va de 1 s a ~24 días (límite de express-rate-limit: 2147483647 ms); 0 dejaría la API sin responder.
+  ventanaMs: entero('RATE_LIMIT_WINDOW_SECONDS', 15 * 60, { min: 1, max: 2147483 }) * 1000,
   // Todas las rutas /api por IP.
-  global: entero('RATE_LIMIT_GLOBAL', 1500),
+  global: entero('RATE_LIMIT_GLOBAL', 1500, { min: 1 }),
   // Endpoints públicos de lectura (búsqueda, cercanos, destacados, stats...), por IP y por minuto.
-  publico: entero('RATE_LIMIT_PUBLIC_PER_MINUTE', 120),
+  publico: entero('RATE_LIMIT_PUBLIC_PER_MINUTE', 120, { min: 1 }),
   // Registros por IP y por hora.
-  registro: entero('RATE_LIMIT_REGISTER_PER_HOUR', 10),
+  registro: entero('RATE_LIMIT_REGISTER_PER_HOUR', 10, { min: 1 }),
   // Recuperación de contraseña: solicitudes de código por IP y por correo, y envíos de código por IP, por hora.
-  recuperacionIp: entero('RATE_LIMIT_RECOVERY_IP_PER_HOUR', 10),
-  recuperacionCorreo: entero('RATE_LIMIT_RECOVERY_EMAIL_PER_HOUR', 3),
+  recuperacionIp: entero('RATE_LIMIT_RECOVERY_IP_PER_HOUR', 10, { min: 1 }),
+  recuperacionCorreo: entero('RATE_LIMIT_RECOVERY_EMAIL_PER_HOUR', 3, { min: 1 }),
   // Intentos de login (cualquier resultado) por IP.
-  loginIp: entero('RATE_LIMIT_LOGIN_IP', 30),
+  loginIp: entero('RATE_LIMIT_LOGIN_IP', 30, { min: 1 }),
   // Intentos fallidos contra una misma cuenta desde una misma IP.
-  loginCuentaIp: entero('RATE_LIMIT_LOGIN_ACCOUNT_IP', 5),
+  loginCuentaIp: entero('RATE_LIMIT_LOGIN_ACCOUNT_IP', 5, { min: 1 }),
   // Intentos fallidos contra una cuenta desde cualquier IP (tope contra ataques distribuidos).
-  loginCuenta: entero('RATE_LIMIT_LOGIN_ACCOUNT', 20),
+  loginCuenta: entero('RATE_LIMIT_LOGIN_ACCOUNT', 20, { min: 1 }),
 };
 
 // --- Límites, proxy y HTTPS -------------------------------------------------
@@ -172,11 +200,11 @@ const config = {
   db,
   corsOrigenes,
   emailFrom: emailFrom || 'Urbify <notificaciones@urbify.app>',
-  bodyLimit: process.env.BODY_LIMIT || '100kb',
+  bodyLimit: limiteDeCuerpo('BODY_LIMIT', '100kb'),
   // Número de proxys de confianza delante de la API (Nginx, balanceador). 0 = ninguno.
-  trustProxy: entero('TRUST_PROXY', 0),
+  trustProxy: entero('TRUST_PROXY', 0, { max: 10 }),
   // Redirige HTTP a HTTPS (requiere TRUST_PROXY para leer X-Forwarded-Proto).
-  forceHttps: process.env.FORCE_HTTPS === 'true',
+  forceHttps: booleano('FORCE_HTTPS', false),
 };
 
 if (config.forceHttps && config.trustProxy === 0) {
