@@ -1,4 +1,5 @@
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs'); // solo para HASH_FALSO al arrancar; el resto va por passwordHasher (workers)
+const hasher = require('../utils/passwordHasher');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { query } = require('../config/db');
@@ -44,7 +45,7 @@ exports.registrar = async (req, res, next) => {
       return res.status(400).json({ error: 'El correo ya está registrado' });
     }
 
-    const hashedPassword = await bcrypt.hash(contrasena, 10);
+    const hashedPassword = await hasher.hash(contrasena, 10);
 
     const [result] = await query(
       `INSERT INTO usuarios (nombre, apellido, correo, contrasena, telefono, rol, direccion, latitud, longitud, oficio)
@@ -103,7 +104,7 @@ exports.login = async (req, res, next) => {
 
     // Los intentos fallidos se limitan por IP y por cuenta en middleware/rateLimit.js, no con un
     // bloqueo de la cuenta: así un tercero no puede dejar fuera a otra persona solo escribiendo su correo.
-    const valido = await bcrypt.compare(contrasena, usuario.contrasena);
+    const valido = await hasher.compare(contrasena, usuario.contrasena);
     if (!valido) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
@@ -159,7 +160,7 @@ exports.olvidoContrasena = async (req, res, next) => {
     if (usuarios.length === 0) return;
 
     const codigo = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
-    const codigoHash = await bcrypt.hash(codigo, 10);
+    const codigoHash = await hasher.hash(codigo, 10);
 
     // Un solo código vigente por usuario: pedir otro invalida el anterior.
     await query('DELETE FROM recuperaciones_contrasena WHERE usuario_id = ?', [usuarios[0].id]);
@@ -207,7 +208,7 @@ exports.restablecerContrasena = async (req, res, next) => {
     );
     // Mismo mensaje y mismo costo (un bcrypt) con o sin código vigente.
     const recuperacion = filas[0];
-    const coincide = await bcrypt.compare(codigo, recuperacion ? recuperacion.codigo_hash : HASH_FALSO);
+    const coincide = await hasher.compare(codigo, recuperacion ? recuperacion.codigo_hash : HASH_FALSO);
 
     if (!recuperacion || recuperacion.intentos >= CODIGO_MAX_INTENTOS) {
       return res.status(400).json({ error: CODIGO_INVALIDO });
@@ -223,7 +224,7 @@ exports.restablecerContrasena = async (req, res, next) => {
       return res.status(400).json({ error: CODIGO_INVALIDO });
     }
 
-    const hash = await bcrypt.hash(nueva, 10);
+    const hash = await hasher.hash(nueva, 10);
     await query(
       'UPDATE usuarios SET contrasena = ?, intentos_fallidos = 0, bloqueado_hasta = NULL WHERE id = ?',
       [hash, recuperacion.usuario_id]
