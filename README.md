@@ -358,7 +358,7 @@ Si el correo ya existe, ese usuario se promueve a `admin`. En una base de datos 
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/api/health` | Estado del servidor |
-| POST | `/api/auth/register` | Registro de usuario |
+| POST | `/api/auth/registro` | Registro de usuario (`cliente` o `proveedor`) |
 | POST | `/api/auth/login` | Inicio de sesión |
 | POST | `/api/auth/logout` | Cierra la sesión: elimina el token enviado en `Authorization: Bearer` de `tokens_sesion`. Responde `200 {"mensaje"}`; después, ese token recibe `401` (web y app móvil deben llamarla antes de borrar el token local) |
 | POST | `/api/auth/olvido-contrasena` | Envía un código de 6 dígitos al correo (respuesta genérica); ver [`docs/RUTAS_MOVIL.md`](docs/RUTAS_MOVIL.md) |
