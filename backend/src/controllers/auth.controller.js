@@ -75,6 +75,10 @@ exports.registrar = async (req, res, next) => {
       usuario: { id: usuarioId, nombre, apellido, correo, rol, oficio },
     });
   } catch (err) {
+    // Registros simultáneos con el mismo correo: el SELECT previo no es atómico, pero el UNIQUE sí lo es.
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ error: 'El correo ya está registrado' });
+    }
     return next(err);
   }
 };
