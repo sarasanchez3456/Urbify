@@ -23,7 +23,7 @@ function parsearFechaServicio(valor) {
 
 const aFechaMysqlUtc = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
 
-exports.crearSolicitud = async (req, res) => {
+exports.crearSolicitud = async (req, res, next) => {
   try {
     // proveedor_id ya no se recibe: se toma del servicio, así el cliente no puede
     // mezclar un servicio con un proveedor distinto.
@@ -148,12 +148,11 @@ exports.crearSolicitud = async (req, res) => {
       solicitud: { id: solicitudId },
     });
   } catch (err) {
-    console.error('Error al crear solicitud:', err);
-    res.status(500).json({ error: 'Error al crear solicitud' });
+    return next(err);
   }
 };
 
-exports.misSolicitudesComoCliente = async (req, res) => {
+exports.misSolicitudesComoCliente = async (req, res, next) => {
   try {
     const [solicitudes] = await query(
       `SELECT sol.*, s.titulo AS servicio_titulo, COALESCE(sol.tarifa_acordada, s.tarifa) AS tarifa,
@@ -167,12 +166,11 @@ exports.misSolicitudesComoCliente = async (req, res) => {
     );
     res.json(solicitudes);
   } catch (err) {
-    console.error('Error al obtener solicitudes:', err);
-    res.status(500).json({ error: 'Error al obtener solicitudes' });
+    return next(err);
   }
 };
 
-exports.misSolicitudesComoProveedor = async (req, res) => {
+exports.misSolicitudesComoProveedor = async (req, res, next) => {
   try {
     const [solicitudes] = await query(
       `SELECT sol.*, s.titulo AS servicio_titulo, COALESCE(sol.tarifa_acordada, s.tarifa) AS tarifa,
@@ -187,8 +185,7 @@ exports.misSolicitudesComoProveedor = async (req, res) => {
     );
     res.json(solicitudes);
   } catch (err) {
-    console.error('Error al obtener solicitudes:', err);
-    res.status(500).json({ error: 'Error al obtener solicitudes' });
+    return next(err);
   }
 };
 
@@ -200,7 +197,7 @@ const transicionesValidas = {
   cancelada: [],
 };
 
-exports.actualizarEstadoSolicitud = async (req, res) => {
+exports.actualizarEstadoSolicitud = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { estado } = req.body;
@@ -329,8 +326,7 @@ exports.actualizarEstadoSolicitud = async (req, res) => {
 
     res.json({ mensaje: 'Estado actualizado exitosamente' });
   } catch (err) {
-    console.error('Error al actualizar estado:', err);
-    res.status(500).json({ error: 'Error al actualizar estado' });
+    return next(err);
   }
 };
 
@@ -350,7 +346,7 @@ async function solicitudDelParticipante(id, usuarioId, res) {
   return solicitud;
 }
 
-exports.listarMensajes = async (req, res) => {
+exports.listarMensajes = async (req, res, next) => {
   try {
     const solicitud = await solicitudDelParticipante(req.params.id, req.usuarioId, res);
     if (!solicitud) return;
@@ -366,12 +362,11 @@ exports.listarMensajes = async (req, res) => {
     );
     res.json(mensajes);
   } catch (err) {
-    console.error('Error al listar mensajes:', err);
-    res.status(500).json({ error: 'No se pudieron cargar los mensajes' });
+    return next(err);
   }
 };
 
-exports.enviarMensaje = async (req, res) => {
+exports.enviarMensaje = async (req, res, next) => {
   try {
     const solicitud = await solicitudDelParticipante(req.params.id, req.usuarioId, res);
     if (!solicitud) return;
@@ -386,12 +381,11 @@ exports.enviarMensaje = async (req, res) => {
     );
     res.status(201).json({ id: result.insertId, mensaje: 'Mensaje enviado' });
   } catch (err) {
-    console.error('Error al enviar mensaje:', err);
-    res.status(500).json({ error: 'No se pudo enviar el mensaje' });
+    return next(err);
   }
 };
 
-exports.eliminarSolicitud = async (req, res) => {
+exports.eliminarSolicitud = async (req, res, next) => {
   try {
     const { id } = req.params;
     const [solicitud] = await query('SELECT * FROM solicitudes WHERE id = ?', [id]);
@@ -408,7 +402,6 @@ exports.eliminarSolicitud = async (req, res) => {
     await query('DELETE FROM solicitudes WHERE id = ?', [id]);
     res.json({ mensaje: 'Solicitud eliminada exitosamente' });
   } catch (err) {
-    console.error('Error al eliminar solicitud:', err);
-    res.status(500).json({ error: 'Error al eliminar solicitud' });
+    return next(err);
   }
 };

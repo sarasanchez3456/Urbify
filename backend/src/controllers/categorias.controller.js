@@ -1,16 +1,15 @@
 const { query } = require('../config/db');
 
-exports.listarCategorias = async (req, res) => {
+exports.listarCategorias = async (req, res, next) => {
   try {
     const [categorias] = await query('SELECT * FROM categorias ORDER BY nombre');
     res.json(categorias);
   } catch (err) {
-    console.error('Error al listar categorías:', err);
-    res.status(500).json({ error: 'Error al obtener categorías' });
+    return next(err);
   }
 };
 
-exports.crearCategoria = async (req, res) => {
+exports.crearCategoria = async (req, res, next) => {
   try {
     const { nombre, descripcion, icono_url } = req.body;
     if (!nombre) {
@@ -22,12 +21,11 @@ exports.crearCategoria = async (req, res) => {
     );
     res.status(201).json({ mensaje: 'Categoría creada exitosamente', id: result.insertId });
   } catch (err) {
-    console.error('Error al crear categoría:', err);
-    res.status(500).json({ error: 'Error al crear categoría' });
+    return next(err);
   }
 };
 
-exports.actualizarCategoria = async (req, res) => {
+exports.actualizarCategoria = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { nombre, descripcion, icono_url } = req.body;
@@ -41,12 +39,11 @@ exports.actualizarCategoria = async (req, res) => {
     );
     res.json({ mensaje: 'Categoría actualizada exitosamente' });
   } catch (err) {
-    console.error('Error al actualizar categoría:', err);
-    res.status(500).json({ error: 'Error al actualizar categoría' });
+    return next(err);
   }
 };
 
-exports.eliminarCategoria = async (req, res) => {
+exports.eliminarCategoria = async (req, res, next) => {
   try {
     const { id } = req.params;
     const [existe] = await query('SELECT id FROM categorias WHERE id = ?', [id]);
@@ -60,6 +57,6 @@ exports.eliminarCategoria = async (req, res) => {
     if (err.errno === 1451) {
       return res.status(409).json({ error: 'No se puede eliminar la categoría porque tiene servicios asociados' });
     }
-    res.status(500).json({ error: 'Error al eliminar categoría' });
+    return next(err);
   }
 };

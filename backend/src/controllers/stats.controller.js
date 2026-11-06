@@ -1,7 +1,7 @@
 const db = require('../config/db');
 
 // Estadísticas completas del sistema (RF-17 / CU-11). Solo administrador.
-exports.getStatsAdmin = async (req, res) => {
+exports.getStatsAdmin = async (req, res, next) => {
   try {
     const [usuariosPorRol] = await db.query(
       'SELECT rol, COUNT(*) AS total FROM usuarios GROUP BY rol'
@@ -36,12 +36,11 @@ exports.getStatsAdmin = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('Error al obtener stats de administrador:', err);
-    res.status(500).json({ error: 'Error al obtener estadísticas' });
+    return next(err);
   }
 };
 
-exports.getStats = async (req, res) => {
+exports.getStats = async (req, res, next) => {
   try {
     const [proveedores] = await db.query(
       "SELECT COUNT(*) AS total FROM usuarios WHERE rol = 'proveedor' AND activo = 1"
@@ -61,7 +60,6 @@ exports.getStats = async (req, res) => {
         : '0.0',
     });
   } catch (err) {
-    console.error('Error al obtener stats:', err);
-    res.status(500).json({ error: 'Error al obtener estadísticas' });
+    return next(err);
   }
 };

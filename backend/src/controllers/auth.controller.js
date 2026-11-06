@@ -16,7 +16,7 @@ const PASSWORD_MAX = 72; // bcrypt ignora lo que pase de 72 bytes
 const CODIGO_INVALIDO = 'Código inválido o expirado';
 const HASH_FALSO = bcrypt.hashSync(crypto.randomBytes(8).toString('hex'), 10);
 
-exports.registrar = async (req, res) => {
+exports.registrar = async (req, res, next) => {
   try {
     const { nombre, apellido, correo, contrasena, telefono, rol, direccion, latitud, longitud, oficio } = req.body;
 
@@ -75,12 +75,11 @@ exports.registrar = async (req, res) => {
       usuario: { id: usuarioId, nombre, apellido, correo, rol, oficio },
     });
   } catch (err) {
-    console.error('Error en registro:', err);
-    res.status(500).json({ error: 'Error al registrar usuario' });
+    return next(err);
   }
 };
 
-exports.login = async (req, res) => {
+exports.login = async (req, res, next) => {
   try {
     const { correo, contrasena } = req.body;
 
@@ -137,14 +136,13 @@ exports.login = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('Error en login:', err);
-    res.status(500).json({ error: 'Error al iniciar sesión' });
+    return next(err);
   }
 };
 
 // Paso 1: envía un código de 6 dígitos al correo. Siempre responde igual exista o no la cuenta
 // (y antes de hacer el trabajo, para que ni el mensaje ni el tiempo revelen si el correo está registrado).
-exports.olvidoContrasena = async (req, res) => {
+exports.olvidoContrasena = async (req, res, next) => {
   const correo = String(req.body?.correo || '').trim();
   if (!EMAIL_REGEX.test(correo)) {
     return res.status(400).json({ error: 'El correo electrónico no tiene un formato válido' });
@@ -183,7 +181,7 @@ exports.olvidoContrasena = async (req, res) => {
 };
 
 // Paso 2: valida el código y cambia la contraseña. Cierra todas las sesiones abiertas de la cuenta.
-exports.restablecerContrasena = async (req, res) => {
+exports.restablecerContrasena = async (req, res, next) => {
   try {
     const correo = String(req.body?.correo || '').trim();
     const codigo = String(req.body?.codigo || '').trim();
@@ -231,24 +229,22 @@ exports.restablecerContrasena = async (req, res) => {
 
     res.json({ mensaje: 'Contraseña actualizada. Inicia sesión con la nueva contraseña.' });
   } catch (err) {
-    console.error('Error al restablecer contraseña:', err);
-    res.status(500).json({ error: 'Error al restablecer la contraseña' });
+    return next(err);
   }
 };
 
 // Invalida solo el token de esta petición (la sesión de este dispositivo);
 // otras sesiones del mismo usuario siguen activas.
-exports.logout = async (req, res) => {
+exports.logout = async (req, res, next) => {
   try {
     await query('DELETE FROM tokens_sesion WHERE token = ? AND usuario_id = ?', [req.token, req.usuarioId]);
     res.json({ mensaje: 'Sesión cerrada exitosamente' });
   } catch (err) {
-    console.error('Error en logout:', err);
-    res.status(500).json({ error: 'Error al cerrar sesión' });
+    return next(err);
   }
 };
 
-exports.perfil = async (req, res) => {
+exports.perfil = async (req, res, next) => {
   try {
     const [usuarios] = await query(
       `SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, latitud, longitud, oficio, fecha_creacion
@@ -262,12 +258,11 @@ exports.perfil = async (req, res) => {
 
     res.json(usuarios[0]);
   } catch (err) {
-    console.error('Error al obtener perfil:', err);
-    res.status(500).json({ error: 'Error al obtener perfil' });
+    return next(err);
   }
 };
 
-exports.actualizarPerfil = async (req, res) => {
+exports.actualizarPerfil = async (req, res, next) => {
   try {
     const { nombre, apellido, telefono, direccion, latitud, longitud, foto_url, oficio } = req.body;
 
@@ -294,24 +289,22 @@ exports.actualizarPerfil = async (req, res) => {
     );
     res.json({ mensaje: 'Perfil actualizado exitosamente', usuario: usuarios[0] });
   } catch (err) {
-    console.error('Error al actualizar perfil:', err);
-    res.status(500).json({ error: 'Error al actualizar perfil' });
+    return next(err);
   }
 };
 
-exports.listarUsuarios = async (req, res) => {
+exports.listarUsuarios = async (req, res, next) => {
   try {
     const [usuarios] = await query(
       'SELECT id, nombre, apellido, correo, telefono, rol, activo, fecha_creacion FROM usuarios ORDER BY fecha_creacion DESC'
     );
     res.json(usuarios);
   } catch (err) {
-    console.error('Error al listar usuarios:', err);
-    res.status(500).json({ error: 'Error al listar usuarios' });
+    return next(err);
   }
 };
 
-exports.usuarioPorId = async (req, res) => {
+exports.usuarioPorId = async (req, res, next) => {
   try {
     const { id } = req.params;
     const [usuarios] = await query(
@@ -323,12 +316,11 @@ exports.usuarioPorId = async (req, res) => {
     }
     res.json(usuarios[0]);
   } catch (err) {
-    console.error('Error al obtener usuario:', err);
-    res.status(500).json({ error: 'Error al obtener usuario' });
+    return next(err);
   }
 };
 
-exports.eliminarUsuario = async (req, res) => {
+exports.eliminarUsuario = async (req, res, next) => {
   try {
     const { id } = req.params;
     if (Number(id) === req.usuarioId) {
@@ -350,6 +342,6 @@ exports.eliminarUsuario = async (req, res) => {
     if (err.errno === 1451) {
       return res.status(409).json({ error: 'No se puede eliminar el usuario porque tiene solicitudes o calificaciones asociadas' });
     }
-    res.status(500).json({ error: 'Error al eliminar usuario' });
+    return next(err);
   }
 };

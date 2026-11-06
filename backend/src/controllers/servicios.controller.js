@@ -1,6 +1,6 @@
 const { query } = require('../config/db');
 
-exports.crearServicio = async (req, res) => {
+exports.crearServicio = async (req, res, next) => {
   try {
     if (req.usuarioRol !== 'proveedor') {
       return res.status(403).json({ error: 'Solo los proveedores pueden crear servicios' });
@@ -35,12 +35,11 @@ exports.crearServicio = async (req, res) => {
       servicio: { id: result.insertId, proveedor_id: req.usuarioId, categoria_id, titulo, descripcion, tarifa },
     });
   } catch (err) {
-    console.error('Error al crear servicio:', err);
-    res.status(500).json({ error: 'Error al crear servicio' });
+    return next(err);
   }
 };
 
-exports.misServicios = async (req, res) => {
+exports.misServicios = async (req, res, next) => {
   try {
     const [servicios] = await query(
       `SELECT s.*, c.nombre AS categoria_nombre
@@ -52,12 +51,11 @@ exports.misServicios = async (req, res) => {
     );
     res.json(servicios);
   } catch (err) {
-    console.error('Error al obtener servicios:', err);
-    res.status(500).json({ error: 'Error al obtener servicios' });
+    return next(err);
   }
 };
 
-exports.serviciosPorCategoria = async (req, res) => {
+exports.serviciosPorCategoria = async (req, res, next) => {
   try {
     const { categoria_id } = req.params;
     const [servicios] = await query(
@@ -79,12 +77,11 @@ exports.serviciosPorCategoria = async (req, res) => {
     );
     res.json(servicios);
   } catch (err) {
-    console.error('Error al buscar servicios:', err);
-    res.status(500).json({ error: 'Error al buscar servicios' });
+    return next(err);
   }
 };
 
-exports.buscarServicios = async (req, res) => {
+exports.buscarServicios = async (req, res, next) => {
   try {
     const { q, categoria_id, disponible } = req.query;
 
@@ -126,12 +123,11 @@ exports.buscarServicios = async (req, res) => {
     const [servicios] = await query(sql, params);
     res.json(servicios);
   } catch (err) {
-    console.error('Error en búsqueda:', err);
-    res.status(500).json({ error: 'Error al buscar servicios' });
+    return next(err);
   }
 };
 
-exports.destacados = async (req, res) => {
+exports.destacados = async (req, res, next) => {
   try {
     const [servicios] = await query(
       `SELECT s.id, s.titulo, s.descripcion, s.tarifa, s.tipo_tarifa,
@@ -153,12 +149,11 @@ exports.destacados = async (req, res) => {
     );
     res.json(servicios);
   } catch (err) {
-    console.error('Error al obtener destacados:', err);
-    res.status(500).json({ error: 'Error al obtener servicios destacados' });
+    return next(err);
   }
 };
 
-exports.actualizarServicio = async (req, res) => {
+exports.actualizarServicio = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { titulo, descripcion, tarifa, tipo_tarifa, disponible } = req.body;
@@ -188,12 +183,11 @@ exports.actualizarServicio = async (req, res) => {
 
     res.json({ mensaje: 'Servicio actualizado exitosamente' });
   } catch (err) {
-    console.error('Error al actualizar servicio:', err);
-    res.status(500).json({ error: 'Error al actualizar servicio' });
+    return next(err);
   }
 };
 
-exports.eliminarServicio = async (req, res) => {
+exports.eliminarServicio = async (req, res, next) => {
   try {
     const { id } = req.params;
 
@@ -223,11 +217,11 @@ exports.eliminarServicio = async (req, res) => {
     if (err.errno === 1451 || err.code === 'ER_ROW_IS_REFERENCED_2') {
       return res.status(409).json({ error: 'No se puede eliminar el servicio porque tiene solicitudes asociadas. Márcalo como no disponible en su lugar.' });
     }
-    res.status(500).json({ error: 'Error al eliminar servicio' });
+    return next(err);
   }
 };
 
-exports.detalleServicio = async (req, res) => {
+exports.detalleServicio = async (req, res, next) => {
   try {
     const { id } = req.params;
 
@@ -271,7 +265,6 @@ exports.detalleServicio = async (req, res) => {
 
     res.json({ ...servicios[0], comentarios });
   } catch (err) {
-    console.error('Error al obtener detalle:', err);
-    res.status(500).json({ error: 'Error al obtener detalle del servicio' });
+    return next(err);
   }
 };

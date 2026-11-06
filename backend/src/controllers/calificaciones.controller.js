@@ -2,7 +2,7 @@ const { query } = require('../config/db');
 
 const puntuacionValida = (p) => Number.isInteger(p) && p >= 1 && p <= 5;
 
-exports.crearCalificacion = async (req, res) => {
+exports.crearCalificacion = async (req, res, next) => {
   try {
     const { solicitud_id, puntuacion, comentario } = req.body;
 
@@ -49,12 +49,11 @@ exports.crearCalificacion = async (req, res) => {
       calificacion: { id: result.insertId },
     });
   } catch (err) {
-    console.error('Error al crear calificación:', err);
-    res.status(500).json({ error: 'Error al crear calificación' });
+    return next(err);
   }
 };
 
-exports.calificacionesProveedor = async (req, res) => {
+exports.calificacionesProveedor = async (req, res, next) => {
   try {
     const { proveedor_id } = req.params;
 
@@ -78,12 +77,11 @@ exports.calificacionesProveedor = async (req, res) => {
 
     res.json({ calificaciones, ...promedio[0] });
   } catch (err) {
-    console.error('Error al obtener calificaciones:', err);
-    res.status(500).json({ error: 'Error al obtener calificaciones' });
+    return next(err);
   }
 };
 
-exports.actualizarCalificacion = async (req, res) => {
+exports.actualizarCalificacion = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { puntuacion, comentario } = req.body;
@@ -103,12 +101,11 @@ exports.actualizarCalificacion = async (req, res) => {
     );
     res.json({ mensaje: 'Calificación actualizada exitosamente' });
   } catch (err) {
-    console.error('Error al actualizar calificación:', err);
-    res.status(500).json({ error: 'Error al actualizar calificación' });
+    return next(err);
   }
 };
 
-exports.eliminarCalificacion = async (req, res) => {
+exports.eliminarCalificacion = async (req, res, next) => {
   try {
     const { id } = req.params;
     const [existe] = await query('SELECT cliente_id FROM calificaciones WHERE id = ?', [id]);
@@ -121,7 +118,6 @@ exports.eliminarCalificacion = async (req, res) => {
     await query('DELETE FROM calificaciones WHERE id = ?', [id]);
     res.json({ mensaje: 'Calificación eliminada exitosamente' });
   } catch (err) {
-    console.error('Error al eliminar calificación:', err);
-    res.status(500).json({ error: 'Error al eliminar calificación' });
+    return next(err);
   }
 };

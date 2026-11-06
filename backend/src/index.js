@@ -5,6 +5,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 
 const { globalLimiter } = require('./middleware/rateLimit');
+const { errorHandler } = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth.routes');
 const categoriasRoutes = require('./routes/categorias.routes');
 const serviciosRoutes = require('./routes/servicios.routes');
@@ -71,17 +72,8 @@ app.use('/api/*', (req, res) => {
   res.status(404).json({ error: `Ruta ${req.originalUrl} no encontrada` });
 });
 
-app.use((err, req, res, next) => {
-  // Body demasiado grande o JSON mal formado: son errores del cliente, no del servidor.
-  if (err.type === 'entity.too.large') {
-    return res.status(413).json({ error: 'El cuerpo de la petición es demasiado grande' });
-  }
-  if (err.type === 'entity.parse.failed') {
-    return res.status(400).json({ error: 'JSON inválido' });
-  }
-  console.error('Error no manejado:', err);
-  res.status(500).json({ error: 'Error interno del servidor' });
-});
+// Manejador global: errores de MySQL por datos del usuario -> 400/409; cuerpo grande -> 413; JSON malo -> 400.
+app.use(errorHandler);
 
 app.listen(config.port, () => {
   console.log(`Urbify API corriendo en puerto ${config.port} (${config.NODE_ENV})`);
