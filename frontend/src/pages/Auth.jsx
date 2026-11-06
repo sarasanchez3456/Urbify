@@ -282,7 +282,9 @@ export default function Auth() {
                     id="reg_password"
                     type="password"
                     name="contrasena"
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Entre 8 y 72 caracteres"
+                    minLength={8}
+                    maxLength={72}
                     value={regForm.contrasena}
                     onChange={handleRegChange}
                     required

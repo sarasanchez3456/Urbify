@@ -998,7 +998,7 @@ components:
         nombre: { type: string }
         apellido: { type: string }
         correo: { type: string, format: email }
-        contrasena: { type: string }
+        contrasena: { type: string, minLength: 8, maxLength: 72 }
         telefono: { type: string, nullable: true }
         rol: { type: string, enum: [cliente, proveedor], description: 'admin se rechaza con 400' }
         direccion: { type: string, nullable: true }
