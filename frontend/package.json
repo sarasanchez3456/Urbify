@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "predeploy": "vite build --base=/Urbify/",
+    "predeploy": "node scripts/check-api-url.js && vite build --base=/Urbify/",
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
