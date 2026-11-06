@@ -2,22 +2,29 @@ const router = require('express').Router();
 const { query } = require('../config/db');
 const { publicLimiter } = require('../middleware/rateLimit');
 
-router.get('/cercanos', publicLimiter, async (req, res) => {
+// Número decimal estricto ("6.25", "-75.5"): rechaza Infinity, NaN, notación científica, arrays (lat[]=1) y basura.
+const DECIMAL = /^-?\d+(\.\d+)?$/;
+const numero = (v) => (typeof v === 'string' && DECIMAL.test(v.trim()) ? Number(v) : NaN);
+
+router.get('/cercanos', publicLimiter, async (req, res, next) => {
   try {
-    const { lat, lng, radio = 5 } = req.query;
+    const { lat, lng, radio = '5' } = req.query;
 
     if (!lat || !lng) {
       return res.status(400).json({ error: 'Latitud y longitud son requeridas' });
     }
 
-    const latNum = parseFloat(lat);
-    const lngNum = parseFloat(lng);
-    if (isNaN(latNum) || isNaN(lngNum)) {
+    const latNum = numero(lat);
+    const lngNum = numero(lng);
+    if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) {
       return res.status(400).json({ error: 'Latitud y longitud deben ser números válidos' });
     }
+    if (latNum < -90 || latNum > 90 || lngNum < -180 || lngNum > 180) {
+      return res.status(400).json({ error: 'Latitud debe estar entre -90 y 90 y longitud entre -180 y 180' });
+    }
 
-    const radioKm = parseFloat(radio);
-    if (isNaN(radioKm) || radioKm <= 0) {
+    const radioKm = numero(radio);
+    if (!Number.isFinite(radioKm) || radioKm <= 0) {
       return res.status(400).json({ error: 'radio debe ser un número positivo' });
     }
 
@@ -71,8 +78,7 @@ router.get('/cercanos', publicLimiter, async (req, res) => {
 
     res.json(proveedores);
   } catch (err) {
-    console.error('Error al buscar proveedores cercanos:', err);
-    res.status(500).json({ error: 'Error al buscar proveedores cercanos' });
+    return next(err);
   }
 });
 
