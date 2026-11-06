@@ -10,7 +10,12 @@ import './Auth.css';
 export default function Auth() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { login, registrar } = useAuth();
+  const { login, registrar, usuario } = useAuth();
+
+  // Con la sesión iniciada (también si se inicia en otra pestaña) no tiene sentido mostrar el formulario.
+  useEffect(() => {
+    if (usuario) navigate(usuario.rol === 'admin' ? '/admin' : '/dashboard', { replace: true });
+  }, [usuario, navigate]);
 
   const isRegisterPath = location.pathname === '/registro';
   const [isRegister, setIsRegister] = useState(isRegisterPath);
