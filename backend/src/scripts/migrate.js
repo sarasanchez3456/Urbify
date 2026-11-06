@@ -71,16 +71,16 @@ async function asegurarRolAdmin(conn) {
 async function migrate() {
   // Conexión propia con multipleStatements: schema.sql trae varias sentencias
   // y el pool de db.js usa prepared statements (una sola sentencia).
-  const conn = await mysql.createConnection({
-    host: dbConfig.host,
-    port: dbConfig.port,
-    user: dbConfig.user,
-    password: dbConfig.password,
-    multipleStatements: true,
-    charset: 'utf8mb4',
-  });
-
+  let conn;
   try {
+    conn = await mysql.createConnection({
+      host: dbConfig.host,
+      port: dbConfig.port,
+      user: dbConfig.user,
+      password: dbConfig.password,
+      multipleStatements: true,
+      charset: 'utf8mb4',
+    });
     await conn.query(fs.readFileSync(SCHEMA_PATH, 'utf8'));
     console.log('Migración: schema.sql aplicado');
 
@@ -110,10 +110,11 @@ async function migrate() {
 
     console.log('Migración completada exitosamente');
   } catch (err) {
-    console.error('Error en migración:', err.message);
+    // Sin stack ni "unhandled rejection": mensaje claro y código de salida 1 (también si la BD está caída).
+    console.error(`Error en migración: ${err.code ? err.code + ' - ' : ''}${err.message}`);
     process.exitCode = 1;
   } finally {
-    await conn.end();
+    if (conn) await conn.end().catch(() => {});
   }
 }
 
