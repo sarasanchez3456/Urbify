@@ -97,6 +97,9 @@ exports.login = async (req, res, next) => {
       [correo]
     );
     if (usuarios.length === 0) {
+      // Misma cantidad de trabajo que con una contraseña incorrecta: si no, responder en ~2 ms delata
+      // (frente a ~100 ms) que la cuenta no existe.
+      await hasher.compare(contrasena, HASH_FALSO);
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
