@@ -237,14 +237,22 @@ exports.eliminarUsuario = async (req, res) => {
     if (Number(id) === req.usuarioId) {
       return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta' });
     }
-    const [existe] = await query('SELECT id FROM usuarios WHERE id = ?', [id]);
+    const [existe] = await query('SELECT id, rol FROM usuarios WHERE id = ?', [id]);
     if (existe.length === 0) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    // Un admin no puede borrar a otro admin: evita que una cuenta admin comprometida
+    // desmonte la administración. Los admins solo se gestionan desde el servidor (create-admin).
+    if (existe[0].rol === 'admin') {
+      return res.status(403).json({ error: 'No se puede eliminar a un administrador desde la API' });
     }
     await query('DELETE FROM usuarios WHERE id = ?', [id]);
     res.json({ mensaje: 'Usuario eliminado exitosamente' });
   } catch (err) {
     console.error('Error al eliminar usuario:', err);
+    if (err.errno === 1451) {
+      return res.status(409).json({ error: 'No se puede eliminar el usuario porque tiene solicitudes o calificaciones asociadas' });
+    }
     res.status(500).json({ error: 'Error al eliminar usuario' });
   }
 };
