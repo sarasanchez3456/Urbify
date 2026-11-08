@@ -1,3 +1,4 @@
+import { formatoPesos } from '../utils/moneda';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -301,7 +302,7 @@ export default function Dashboard() {
                           </span>
                           <span className="flex items-center gap-1 font-medium" style={{ color: 'oklch(0.40 0.18 255)' }}>
                             <DollarSign size={12} />
-                            ${parseFloat(sol.tarifa || 0).toFixed(2)}
+                            {formatoPesos(sol.tarifa)}
                           </span>
                         </div>
                       </div>

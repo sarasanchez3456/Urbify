@@ -1,3 +1,4 @@
+import { formatoPesos } from '../utils/moneda';
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
@@ -236,7 +237,7 @@ export default function SolicitarServicio() {
             <div className="flex items-center gap-2 text-sm">
               <DollarSign size={14} style={{ color: 'oklch(0.40 0.18 255)' }} />
               <span style={{ color: 'oklch(0.45 0.03 240)' }}>Tarifa:</span>
-              <span className="font-medium" style={{ color: 'oklch(0.25 0.06 240)' }}>${parseFloat(servicio?.tarifa || 0).toFixed(2)} / {servicio?.tipo_tarifa}</span>
+              <span className="font-medium" style={{ color: 'oklch(0.25 0.06 240)' }}>{formatoPesos(servicio?.tarifa)} / {servicio?.tipo_tarifa}</span>
             </div>
           </div>
 

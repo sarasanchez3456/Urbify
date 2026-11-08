@@ -1,3 +1,4 @@
+import { formatoPesos } from '../utils/moneda';
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api/axios';
@@ -43,7 +44,7 @@ export default function ServicioDetalle() {
             <div className="detalle-precio-box">
               <span className="detalle-precio-label">Tarifa</span>
               <span className="detalle-precio-valor">
-                ${parseFloat(servicio.tarifa || 0).toFixed(2)} / {servicio.tipo_tarifa}
+                {formatoPesos(servicio.tarifa)} / {servicio.tipo_tarifa}
               </span>
             </div>
           </div>

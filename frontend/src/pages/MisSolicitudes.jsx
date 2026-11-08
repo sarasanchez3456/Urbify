@@ -1,3 +1,4 @@
+import { formatoPesos } from '../utils/moneda';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/axios';
@@ -15,7 +16,9 @@ import {
   User,
   Clock,
   MapPin,
+  MessageCircle,
 } from 'lucide-react';
+import ChatSolicitud from '../components/ChatSolicitud';
 import { logError } from '../utils/log';
 
 const glassCard = {
@@ -35,6 +38,11 @@ export default function MisSolicitudes() {
   const { usuario } = useAuth();
   const [solicitudes, setSolicitudes] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [chatSol, setChatSol] = useState(null);
+
+  const nombreOtraParte = (sol) => (usuario?.rol === 'cliente'
+    ? `${sol.proveedor_nombre} ${sol.proveedor_apellido}`
+    : `${sol.cliente_nombre} ${sol.cliente_apellido}`);
 
   useEffect(() => {
     const endpoint = usuario?.rol === 'cliente' ? '/solicitudes/cliente' : '/solicitudes/proveedor';
@@ -168,7 +176,7 @@ export default function MisSolicitudes() {
                       </span>
                       <span className="flex items-center gap-1" style={{ color: 'oklch(0.40 0.18 255)' }}>
                         <DollarSign size={14} />
-                        ${parseFloat(sol.tarifa || 0).toFixed(2)}
+                        {formatoPesos(sol.tarifa)}
                       </span>
                     </div>
                   </div>
@@ -239,12 +247,29 @@ export default function MisSolicitudes() {
                       </Link>
                     </div>
                   )}
+                  {sol.estado !== 'cancelada' && (
+                    <div className="pt-3" style={{ borderTop: subtleBorder }}>
+                      <button
+                        onClick={() => setChatSol(sol)}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors"
+                        style={{ backgroundColor: 'rgba(0, 63, 135, 0.08)', color: 'oklch(0.40 0.18 255)' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0, 63, 135, 0.16)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0, 63, 135, 0.08)'; }}
+                      >
+                        <MessageCircle size={14} />
+                        Chat con {usuario?.rol === 'cliente' ? 'el proveedor' : 'el cliente'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
         )}
       </div>
+      {chatSol && (
+        <ChatSolicitud solicitud={chatSol} otraParte={nombreOtraParte(chatSol)} onCerrar={() => setChatSol(null)} />
+      )}
     </DashboardLayout>
   );
 }
