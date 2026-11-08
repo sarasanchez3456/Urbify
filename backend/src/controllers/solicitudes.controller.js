@@ -6,6 +6,23 @@ function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
+// Zona horaria de fecha_servicio. Se guarda en UTC (la conexión usa time_zone +00:00) y se responde
+// en ISO 8601 con "Z". Urbify opera en Colombia (UTC-5, sin horario de verano): un valor SIN zona
+// (p. ej. "2026-12-01 10:00:00" de la app móvil) se interpreta como hora de Colombia, no como la
+// hora del servidor. Un valor con zona ("...Z" o "...-05:00") se respeta tal cual.
+const OFFSET_COLOMBIA = '-05:00';
+
+function parsearFechaServicio(valor) {
+  if (typeof valor !== 'string') return null;
+  let texto = valor.trim().replace(' ', 'T');
+  if (!texto) return null;
+  if (!/(Z|[+-]\d{2}:?\d{2})$/i.test(texto)) texto += OFFSET_COLOMBIA;
+  const ms = Date.parse(texto);
+  return Number.isNaN(ms) ? null : ms;
+}
+
+const aFechaMysqlUtc = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
+
 exports.crearSolicitud = async (req, res) => {
   try {
     // proveedor_id ya no se recibe: se toma del servicio, así el cliente no puede
@@ -16,9 +33,8 @@ exports.crearSolicitud = async (req, res) => {
       return res.status(400).json({ error: 'servicio_id es requerido' });
     }
 
-    const fechaServicio = typeof fecha_servicio === 'string' ? fecha_servicio.trim() : '';
-    const fechaServicioMillis = Date.parse(fechaServicio.replace(' ', 'T'));
-    if (!fechaServicio || Number.isNaN(fechaServicioMillis) || fechaServicioMillis <= Date.now()) {
+    const fechaServicioMillis = parsearFechaServicio(fecha_servicio);
+    if (fechaServicioMillis === null || fechaServicioMillis <= Date.now()) {
       return res.status(400).json({ error: 'Debes seleccionar una fecha y hora futura para el servicio' });
     }
 
@@ -53,7 +69,7 @@ exports.crearSolicitud = async (req, res) => {
     const [result] = await query(
       `INSERT INTO solicitudes (cliente_id, proveedor_id, servicio_id, tarifa_acordada, tipo_tarifa_acordada, descripcion, fecha_servicio, direccion, latitud, longitud)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [req.usuarioId, proveedor_id, servicio_id, servicio[0].tarifa, servicio[0].tipo_tarifa, descripcion ?? null, fechaServicio, direccion || null, latitud || null, longitud || null]
+      [req.usuarioId, proveedor_id, servicio_id, servicio[0].tarifa, servicio[0].tipo_tarifa, descripcion ?? null, aFechaMysqlUtc(fechaServicioMillis), direccion || null, latitud || null, longitud || null]
     );
 
     const solicitudId = result.insertId;
@@ -94,7 +110,7 @@ exports.crearSolicitud = async (req, res) => {
           <p><strong>Dirección:</strong> ${escapeHtml(cliente[0].direccion) || 'No especificada'}</p>
           <p><strong>Servicio solicitado:</strong> ${escapeHtml(servicio[0].titulo)}</p>
           <p><strong>Descripción:</strong> ${escapeHtml(descripcion) || 'Sin descripción'}</p>
-          <p><strong>Fecha acordada:</strong> ${new Date(fechaServicioMillis).toLocaleString()}</p>
+          <p><strong>Fecha acordada:</strong> ${new Date(fechaServicioMillis).toLocaleString('es-CO', { timeZone: 'America/Bogota' })} (hora de Colombia)</p>
           <hr>
           <p>Ingresa a tu panel de Urbify para gestionar esta solicitud.</p>
         `,

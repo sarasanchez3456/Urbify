@@ -28,6 +28,9 @@ exports.registrar = async (req, res) => {
     if (!rol || !['cliente', 'proveedor'].includes(rol)) {
       return res.status(400).json({ error: 'rol debe ser cliente o proveedor' });
     }
+    if (typeof contrasena !== 'string' || contrasena.length < PASSWORD_MIN || contrasena.length > PASSWORD_MAX) {
+      return res.status(400).json({ error: `La contraseña debe tener entre ${PASSWORD_MIN} y ${PASSWORD_MAX} caracteres` });
+    }
 
     const [existe] = await query('SELECT id FROM usuarios WHERE correo = ?', [correo]);
     if (existe.length > 0) {

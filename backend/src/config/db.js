@@ -11,6 +11,14 @@ const pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0,
   charset: 'utf8mb4',
+  // Las fechas (DATETIME) se leen y escriben en UTC y se serializan como ISO 8601 con "Z".
+  timezone: 'Z',
+});
+
+// Mismo huso en MySQL, para que NOW()/CURRENT_TIMESTAMP también queden en UTC aunque el servidor
+// de base de datos use otra zona (p. ej. XAMPP en hora local).
+pool.pool.on('connection', (conn) => {
+  conn.query("SET time_zone = '+00:00'");
 });
 
 // Reintenta la conexión hasta MAX_INTENTOS veces con una pausa entre cada uno.

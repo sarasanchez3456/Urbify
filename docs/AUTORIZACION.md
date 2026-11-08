@@ -29,7 +29,7 @@ Resultado de la auditoría del issue #2. Describe quién puede hacer qué y qué
 | Categorías | crear, editar, eliminar | `admin` | — |
 | Servicios | crear | `proveedor` | Se crea siempre a nombre del usuario autenticado; la categoría debe existir. |
 | Servicios | editar, eliminar | `proveedor` | Solo el dueño (`403` si es de otro, `404` si no existe). |
-| Solicitudes | crear | `cliente` | El servicio debe pertenecer al proveedor indicado y estar disponible; no a uno mismo. |
+| Solicitudes | crear | `cliente` | El servicio debe estar disponible; no se puede solicitar un servicio propio. |
 | Solicitudes | crear: proveedor y tarifa | `cliente` | El `proveedor_id` no se recibe: se toma del servicio. Se guarda `tarifa_acordada`. La fecha del servicio es obligatoria y futura. |
 | Mensajes de la solicitud | leer, enviar | `cliente` / `proveedor` | Solo las dos partes de la solicitud (`403` a terceros, `404` si no existe). |
 | Solicitudes | listar propias | `cliente` / `proveedor` | Solo las propias (según rol). |

@@ -219,8 +219,9 @@ exports.eliminarServicio = async (req, res) => {
     res.json({ mensaje: 'Servicio eliminado exitosamente' });
   } catch (err) {
     console.error('Error al eliminar servicio:', err);
-    if (err.errno === 1451) {
-      return res.status(409).json({ error: 'No se puede eliminar el servicio porque tiene solicitudes asociadas. Desmárcale como no disponible en su lugar.' });
+    // Clave foránea: cualquier solicitud (con o sin reseña) referencia al servicio.
+    if (err.errno === 1451 || err.code === 'ER_ROW_IS_REFERENCED_2') {
+      return res.status(409).json({ error: 'No se puede eliminar el servicio porque tiene solicitudes asociadas. Márcalo como no disponible en su lugar.' });
     }
     res.status(500).json({ error: 'Error al eliminar servicio' });
   }

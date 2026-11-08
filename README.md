@@ -358,14 +358,14 @@ Si el correo ya existe, ese usuario se promueve a `admin`. En una base de datos 
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/api/health` | Estado del servidor |
-| POST | `/api/auth/register` | Registro de usuario |
+| POST | `/api/auth/registro` | Registro de usuario (`cliente` o `proveedor`) |
 | POST | `/api/auth/login` | Inicio de sesión |
 | POST | `/api/auth/logout` | Cierra la sesión: elimina el token enviado en `Authorization: Bearer` de `tokens_sesion`. Responde `200 {"mensaje"}`; después, ese token recibe `401` (web y app móvil deben llamarla antes de borrar el token local) |
 | POST | `/api/auth/olvido-contrasena` | Envía un código de 6 dígitos al correo (respuesta genérica); ver [`docs/RUTAS_MOVIL.md`](docs/RUTAS_MOVIL.md) |
 | POST | `/api/auth/restablecer-contrasena` | Cambia la contraseña con `{correo, codigo, nueva_contrasena}` y cierra las sesiones |
 | GET | `/api/categorias` | Listar categorías |
 | GET | `/api/servicios` | Listar servicios |
-| POST | `/api/solicitudes` | Crear solicitud (`servicio_id` y `fecha_servicio` futura obligatorios; el proveedor se toma del servicio) |
+| POST | `/api/solicitudes` | Crear solicitud (`servicio_id` y `fecha_servicio` futura obligatorios; el proveedor se toma del servicio; fechas en UTC, y una fecha sin zona se toma como hora de Colombia, ver `docs/openapi.yaml`) |
 | GET / POST | `/api/solicitudes/:id/mensajes` | Chat de la solicitud: solo su cliente y su proveedor (`{contenido}`, 1–1000 caracteres) |
 | GET | `/api/proveedores` | Buscar proveedores |
 | GET | `/api/stats` | Estadísticas públicas de la página de inicio (3 cifras) |
