@@ -301,9 +301,12 @@ export default function Auth() {
                     <input
                       id="reg_phone"
                       name="telefono"
+                      type="tel"
+                      inputMode="tel"
+                      maxLength={20}
                       placeholder="300 123 4567"
                       value={regForm.telefono}
-                      onChange={handleRegChange}
+                      onChange={(e) => setRegForm({ ...regForm, telefono: e.target.value.replace(/[^\d\s+]/g, '') })}
                     />
                   </div>
                   <div className="auth-field">

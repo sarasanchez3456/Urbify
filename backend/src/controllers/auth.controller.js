@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { query } = require('../config/db');
 const resend = require('../config/resend');
 const { emailFrom } = require('../config/env');
+const { normalizarTelefono, MENSAJE_TELEFONO } = require('../utils/telefono');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -31,6 +32,12 @@ exports.registrar = async (req, res) => {
     if (typeof contrasena !== 'string' || contrasena.length < PASSWORD_MIN || contrasena.length > PASSWORD_MAX) {
       return res.status(400).json({ error: `La contraseña debe tener entre ${PASSWORD_MIN} y ${PASSWORD_MAX} caracteres` });
     }
+    // El teléfono es opcional; si viene, solo números.
+    let telefonoLimpio = null;
+    if (telefono !== undefined && telefono !== null && String(telefono).trim() !== '') {
+      telefonoLimpio = normalizarTelefono(telefono);
+      if (!telefonoLimpio) return res.status(400).json({ error: MENSAJE_TELEFONO });
+    }
 
     const [existe] = await query('SELECT id FROM usuarios WHERE correo = ?', [correo]);
     if (existe.length > 0) {
@@ -42,7 +49,7 @@ exports.registrar = async (req, res) => {
     const [result] = await query(
       `INSERT INTO usuarios (nombre, apellido, correo, contrasena, telefono, rol, direccion, latitud, longitud, oficio)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [nombre, apellido, correo, hashedPassword, telefono || null, rol, direccion || null, latitud || null, longitud || null, oficio || null]
+      [nombre, apellido, correo, hashedPassword, telefonoLimpio, rol, direccion || null, latitud || null, longitud || null, oficio || null]
     );
 
     const usuarioId = result.insertId;
@@ -264,13 +271,20 @@ exports.actualizarPerfil = async (req, res) => {
   try {
     const { nombre, apellido, telefono, direccion, latitud, longitud, foto_url, oficio } = req.body;
 
+    // Vacío o ausente = no cambiar el teléfono; si viene un valor, solo números.
+    let telefonoLimpio = null;
+    if (telefono !== undefined && telefono !== null && String(telefono).trim() !== '') {
+      telefonoLimpio = normalizarTelefono(telefono);
+      if (!telefonoLimpio) return res.status(400).json({ error: MENSAJE_TELEFONO });
+    }
+
     await query(
       `UPDATE usuarios SET nombre = COALESCE(?, nombre), apellido = COALESCE(?, apellido),
        telefono = COALESCE(?, telefono), direccion = COALESCE(?, direccion),
        latitud = COALESCE(?, latitud), longitud = COALESCE(?, longitud),
        foto_url = COALESCE(?, foto_url), oficio = COALESCE(?, oficio)
        WHERE id = ?`,
-      [nombre, apellido, telefono, direccion, latitud, longitud, foto_url, oficio, req.usuarioId]
+      [nombre, apellido, telefonoLimpio, direccion, latitud, longitud, foto_url, oficio, req.usuarioId]
     );
 
     const [usuarios] = await query(

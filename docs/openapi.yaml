@@ -232,7 +232,7 @@ paths:
               properties:
                 nombre: { type: string }
                 apellido: { type: string }
-                telefono: { type: string }
+                telefono: { type: string, pattern: '^\+?[0-9 ]{7,20}$', description: 'Solo números (7 a 15 dígitos), + inicial y espacios opcionales; vacío = sin cambios. Otro formato responde 400.' }
                 direccion: { type: string }
                 latitud: { type: number }
                 longitud: { type: number }
@@ -1004,7 +1004,7 @@ components:
         apellido: { type: string }
         correo: { type: string, format: email }
         contrasena: { type: string, minLength: 8, maxLength: 72 }
-        telefono: { type: string, nullable: true }
+        telefono: { type: string, nullable: true, pattern: '^\+?[0-9 ]{7,20}$', description: 'Solo números (7 a 15 dígitos), + inicial y espacios opcionales; se guarda sin espacios. Otro formato responde 400.' }
         rol: { type: string, enum: [cliente, proveedor], description: 'admin se rechaza con 400' }
         direccion: { type: string, nullable: true }
         latitud: { type: number, nullable: true }
