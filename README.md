@@ -322,6 +322,7 @@ Cuando se supera un límite la API responde `429` con `{"error", "bloqueado": tr
 | Todas las rutas `/api` (excepto `/api/health`), por IP | `RATE_LIMIT_GLOBAL` | `1500` por ventana |
 | Lecturas públicas (búsqueda, cercanos, destacados, categorías, stats, calificaciones), por IP | `RATE_LIMIT_PUBLIC_PER_MINUTE` | `120` por minuto |
 | Registro, por IP | `RATE_LIMIT_REGISTER_PER_HOUR` | `10` por hora |
+| Recuperación de contraseña: pedir código, por IP y por correo (restablecer admite el triple) | `RATE_LIMIT_RECOVERY_IP_PER_HOUR` / `RATE_LIMIT_RECOVERY_EMAIL_PER_HOUR` | `10` / `3` por hora |
 | Login, por IP (cualquier intento) | `RATE_LIMIT_LOGIN_IP` | `30` por ventana |
 | Login, intentos **fallidos** a una misma cuenta desde una misma IP | `RATE_LIMIT_LOGIN_ACCOUNT_IP` | `5` por ventana |
 | Login, intentos **fallidos** a una cuenta desde cualquier IP | `RATE_LIMIT_LOGIN_ACCOUNT` | `20` por ventana |
@@ -358,6 +359,8 @@ Si el correo ya existe, ese usuario se promueve a `admin`. En una base de datos 
 | POST | `/api/auth/register` | Registro de usuario |
 | POST | `/api/auth/login` | Inicio de sesión |
 | POST | `/api/auth/logout` | Cierra la sesión: elimina el token enviado en `Authorization: Bearer` de `tokens_sesion`. Responde `200 {"mensaje"}`; después, ese token recibe `401` (web y app móvil deben llamarla antes de borrar el token local) |
+| POST | `/api/auth/olvido-contrasena` | Envía un código de 6 dígitos al correo (respuesta genérica); ver [`docs/RUTAS_MOVIL.md`](docs/RUTAS_MOVIL.md) |
+| POST | `/api/auth/restablecer-contrasena` | Cambia la contraseña con `{correo, codigo, nueva_contrasena}` y cierra las sesiones |
 | GET | `/api/categorias` | Listar categorías |
 | GET | `/api/servicios` | Listar servicios |
 | POST | `/api/solicitudes` | Crear solicitud |
