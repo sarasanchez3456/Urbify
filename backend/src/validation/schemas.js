@@ -88,7 +88,8 @@ module.exports = {
       tarifa,
       tipo_tarifa: { type: ['string', 'null'], enum: ['hora', 'fijo', null] },
     },
-    numericos: ['tarifa'],
+    // El <select> de categoría del formulario web entrega el id como texto ("1"): se convierte a número.
+    numericos: ['tarifa', 'categoria_id'],
   },
   servicioEditar: {
     type: 'object',

@@ -1,3 +1,4 @@
+import { formatoPesos } from '../utils/moneda';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -321,7 +322,7 @@ function BuscarContent() {
                 <p className="text-sm mb-3 line-clamp-2" style={labelColor}>{s.descripcion}</p>
                 <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
                   <span className="text-base font-bold" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.40 0.18 255)' }}>
-                    ${parseFloat(s.tarifa || 0).toFixed(2)}
+                    {formatoPesos(s.tarifa)}
                     <span className="text-xs font-normal ml-1" style={textMuted}>/{s.tipo_tarifa}</span>
                   </span>
                   {s.direccion ? (
