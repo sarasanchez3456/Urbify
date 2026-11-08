@@ -72,6 +72,8 @@ CREATE TABLE IF NOT EXISTS solicitudes (
   proveedor_id     INT NOT NULL,
   servicio_id      INT NOT NULL,
   descripcion      TEXT,
+  tarifa_acordada  DECIMAL(10,2),
+  tipo_tarifa_acordada VARCHAR(20),
   direccion        VARCHAR(255),
   latitud          DECIMAL(10,8),
   longitud         DECIMAL(11,8),
@@ -84,6 +86,18 @@ CREATE TABLE IF NOT EXISTS solicitudes (
   FOREIGN KEY (servicio_id)  REFERENCES servicios(id),
   INDEX idx_solicitudes_cliente (cliente_id),
   INDEX idx_solicitudes_proveedor (proveedor_id)
+);
+
+CREATE TABLE IF NOT EXISTS mensajes_solicitud (
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  solicitud_id    INT NOT NULL,
+  remitente_id    INT NOT NULL,
+  contenido       VARCHAR(1000) NOT NULL,
+  fecha_envio     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  leido           BOOLEAN NOT NULL DEFAULT 0,
+  FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id) ON DELETE CASCADE,
+  FOREIGN KEY (remitente_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  INDEX idx_mensajes_solicitud_fecha (solicitud_id, fecha_envio)
 );
 
 CREATE TABLE IF NOT EXISTS calificaciones (

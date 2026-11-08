@@ -17,6 +17,8 @@ const COLUMNAS = [
   { tabla: 'usuarios', nombre: 'intentos_fallidos', ddl: 'intentos_fallidos INT DEFAULT 0' },
   { tabla: 'usuarios', nombre: 'bloqueado_hasta', ddl: 'bloqueado_hasta DATETIME NULL' },
   { tabla: 'usuarios', nombre: 'categoria_id', ddl: 'categoria_id INT NULL' },
+  { tabla: 'solicitudes', nombre: 'tarifa_acordada', ddl: 'tarifa_acordada DECIMAL(10,2) NULL' },
+  { tabla: 'solicitudes', nombre: 'tipo_tarifa_acordada', ddl: 'tipo_tarifa_acordada VARCHAR(20) NULL' },
 ];
 
 // Mismos índices que declara schema.sql.
