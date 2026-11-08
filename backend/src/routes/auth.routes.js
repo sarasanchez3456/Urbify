@@ -1,9 +1,10 @@
 const router = require('express').Router();
 const authController = require('../controllers/auth.controller');
 const { authenticate, authorize } = require('../middleware/auth');
+const { registroLimiter, loginLimiters } = require('../middleware/rateLimit');
 
-router.post('/registro', authController.registrar);
-router.post('/login', authController.login);
+router.post('/registro', registroLimiter, authController.registrar);
+router.post('/login', ...loginLimiters, authController.login);
 router.post('/logout', authenticate, authController.logout);
 router.get('/perfil', authenticate, authController.perfil);
 router.put('/perfil', authenticate, authController.actualizarPerfil);

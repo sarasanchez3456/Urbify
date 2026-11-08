@@ -312,6 +312,23 @@ El backend lee `backend/.env.<NODE_ENV>` (si existe) y luego `backend/.env`; las
 | `TRUST_PROXY` | `0` | nº de proxys delante de la API (Nginx del compose = `1`) |
 | `FORCE_HTTPS` | `false` | `true` redirige a HTTPS y activa HSTS (requiere `TRUST_PROXY>=1`) |
 
+#### Límites de peticiones (rate limiting)
+
+Cuando se supera un límite la API responde `429` con `{"error", "bloqueado": true, "minutos_restantes"}` y las cabeceras `Retry-After`, `RateLimit` y `RateLimit-Policy`. Los valores por defecto no afectan el uso normal de la web ni de la app móvil; se ajustan por entorno:
+
+| Límite | Variable | Por defecto |
+|---|---|---|
+| Ventana de los límites generales y de login | `RATE_LIMIT_WINDOW_SECONDS` | `900` (15 min) |
+| Todas las rutas `/api` (excepto `/api/health`), por IP | `RATE_LIMIT_GLOBAL` | `1500` por ventana |
+| Lecturas públicas (búsqueda, cercanos, destacados, categorías, stats, calificaciones), por IP | `RATE_LIMIT_PUBLIC_PER_MINUTE` | `120` por minuto |
+| Registro, por IP | `RATE_LIMIT_REGISTER_PER_HOUR` | `10` por hora |
+| Login, por IP (cualquier intento) | `RATE_LIMIT_LOGIN_IP` | `30` por ventana |
+| Login, intentos **fallidos** a una misma cuenta desde una misma IP | `RATE_LIMIT_LOGIN_ACCOUNT_IP` | `5` por ventana |
+| Login, intentos **fallidos** a una cuenta desde cualquier IP | `RATE_LIMIT_LOGIN_ACCOUNT` | `20` por ventana |
+| Desactivar (solo desarrollo/pruebas) | `RATE_LIMIT_ENABLED=false` | activo |
+
+El antiguo bloqueo de cuenta (3 fallos = 5 min bloqueada) se eliminó: permitía que un tercero dejara fuera a cualquiera escribiendo su correo. Ahora los fallos limitan a la IP que los causa y la persona real puede entrar desde otra red; el tope por cuenta (20) solo se alcanza con un ataque distribuido. Los límites se guardan en memoria, así que valen para **una** instancia del backend; con varias hay que usar un almacén compartido (p. ej. Redis). Con `TRUST_PROXY` mal configurado todos los usuarios compartirían la IP del proxy.
+
 Si en `staging`/`production` falta algo o es un valor de ejemplo, el backend **no arranca** y lista qué corregir (sin imprimir los secretos). Genera un `JWT_SECRET` con:
 
 ```bash

@@ -131,8 +131,28 @@ if (ESTRICTO) {
   if (!process.env.RESEND_API_KEY) avisos.push('RESEND_API_KEY no configurado: los correos no se enviarán');
 }
 
+// --- Rate limiting ---------------------------------------------------------
+// Todos los límites son por ventana de RATE_LIMIT_WINDOW_SECONDS, salvo los marcados.
+const rateLimit = {
+  habilitado: process.env.RATE_LIMIT_ENABLED !== 'false',
+  ventanaMs: entero('RATE_LIMIT_WINDOW_SECONDS', 15 * 60) * 1000,
+  // Todas las rutas /api por IP.
+  global: entero('RATE_LIMIT_GLOBAL', 1500),
+  // Endpoints públicos de lectura (búsqueda, cercanos, destacados, stats...), por IP y por minuto.
+  publico: entero('RATE_LIMIT_PUBLIC_PER_MINUTE', 120),
+  // Registros por IP y por hora.
+  registro: entero('RATE_LIMIT_REGISTER_PER_HOUR', 10),
+  // Intentos de login (cualquier resultado) por IP.
+  loginIp: entero('RATE_LIMIT_LOGIN_IP', 30),
+  // Intentos fallidos contra una misma cuenta desde una misma IP.
+  loginCuentaIp: entero('RATE_LIMIT_LOGIN_ACCOUNT_IP', 5),
+  // Intentos fallidos contra una cuenta desde cualquier IP (tope contra ataques distribuidos).
+  loginCuenta: entero('RATE_LIMIT_LOGIN_ACCOUNT', 20),
+};
+
 // --- Límites, proxy y HTTPS -------------------------------------------------
 const config = {
+  rateLimit,
   NODE_ENV,
   ESTRICTO,
   port: process.env.PORT || 4000,
