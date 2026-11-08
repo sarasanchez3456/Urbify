@@ -12,6 +12,21 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        // Separa las librerías grandes del código de la app: un único chunk de ~540 kB provocaba el aviso de
+        // tamaño de Vite y obligaba a descargar todo ante cualquier cambio del código propio.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (/leaflet/.test(id)) return 'vendor-mapa';
+          if (/framer-motion|[\\/]motion[\\/]|motion-dom|motion-utils/.test(id)) return 'vendor-animacion';
+          if (/react-router|@remix-run|react-dom|[\\/]react[\\/]|scheduler/.test(id)) return 'vendor-react';
+          return undefined;
+        },
+      },
+    },
+  },
   server: {
     port: 3000,
     proxy: {

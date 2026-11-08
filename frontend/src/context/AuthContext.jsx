@@ -103,7 +103,8 @@ export function AuthProvider({ children }) {
     clearSession();
     setUsuario(null);
     if (token) {
-      api.post('/auth/logout', null, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+      // Sin cuerpo (undefined, no null): axios no envía Content-Type y no hay JSON que validar.
+      api.post('/auth/logout', undefined, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
     }
   }, []);
 

@@ -188,8 +188,8 @@ docker compose logs -f backend
 
 ```
 NAME                STATUS          PORTS
-urbify-db           Up (healthy)    0.0.0.0:3306->3306/tcp
-urbify-backend      Up              0.0.0.0:4000->4000/tcp
+urbify-db           Up (healthy)    127.0.0.1:3306->3306/tcp
+urbify-backend      Up              127.0.0.1:4000->4000/tcp
 urbify-frontend     Up              0.0.0.0:80->80/tcp
 ```
 
@@ -302,7 +302,7 @@ El backend lee `backend/.env.<NODE_ENV>` (si existe) y luego `backend/.env`; las
 
 | Variable | development | staging / production |
 |---|---|---|
-| `NODE_ENV` | `development` (por defecto) | `staging` o `production` |
+| `NODE_ENV` | `development` (por defecto) | `staging` o `production` (cualquier valor distinto de `development`, `staging`, `production` o `test` impide arrancar) |
 | `JWT_SECRET` | opcional (avisa) | **obligatoria**, 32+ caracteres, sin valores de ejemplo |
 | `DB_HOST`, `DB_USER`, `DB_NAME`, `DB_PASSWORD` | por defecto de MySQL local | **obligatorias**; `DB_PASSWORD` sin valores de ejemplo |
 | `CORS_ORIGIN` | `http://localhost:5173,http://localhost` | **obligatoria**: orígenes separados por comas, sin `*`; `https` en production |
@@ -329,6 +329,8 @@ Cuando se supera un límite la API responde `429` con `{"error", "bloqueado": tr
 | Desactivar (solo desarrollo/pruebas) | `RATE_LIMIT_ENABLED=false` | activo |
 
 El antiguo bloqueo de cuenta (3 fallos = 5 min bloqueada) se eliminó: permitía que un tercero dejara fuera a cualquiera escribiendo su correo. Ahora los fallos limitan a la IP que los causa y la persona real puede entrar desde otra red; el tope por cuenta (20) solo se alcanza con un ataque distribuido. Los límites se guardan en memoria, así que valen para **una** instancia del backend; con varias hay que usar un almacén compartido (p. ej. Redis). Con `TRUST_PROXY` mal configurado todos los usuarios compartirían la IP del proxy.
+
+Los valores numéricos (límites, `TRUST_PROXY`), los booleanos (`true`/`false`, en minúsculas) y `BODY_LIMIT` (número con `b`, `kb` o `mb`, de 1 byte a 10 mb) se validan siempre: un valor inválido, un límite de `0` o una ventana fuera de rango impide arrancar, en lugar de aceptarse en silencio o dejar la API sin responder.
 
 Si en `staging`/`production` falta algo o es un valor de ejemplo, el backend **no arranca** y lista qué corregir (sin imprimir los secretos). Genera un `JWT_SECRET` con:
 
@@ -357,17 +359,17 @@ Si el correo ya existe, ese usuario se promueve a `admin`. En una base de datos 
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | `/api/health` | Estado del servidor |
+| GET | `/api/health` | Estado del servidor; con `?deep=1` consulta también la base de datos y responde `503` si no contesta |
 | POST | `/api/auth/registro` | Registro de usuario (`cliente` o `proveedor`) |
 | POST | `/api/auth/login` | Inicio de sesión |
 | POST | `/api/auth/logout` | Cierra la sesión: elimina el token enviado en `Authorization: Bearer` de `tokens_sesion`. Responde `200 {"mensaje"}`; después, ese token recibe `401` (web y app móvil deben llamarla antes de borrar el token local) |
 | POST | `/api/auth/olvido-contrasena` | Envía un código de 6 dígitos al correo (respuesta genérica); ver [`docs/RUTAS_MOVIL.md`](docs/RUTAS_MOVIL.md) |
 | POST | `/api/auth/restablecer-contrasena` | Cambia la contraseña con `{correo, codigo, nueva_contrasena}` y cierra las sesiones |
 | GET | `/api/categorias` | Listar categorías |
-| GET | `/api/servicios` | Listar servicios |
+| GET | `/api/servicios/buscar` | Buscar servicios (`q`, `categoria_id`, `disponible`); también `/api/servicios/destacados`, `/api/servicios/categoria/:id` y `/api/servicios/:id`. **Privacidad:** `telefono` y `direccion` del proveedor y sus coordenadas exactas solo se devuelven a usuarios con sesión de `cliente` o `admin`; anónimos y proveedores no reciben `telefono` ni `direccion` y ven latitud/longitud redondeadas a 2 decimales (igual en `/api/proveedores/cercanos`, donde `distancia_km` se redondea a 0,5 km) |
 | POST | `/api/solicitudes` | Crear solicitud (`servicio_id` y `fecha_servicio` futura obligatorios; el proveedor se toma del servicio; fechas en UTC, y una fecha sin zona se toma como hora de Colombia, ver `docs/openapi.yaml`) |
 | GET / POST | `/api/solicitudes/:id/mensajes` | Chat de la solicitud: solo su cliente y su proveedor (`{contenido}`, 1–1000 caracteres) |
-| GET | `/api/proveedores` | Buscar proveedores |
+| GET | `/api/proveedores/cercanos` | Proveedores cerca de un punto (`lat`, `lng`, `radio` en km) |
 | GET | `/api/stats` | Estadísticas públicas de la página de inicio (3 cifras) |
 | GET | `/api/stats/admin` | Estadísticas completas del sistema (solo `admin`) |
 | GET | `/api/notificaciones` | Notificaciones del usuario |
