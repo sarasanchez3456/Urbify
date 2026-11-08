@@ -1,3 +1,4 @@
+import { formatoPesos } from '../utils/moneda';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -17,6 +18,7 @@ import {
   DollarSign,
   CheckCircle,
 } from 'lucide-react';
+import { logError } from '../utils/log';
 
 const glassCard = {
   backgroundColor: 'rgba(255, 255, 255, 0.6)',
@@ -49,7 +51,7 @@ export default function Dashboard() {
         setStats(statsRes.data);
         setSolicitudes(sols);
       } catch (err) {
-        console.error('Error al cargar dashboard:', err);
+        logError('Error al cargar dashboard:', err);
       } finally {
         setCargando(false);
       }
@@ -300,7 +302,7 @@ export default function Dashboard() {
                           </span>
                           <span className="flex items-center gap-1 font-medium" style={{ color: 'oklch(0.40 0.18 255)' }}>
                             <DollarSign size={12} />
-                            ${parseFloat(sol.tarifa || 0).toFixed(2)}
+                            {formatoPesos(sol.tarifa)}
                           </span>
                         </div>
                       </div>

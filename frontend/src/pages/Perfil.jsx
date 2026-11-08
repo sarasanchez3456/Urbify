@@ -3,6 +3,7 @@ import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import DashboardLayout from '../components/DashboardLayout';
 import { User, Phone, MapPin as MapPinIcon, Save } from 'lucide-react';
+import { logError } from '../utils/log';
 
 const glassCard = {
   backgroundColor: 'rgba(255, 255, 255, 0.6)',
@@ -34,7 +35,7 @@ export default function Perfil() {
         const u = res.data;
         setForm({ nombre: u.nombre, apellido: u.apellido, telefono: u.telefono || '', direccion: u.direccion || '' });
       })
-      .catch((err) => console.error('Error al cargar perfil:', err))
+      .catch((err) => logError('Error al cargar perfil:', err))
       .finally(() => setCargando(false));
   }, []);
 
@@ -139,8 +140,13 @@ export default function Perfil() {
                     Teléfono
                   </label>
                   <input
+                    type="tel"
+                    inputMode="tel"
+                    maxLength={20}
+                    placeholder="300 123 4567"
                     value={form.telefono}
-                    onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+                    // Solo números, espacios y un + inicial
+                    onChange={(e) => setForm({ ...form, telefono: e.target.value.replace(/[^\d\s+]/g, '') })}
                     className="w-full px-4 py-2.5 rounded-lg transition-colors"
                     style={{ ...glassInner, color: 'oklch(0.25 0.06 240)', outline: 'none' }}
                     onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.2)'; }}

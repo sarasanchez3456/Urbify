@@ -1,20 +1,50 @@
 const { query } = require('../config/db');
 const resend = require('../config/resend');
+const { escapeHtml } = require('../utils/html');
 
-function escapeHtml(str) {
-  if (!str) return '';
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+// Zona horaria de fecha_servicio. Se guarda en UTC (la conexión usa time_zone +00:00) y se responde
+// en ISO 8601 con "Z". Urbify opera en Colombia (UTC-5, sin horario de verano): un valor SIN zona
+// (p. ej. "2026-12-01 10:00:00" de la app móvil) se interpreta como hora de Colombia, no como la
+// hora del servidor. Un valor con zona ("...Z" o "...-05:00") se respeta tal cual.
+const OFFSET_COLOMBIA = '-05:00';
+
+function parsearFechaServicio(valor) {
+  if (typeof valor !== 'string') return null;
+  let texto = valor.trim().replace(' ', 'T');
+  if (!texto) return null;
+  if (!/(Z|[+-]\d{2}:?\d{2})$/i.test(texto)) texto += OFFSET_COLOMBIA;
+  const ms = Date.parse(texto);
+  return Number.isNaN(ms) ? null : ms;
 }
 
-exports.crearSolicitud = async (req, res) => {
-  try {
-    const { proveedor_id, servicio_id, descripcion, fecha_servicio, direccion, latitud, longitud } = req.body;
+const aFechaMysqlUtc = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
 
-    if (!proveedor_id || !servicio_id) {
-      return res.status(400).json({ error: 'proveedor_id y servicio_id son requeridos' });
+exports.crearSolicitud = async (req, res, next) => {
+  try {
+    // proveedor_id ya no se recibe: se toma del servicio, así el cliente no puede
+    // mezclar un servicio con un proveedor distinto.
+    const { servicio_id, descripcion, fecha_servicio, direccion, latitud, longitud } = req.body;
+
+    if (!servicio_id) {
+      return res.status(400).json({ error: 'servicio_id es requerido' });
     }
 
-    if (req.usuarioId === Number(proveedor_id)) {
+    const fechaServicioMillis = parsearFechaServicio(fecha_servicio);
+    if (fechaServicioMillis === null || fechaServicioMillis <= Date.now()) {
+      return res.status(400).json({ error: 'Debes seleccionar una fecha y hora futura para el servicio' });
+    }
+
+    const [servicio] = await query('SELECT * FROM servicios WHERE id = ?', [servicio_id]);
+    if (servicio.length === 0) {
+      return res.status(404).json({ error: 'Servicio no encontrado' });
+    }
+    if (!servicio[0].disponible) {
+      return res.status(400).json({ error: 'El servicio no está disponible' });
+    }
+
+    const proveedor_id = servicio[0].proveedor_id;
+
+    if (req.usuarioId === proveedor_id) {
       return res.status(400).json({ error: 'No puedes solicitarte un servicio a ti mismo' });
     }
 
@@ -26,20 +56,16 @@ exports.crearSolicitud = async (req, res) => {
       return res.status(404).json({ error: 'Proveedor no encontrado' });
     }
 
-    const [servicio] = await query('SELECT * FROM servicios WHERE id = ? AND proveedor_id = ?', [servicio_id, proveedor_id]);
-    if (servicio.length === 0) {
-      return res.status(404).json({ error: 'Servicio no encontrado' });
-    }
-
     const [cliente] = await query(
       'SELECT nombre, apellido, correo, direccion FROM usuarios WHERE id = ?',
       [req.usuarioId]
     );
 
+    // Se guarda la tarifa vigente al solicitar: un cambio posterior del servicio no altera el historial.
     const [result] = await query(
-      `INSERT INTO solicitudes (cliente_id, proveedor_id, servicio_id, descripcion, fecha_servicio, direccion, latitud, longitud)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [req.usuarioId, proveedor_id, servicio_id, descripcion ?? null, fecha_servicio || null, direccion || null, latitud || null, longitud || null]
+      `INSERT INTO solicitudes (cliente_id, proveedor_id, servicio_id, tarifa_acordada, tipo_tarifa_acordada, descripcion, fecha_servicio, direccion, latitud, longitud)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [req.usuarioId, proveedor_id, servicio_id, servicio[0].tarifa, servicio[0].tipo_tarifa, descripcion ?? null, aFechaMysqlUtc(fechaServicioMillis), direccion || null, latitud || null, longitud || null]
     );
 
     const solicitudId = result.insertId;
@@ -80,7 +106,7 @@ exports.crearSolicitud = async (req, res) => {
           <p><strong>Dirección:</strong> ${escapeHtml(cliente[0].direccion) || 'No especificada'}</p>
           <p><strong>Servicio solicitado:</strong> ${escapeHtml(servicio[0].titulo)}</p>
           <p><strong>Descripción:</strong> ${escapeHtml(descripcion) || 'Sin descripción'}</p>
-          <p><strong>Fecha acordada:</strong> ${fecha_servicio && !isNaN(new Date(fecha_servicio).getTime()) ? new Date(fecha_servicio).toLocaleDateString() : 'Por acordar'}</p>
+          <p><strong>Fecha acordada:</strong> ${new Date(fechaServicioMillis).toLocaleString('es-CO', { timeZone: 'America/Bogota' })} (hora de Colombia)</p>
           <hr>
           <p>Ingresa a tu panel de Urbify para gestionar esta solicitud.</p>
         `,
@@ -118,15 +144,14 @@ exports.crearSolicitud = async (req, res) => {
       solicitud: { id: solicitudId },
     });
   } catch (err) {
-    console.error('Error al crear solicitud:', err);
-    res.status(500).json({ error: 'Error al crear solicitud' });
+    return next(err);
   }
 };
 
-exports.misSolicitudesComoCliente = async (req, res) => {
+exports.misSolicitudesComoCliente = async (req, res, next) => {
   try {
     const [solicitudes] = await query(
-      `SELECT sol.*, s.titulo AS servicio_titulo, s.tarifa,
+      `SELECT sol.*, s.titulo AS servicio_titulo, COALESCE(sol.tarifa_acordada, s.tarifa) AS tarifa,
        u.nombre AS proveedor_nombre, u.apellido AS proveedor_apellido, u.foto_url AS proveedor_foto
        FROM solicitudes sol
        JOIN servicios s ON sol.servicio_id = s.id
@@ -137,15 +162,14 @@ exports.misSolicitudesComoCliente = async (req, res) => {
     );
     res.json(solicitudes);
   } catch (err) {
-    console.error('Error al obtener solicitudes:', err);
-    res.status(500).json({ error: 'Error al obtener solicitudes' });
+    return next(err);
   }
 };
 
-exports.misSolicitudesComoProveedor = async (req, res) => {
+exports.misSolicitudesComoProveedor = async (req, res, next) => {
   try {
     const [solicitudes] = await query(
-      `SELECT sol.*, s.titulo AS servicio_titulo, s.tarifa,
+      `SELECT sol.*, s.titulo AS servicio_titulo, COALESCE(sol.tarifa_acordada, s.tarifa) AS tarifa,
        u.nombre AS cliente_nombre, u.apellido AS cliente_apellido, u.foto_url AS cliente_foto,
        u.direccion AS cliente_direccion, u.telefono AS cliente_telefono
        FROM solicitudes sol
@@ -157,8 +181,7 @@ exports.misSolicitudesComoProveedor = async (req, res) => {
     );
     res.json(solicitudes);
   } catch (err) {
-    console.error('Error al obtener solicitudes:', err);
-    res.status(500).json({ error: 'Error al obtener solicitudes' });
+    return next(err);
   }
 };
 
@@ -170,7 +193,7 @@ const transicionesValidas = {
   cancelada: [],
 };
 
-exports.actualizarEstadoSolicitud = async (req, res) => {
+exports.actualizarEstadoSolicitud = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { estado } = req.body;
@@ -220,7 +243,15 @@ exports.actualizarEstadoSolicitud = async (req, res) => {
       });
     }
 
-    await query('UPDATE solicitudes SET estado = ? WHERE id = ?', [estado, id]);
+    // El estado anterior va en el WHERE: si otra petición cambió la solicitud entre la
+    // lectura y la escritura, la transición ya no es válida y no se aplica.
+    const [actualizada] = await query(
+      'UPDATE solicitudes SET estado = ? WHERE id = ? AND estado = ?',
+      [estado, id, solicitudActual.estado]
+    );
+    if (actualizada.affectedRows === 0) {
+      return res.status(409).json({ error: 'La solicitud cambió de estado, vuelve a consultarla' });
+    }
 
     // Crear notificaciones en BD según el nuevo estado
     try {
@@ -291,12 +322,90 @@ exports.actualizarEstadoSolicitud = async (req, res) => {
 
     res.json({ mensaje: 'Estado actualizado exitosamente' });
   } catch (err) {
-    console.error('Error al actualizar estado:', err);
-    res.status(500).json({ error: 'Error al actualizar estado' });
+    return next(err);
   }
 };
 
-exports.eliminarSolicitud = async (req, res) => {
+// Chat de la solicitud: solo lo ven y escriben el cliente y el proveedor de esa solicitud.
+// 404 si no existe, 403 si el usuario no es parte de ella.
+async function solicitudDelParticipante(id, usuarioId, res) {
+  const [solicitudes] = await query('SELECT id, cliente_id, proveedor_id FROM solicitudes WHERE id = ?', [id]);
+  const solicitud = solicitudes[0];
+  if (!solicitud) {
+    res.status(404).json({ error: 'Solicitud no encontrada' });
+    return null;
+  }
+  if (solicitud.cliente_id !== usuarioId && solicitud.proveedor_id !== usuarioId) {
+    res.status(403).json({ error: 'No autorizado para esta solicitud' });
+    return null;
+  }
+  return solicitud;
+}
+
+exports.listarMensajes = async (req, res, next) => {
+  try {
+    const solicitud = await solicitudDelParticipante(req.params.id, req.usuarioId, res);
+    if (!solicitud) return;
+
+    const [mensajes] = await query(
+      `SELECT m.id, m.solicitud_id, m.remitente_id, m.contenido, m.fecha_envio,
+              u.nombre AS remitente_nombre, (m.remitente_id = ?) AS es_propio
+       FROM mensajes_solicitud m
+       JOIN usuarios u ON u.id = m.remitente_id
+       WHERE m.solicitud_id = ?
+       ORDER BY m.fecha_envio ASC, m.id ASC`,
+      [req.usuarioId, solicitud.id]
+    );
+    res.json(mensajes);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+exports.enviarMensaje = async (req, res, next) => {
+  try {
+    const solicitud = await solicitudDelParticipante(req.params.id, req.usuarioId, res);
+    if (!solicitud) return;
+
+    const contenido = typeof req.body?.contenido === 'string' ? req.body.contenido.trim() : '';
+    if (!contenido || contenido.length > 1000) {
+      return res.status(400).json({ error: 'El mensaje debe tener entre 1 y 1000 caracteres' });
+    }
+    const [result] = await query(
+      'INSERT INTO mensajes_solicitud (solicitud_id, remitente_id, contenido) VALUES (?, ?, ?)',
+      [solicitud.id, req.usuarioId, contenido]
+    );
+
+    // Aviso a la otra parte: aparece en su campana de notificaciones. Si falla, el mensaje ya quedó guardado.
+    try {
+      const destinatarioId = solicitud.cliente_id === req.usuarioId ? solicitud.proveedor_id : solicitud.cliente_id;
+      const [datos] = await query(
+        `SELECT u.nombre, u.apellido, u.rol, s.titulo
+           FROM usuarios u
+           JOIN solicitudes sol ON sol.id = ?
+           JOIN servicios s ON s.id = sol.servicio_id
+          WHERE u.id = ?`,
+        [solicitud.id, req.usuarioId]
+      );
+      if (datos.length > 0) {
+        const { nombre, apellido, rol, titulo } = datos[0];
+        const vistaPrevia = contenido.length > 80 ? `${contenido.slice(0, 80).trimEnd()}…` : contenido;
+        await query('INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)', [
+          destinatarioId,
+          `${rol === 'proveedor' ? 'El proveedor' : 'El cliente'} ${nombre} ${apellido} te envió un mensaje sobre "${titulo}": "${vistaPrevia}"`,
+        ]);
+      }
+    } catch (notifErr) {
+      console.error('Error al guardar la notificación del mensaje:', notifErr);
+    }
+
+    res.status(201).json({ id: result.insertId, mensaje: 'Mensaje enviado' });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+exports.eliminarSolicitud = async (req, res, next) => {
   try {
     const { id } = req.params;
     const [solicitud] = await query('SELECT * FROM solicitudes WHERE id = ?', [id]);
@@ -313,7 +422,6 @@ exports.eliminarSolicitud = async (req, res) => {
     await query('DELETE FROM solicitudes WHERE id = ?', [id]);
     res.json({ mensaje: 'Solicitud eliminada exitosamente' });
   } catch (err) {
-    console.error('Error al eliminar solicitud:', err);
-    res.status(500).json({ error: 'Error al eliminar solicitud' });
+    return next(err);
   }
 };

@@ -1,6 +1,7 @@
 const { query } = require('../config/db');
+const { veContactoExacto, protegerContacto, protegerLista } = require('../utils/privacidad');
 
-exports.crearServicio = async (req, res) => {
+exports.crearServicio = async (req, res, next) => {
   try {
     if (req.usuarioRol !== 'proveedor') {
       return res.status(403).json({ error: 'Solo los proveedores pueden crear servicios' });
@@ -8,17 +9,26 @@ exports.crearServicio = async (req, res) => {
 
     const { categoria_id, titulo, descripcion, tarifa, tipo_tarifa } = req.body;
 
-    if (!categoria_id || !titulo || tarifa === undefined || tarifa === null) {
-      return res.status(400).json({ error: 'categoria_id, titulo y tarifa son requeridos' });
+    if (!categoria_id || !titulo) {
+      return res.status(400).json({ error: 'categoria_id y titulo son requeridos' });
     }
     if (tipo_tarifa && !['hora', 'fijo'].includes(tipo_tarifa)) {
       return res.status(400).json({ error: "tipo_tarifa debe ser 'hora' o 'fijo'" });
+    }
+    // La app móvil omite la tarifa cuando está vacía: se guarda como 0.
+    const tarifaFinal = tarifa ?? 0;
+    if (!Number.isFinite(Number(tarifaFinal)) || Number(tarifaFinal) < 0) {
+      return res.status(400).json({ error: 'tarifa debe ser un número mayor o igual a 0' });
+    }
+    const [categoria] = await query('SELECT id FROM categorias WHERE id = ?', [categoria_id]);
+    if (categoria.length === 0) {
+      return res.status(404).json({ error: 'Categoría no encontrada' });
     }
 
     const [result] = await query(
       `INSERT INTO servicios (proveedor_id, categoria_id, titulo, descripcion, tarifa, tipo_tarifa)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [req.usuarioId, categoria_id, titulo, descripcion ?? null, tarifa, tipo_tarifa || 'hora']
+      [req.usuarioId, categoria_id, titulo, descripcion ?? null, tarifaFinal, tipo_tarifa || 'hora']
     );
 
     res.status(201).json({
@@ -26,12 +36,11 @@ exports.crearServicio = async (req, res) => {
       servicio: { id: result.insertId, proveedor_id: req.usuarioId, categoria_id, titulo, descripcion, tarifa },
     });
   } catch (err) {
-    console.error('Error al crear servicio:', err);
-    res.status(500).json({ error: 'Error al crear servicio' });
+    return next(err);
   }
 };
 
-exports.misServicios = async (req, res) => {
+exports.misServicios = async (req, res, next) => {
   try {
     const [servicios] = await query(
       `SELECT s.*, c.nombre AS categoria_nombre
@@ -43,12 +52,11 @@ exports.misServicios = async (req, res) => {
     );
     res.json(servicios);
   } catch (err) {
-    console.error('Error al obtener servicios:', err);
-    res.status(500).json({ error: 'Error al obtener servicios' });
+    return next(err);
   }
 };
 
-exports.serviciosPorCategoria = async (req, res) => {
+exports.serviciosPorCategoria = async (req, res, next) => {
   try {
     const { categoria_id } = req.params;
     const [servicios] = await query(
@@ -68,14 +76,13 @@ exports.serviciosPorCategoria = async (req, res) => {
        ORDER BY s.fecha_creacion DESC`,
       [categoria_id]
     );
-    res.json(servicios);
+    res.json(protegerLista(servicios, veContactoExacto(req)));
   } catch (err) {
-    console.error('Error al buscar servicios:', err);
-    res.status(500).json({ error: 'Error al buscar servicios' });
+    return next(err);
   }
 };
 
-exports.buscarServicios = async (req, res) => {
+exports.buscarServicios = async (req, res, next) => {
   try {
     const { q, categoria_id, disponible } = req.query;
 
@@ -115,14 +122,13 @@ exports.buscarServicios = async (req, res) => {
     sql += ` ORDER BY s.fecha_creacion DESC`;
 
     const [servicios] = await query(sql, params);
-    res.json(servicios);
+    res.json(protegerLista(servicios, veContactoExacto(req)));
   } catch (err) {
-    console.error('Error en búsqueda:', err);
-    res.status(500).json({ error: 'Error al buscar servicios' });
+    return next(err);
   }
 };
 
-exports.destacados = async (req, res) => {
+exports.destacados = async (req, res, next) => {
   try {
     const [servicios] = await query(
       `SELECT s.id, s.titulo, s.descripcion, s.tarifa, s.tipo_tarifa,
@@ -144,19 +150,28 @@ exports.destacados = async (req, res) => {
     );
     res.json(servicios);
   } catch (err) {
-    console.error('Error al obtener destacados:', err);
-    res.status(500).json({ error: 'Error al obtener servicios destacados' });
+    return next(err);
   }
 };
 
-exports.actualizarServicio = async (req, res) => {
+exports.actualizarServicio = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { titulo, descripcion, tarifa, tipo_tarifa, disponible } = req.body;
 
-    const [servicio] = await query('SELECT * FROM servicios WHERE id = ? AND proveedor_id = ?', [id, req.usuarioId]);
+    if (tipo_tarifa !== undefined && tipo_tarifa !== null && !['hora', 'fijo'].includes(tipo_tarifa)) {
+      return res.status(400).json({ error: "tipo_tarifa debe ser 'hora' o 'fijo'" });
+    }
+    if (tarifa !== undefined && tarifa !== null && (!Number.isFinite(Number(tarifa)) || Number(tarifa) < 0)) {
+      return res.status(400).json({ error: 'tarifa debe ser un número mayor o igual a 0' });
+    }
+
+    const [servicio] = await query('SELECT proveedor_id FROM servicios WHERE id = ?', [id]);
     if (servicio.length === 0) {
-      return res.status(404).json({ error: 'Servicio no encontrado o no autorizado' });
+      return res.status(404).json({ error: 'Servicio no encontrado' });
+    }
+    if (servicio[0].proveedor_id !== req.usuarioId) {
+      return res.status(403).json({ error: 'No autorizado para modificar este servicio' });
     }
 
     await query(
@@ -169,32 +184,45 @@ exports.actualizarServicio = async (req, res) => {
 
     res.json({ mensaje: 'Servicio actualizado exitosamente' });
   } catch (err) {
-    console.error('Error al actualizar servicio:', err);
-    res.status(500).json({ error: 'Error al actualizar servicio' });
+    return next(err);
   }
 };
 
-exports.eliminarServicio = async (req, res) => {
+exports.eliminarServicio = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const [servicio] = await query('SELECT * FROM servicios WHERE id = ? AND proveedor_id = ?', [id, req.usuarioId]);
+    const [servicio] = await query('SELECT proveedor_id FROM servicios WHERE id = ?', [id]);
     if (servicio.length === 0) {
-      return res.status(404).json({ error: 'Servicio no encontrado o no autorizado' });
+      return res.status(404).json({ error: 'Servicio no encontrado' });
+    }
+    if (servicio[0].proveedor_id !== req.usuarioId) {
+      return res.status(403).json({ error: 'No autorizado para eliminar este servicio' });
+    }
+
+    const [resenas] = await query(
+      `SELECT cal.id FROM calificaciones cal
+       JOIN solicitudes sol ON sol.id = cal.solicitud_id
+       WHERE sol.servicio_id = ? LIMIT 1`,
+      [id]
+    );
+    if (resenas.length > 0) {
+      return res.status(409).json({ error: 'No se puede eliminar este servicio porque ya recibió una reseña.' });
     }
 
     await query('DELETE FROM servicios WHERE id = ?', [id]);
     res.json({ mensaje: 'Servicio eliminado exitosamente' });
   } catch (err) {
     console.error('Error al eliminar servicio:', err);
-    if (err.errno === 1451) {
-      return res.status(409).json({ error: 'No se puede eliminar el servicio porque tiene solicitudes asociadas. Desmárcale como no disponible en su lugar.' });
+    // Clave foránea: cualquier solicitud (con o sin reseña) referencia al servicio.
+    if (err.errno === 1451 || err.code === 'ER_ROW_IS_REFERENCED_2') {
+      return res.status(409).json({ error: 'No se puede eliminar el servicio porque tiene solicitudes asociadas. Márcalo como no disponible en su lugar.' });
     }
-    res.status(500).json({ error: 'Error al eliminar servicio' });
+    return next(err);
   }
 };
 
-exports.detalleServicio = async (req, res) => {
+exports.detalleServicio = async (req, res, next) => {
   try {
     const { id } = req.params;
 
@@ -236,9 +264,8 @@ exports.detalleServicio = async (req, res) => {
       console.error('Error al obtener comentarios:', err2);
     }
 
-    res.json({ ...servicios[0], comentarios });
+    res.json({ ...protegerContacto(servicios[0], veContactoExacto(req)), comentarios });
   } catch (err) {
-    console.error('Error al obtener detalle:', err);
-    res.status(500).json({ error: 'Error al obtener detalle del servicio' });
+    return next(err);
   }
 };

@@ -1,3 +1,4 @@
+import { formatoPesos } from '../utils/moneda';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -12,6 +13,7 @@ import {
   COLOMBIA_BOUNDS,
   geocodificarDireccion,
 } from '../utils/colombia';
+import { logError } from '../utils/log';
 
 // ── Leaflet icon setup ──────────────────────────────────────────────────────
 delete L.Icon.Default.prototype._getIconUrl;
@@ -98,6 +100,7 @@ const accentGradient = 'linear-gradient(135deg, oklch(0.40 0.18 255), oklch(0.72
 // ── Main page component ─────────────────────────────────────────────────
 function BuscarContent() {
   const [searchParams] = useSearchParams();
+  const { usuario } = useAuth();
 
   // Service list state
   const [categorias, setCategorias] = useState([]);
@@ -145,7 +148,7 @@ function BuscarContent() {
       setCargandoServicios(true);
       api.get(`/servicios/buscar?${params}`, { signal: ctrl.signal })
         .then((r) => setServicios(r.data))
-        .catch((e) => { if (e.name !== 'CanceledError') console.error(e); })
+        .catch((e) => { if (e.name !== 'CanceledError') logError(e); })
         .finally(() => setCargandoServicios(false));
     }, 300);
     return () => { clearTimeout(debounceRef.current); abortRef.current?.abort(); };
@@ -171,7 +174,7 @@ function BuscarContent() {
       const res = await api.get(`/proveedores/cercanos?lat=${lat}&lng=${lng}&radio=${r}`);
       setProveedores(res.data);
     } catch (e) {
-      console.error('Error al cargar proveedores:', e);
+      logError('Error al cargar proveedores:', e);
     } finally {
       setCargandoMapa(false);
     }
@@ -204,7 +207,7 @@ function BuscarContent() {
           alert('No se encontró la dirección. Intenta ser más general o añadir la ciudad.');
         }
       } catch (e) {
-        console.error(e);
+        logError(e);
       }
       setBuscandoDir(false);
     }
@@ -319,12 +322,17 @@ function BuscarContent() {
                 <p className="text-sm mb-3 line-clamp-2" style={labelColor}>{s.descripcion}</p>
                 <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
                   <span className="text-base font-bold" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.40 0.18 255)' }}>
-                    ${parseFloat(s.tarifa || 0).toFixed(2)}
+                    {formatoPesos(s.tarifa)}
                     <span className="text-xs font-normal ml-1" style={textMuted}>/{s.tipo_tarifa}</span>
                   </span>
-                  {s.direccion && (
+                  {s.direccion ? (
                     <span className="flex items-center gap-1 text-xs" style={textMuted}>
                       <MapPin size={11} />{s.direccion}
+                    </span>
+                  ) : (
+                    // La API solo devuelve la dirección a clientes (y admin) con sesión
+                    <span className="flex items-center gap-1 text-xs" style={textMuted}>
+                      <MapPin size={11} />{usuario ? 'Contacto solo para clientes' : 'Inicia sesión para ver el contacto'}
                     </span>
                   )}
                 </div>

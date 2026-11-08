@@ -1,7 +1,9 @@
+import { formatoPesos, PASO_TARIFA } from '../utils/moneda';
 import { useState, useEffect } from 'react';
 import api from '../api/axios';
 import DashboardLayout from '../components/DashboardLayout';
 import { Plus, ToggleLeft, ToggleRight, Trash2, Wrench, AlertCircle } from 'lucide-react';
+import { logError } from '../utils/log';
 
 const glassCard = {
   backgroundColor: 'rgba(255, 255, 255, 0.6)',
@@ -33,20 +35,20 @@ export default function MisServicios() {
   const cargarServicios = () => {
     api.get('/servicios/mios')
       .then((res) => setServicios(res.data))
-      .catch((err) => console.error('Error al cargar servicios:', err))
+      .catch((err) => logError('Error al cargar servicios:', err))
       .finally(() => setCargando(false));
   };
 
   useEffect(() => {
     cargarServicios();
-    api.get('/categorias').then((res) => setCategorias(res.data)).catch((err) => console.error('Error al cargar categorías:', err));
+    api.get('/categorias').then((res) => setCategorias(res.data)).catch((err) => logError('Error al cargar categorías:', err));
   }, []);
 
   const handleCrear = async (e) => {
     e.preventDefault();
     setError('');
     try {
-      await api.post('/servicios', { ...form, tarifa: parseFloat(form.tarifa || 0) });
+      await api.post('/servicios', { ...form, categoria_id: Number(form.categoria_id), tarifa: Number(form.tarifa || 0) });
       setMostrarForm(false);
       setForm({ categoria_id: '', titulo: '', descripcion: '', tarifa: '', tipo_tarifa: 'hora' });
       cargarServicios();
@@ -60,7 +62,7 @@ export default function MisServicios() {
       await api.put(`/servicios/${servicio.id}`, { disponible: servicio.disponible ? 0 : 1 });
       cargarServicios();
     } catch (err) {
-      console.error(err);
+      logError(err);
     }
   };
 
@@ -70,7 +72,7 @@ export default function MisServicios() {
       await api.delete(`/servicios/${id}`);
       cargarServicios();
     } catch (err) {
-      console.error(err);
+      logError(err);
     }
   };
 
@@ -161,8 +163,9 @@ export default function MisServicios() {
                   <label className="block text-sm mb-1.5" style={{ color: 'oklch(0.45 0.03 240)' }}>Tarifa</label>
                   <input
                     type="number"
-                    step="0.01"
+                    step={PASO_TARIFA}
                     min="0"
+                    placeholder="Ej: 50000"
                     value={form.tarifa}
                     onChange={(e) => setForm({ ...form, tarifa: e.target.value })}
                     required
@@ -239,7 +242,7 @@ export default function MisServicios() {
                     <h3 className="text-base font-semibold mt-2" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>{s.titulo}</h3>
                   </div>
                   <span className="text-lg font-bold" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.40 0.18 255)' }}>
-                    ${parseFloat(s.tarifa || 0).toFixed(2)}<span className="text-xs" style={{ color: 'oklch(0.45 0.03 240)' }}>/{s.tipo_tarifa}</span>
+                    {formatoPesos(s.tarifa)}<span className="text-xs" style={{ color: 'oklch(0.45 0.03 240)' }}>/{s.tipo_tarifa}</span>
                   </span>
                 </div>
                 <p className="text-sm mb-4 line-clamp-2" style={{ color: 'oklch(0.45 0.03 240)' }}>{s.descripcion}</p>

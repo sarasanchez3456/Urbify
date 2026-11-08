@@ -13,7 +13,9 @@ import {
   Trash2,
   X,
   Inbox,
+  MessageCircle,
 } from 'lucide-react';
+import { logError } from '../utils/log';
 
 function formatearTiempo(fechaStr) {
   if (!fechaStr) return '';
@@ -35,6 +37,10 @@ function formatearTiempo(fechaStr) {
 
 function getNotificationIcon(mensaje = '') {
   const m = mensaje.toLowerCase();
+  // Primero los mensajes del chat: su vista previa puede contener palabras como "aceptada".
+  if (m.includes('te envió un mensaje')) {
+    return { Icon: MessageCircle, bg: 'rgba(14, 165, 233, 0.15)', color: '#0284c7' };
+  }
   if (m.includes('aceptó') || m.includes('aceptada')) {
     return { Icon: CheckCircle2, bg: 'rgba(34, 197, 94, 0.15)', color: '#16a34a' };
   }
@@ -64,7 +70,7 @@ export default function NotificationBell() {
       const res = await api.get('/notificaciones');
       setNotificaciones(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
-      console.error('Error al cargar notificaciones:', err);
+      logError('Error al cargar notificaciones:', err);
     }
   };
 
@@ -109,7 +115,7 @@ export default function NotificationBell() {
         prev.map((n) => (n.id === id ? { ...n, leida: 1 } : n))
       );
     } catch (err) {
-      console.error('Error al marcar leída:', err);
+      logError('Error al marcar leída:', err);
     }
   };
 
@@ -119,7 +125,7 @@ export default function NotificationBell() {
       await api.put('/notificaciones/leer-todas');
       setNotificaciones((prev) => prev.map((n) => ({ ...n, leida: 1 })));
     } catch (err) {
-      console.error('Error al marcar todas leídas:', err);
+      logError('Error al marcar todas leídas:', err);
     } finally {
       setCargando(false);
     }
@@ -131,7 +137,7 @@ export default function NotificationBell() {
       await api.delete(`/notificaciones/${id}`);
       setNotificaciones((prev) => prev.filter((n) => n.id !== id));
     } catch (err) {
-      console.error('Error al eliminar notificación:', err);
+      logError('Error al eliminar notificación:', err);
     }
   };
 

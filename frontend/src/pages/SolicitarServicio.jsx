@@ -1,3 +1,4 @@
+import { formatoPesos } from '../utils/moneda';
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
@@ -148,10 +149,10 @@ export default function SolicitarServicio() {
     setEnviando(true);
     try {
       await api.post('/solicitudes', {
-        proveedor_id: servicio.proveedor_id,
         servicio_id: Number(id),
         descripcion,
-        fecha_servicio: fecha || null,
+        // datetime-local no lleva zona: se convierte a ISO con offset (UTC) para que el servidor no la adivine
+        fecha_servicio: new Date(fecha).toISOString(),
         direccion: direccion || null,
         latitud: latitud || null,
         longitud: longitud || null,
@@ -236,7 +237,7 @@ export default function SolicitarServicio() {
             <div className="flex items-center gap-2 text-sm">
               <DollarSign size={14} style={{ color: 'oklch(0.40 0.18 255)' }} />
               <span style={{ color: 'oklch(0.45 0.03 240)' }}>Tarifa:</span>
-              <span className="font-medium" style={{ color: 'oklch(0.25 0.06 240)' }}>${parseFloat(servicio?.tarifa || 0).toFixed(2)} / {servicio?.tipo_tarifa}</span>
+              <span className="font-medium" style={{ color: 'oklch(0.25 0.06 240)' }}>{formatoPesos(servicio?.tarifa)} / {servicio?.tipo_tarifa}</span>
             </div>
           </div>
 
@@ -269,10 +270,12 @@ export default function SolicitarServicio() {
             <div>
               <label className="block text-sm mb-1.5" style={{ color: 'oklch(0.45 0.03 240)' }}>
                 <Calendar size={14} className="inline mr-1" />
-                Fecha preferida (opcional)
+                Fecha y hora del servicio
               </label>
               <input
                 type="datetime-local"
+                required
+                min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
                 value={fecha}
                 onChange={(e) => setFecha(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-lg transition-colors"
