@@ -353,6 +353,8 @@ Si el correo ya existe, ese usuario se promueve a `admin`. En una base de datos 
 
 ## 📡 Endpoints de la API REST
 
+> **Contrato completo:** [`docs/openapi.yaml`](docs/openapi.yaml) (OpenAPI 3.0) es la fuente única para backend, web y app móvil: roles por endpoint, errores, formatos y estrategia de versionado. Valídalo con `npx @redocly/cli@1 lint docs/openapi.yaml`.
+
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/api/health` | Estado del servidor |
