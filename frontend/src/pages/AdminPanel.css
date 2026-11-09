@@ -381,3 +381,13 @@
 .ad-tag--rep-resuelto { background: oklch(0.93 0.06 155); color: oklch(0.33 0.09 155); }
 .ad-acciones-col { display: grid; gap: 4px; justify-items: end; align-content: start; }
 .ad-nota-resolucion { margin-top: 6px; font-size: 0.88rem; }
+
+.ad-tarjetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 16px; }
+.ad-usuario-cabecera { display: flex; gap: 12px; align-items: center; }
+.ad-usuario-cabecera b { display: block; }
+.ad-usuario-cabecera small { color: var(--ad-soft); font-size: 0.82rem; }
+.ad-docs-lista { display: grid; gap: 8px; }
+.ad-docs-lista > div { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; border: 1px solid var(--ad-line); border-radius: 10px; font-size: 0.88rem; }
+.ad-modal--ancho { width: min(820px, 94vw); }
+.ad-visor { width: 100%; height: min(70vh, 640px); border: 1px solid var(--ad-line); border-radius: 12px; background: oklch(0.97 0.01 80); }
+.ad-visor--img { object-fit: contain; }

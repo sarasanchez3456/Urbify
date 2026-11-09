@@ -14,6 +14,7 @@ import Perfil from './pages/Perfil';
 import MisServicios from './pages/MisServicios';
 import MisSolicitudes from './pages/MisSolicitudes';
 import MiAgenda from './pages/MiAgenda';
+import Verificacion from './pages/Verificacion';
 import Calificar from './pages/Calificar';
 import Dashboard from './pages/Dashboard';
 import AdminPanel from './pages/AdminPanel';
@@ -33,7 +34,7 @@ function RedirigirASolicitud() {
   return <Navigate to={`/servicio/${id}`} replace />;
 }
 
-const rutasDashboard = ['/dashboard', '/admin', '/perfil', '/mis-servicios', '/mis-solicitudes', '/mi-agenda', '/solicitar', '/calificar', '/buscar', '/mapa', '/servicio'];
+const rutasDashboard = ['/dashboard', '/admin', '/perfil', '/mis-servicios', '/mis-solicitudes', '/mi-agenda', '/verificacion', '/solicitar', '/calificar', '/buscar', '/mapa', '/servicio'];
 
 export default function App() {
   const navigate = useNavigate();
@@ -91,6 +92,14 @@ export default function App() {
             element={
               <RutaProtegida rol="proveedor">
                 <MisServicios />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/verificacion"
+            element={
+              <RutaProtegida rol="proveedor">
+                <Verificacion />
               </RutaProtegida>
             }
           />

@@ -162,6 +162,17 @@
   background: linear-gradient(135deg, var(--sv-teal), var(--sv-primary));
 }
 
+.sv-verificado {
+  display: inline-block;
+  margin: 2px 0;
+  padding: 2px 9px;
+  border-radius: 99px;
+  background: oklch(0.93 0.06 155);
+  color: oklch(0.33 0.09 155);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
 .sv-tel {
   font-size: 0.9rem;
   font-weight: 600;

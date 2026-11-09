@@ -246,6 +246,7 @@ export default function ServicioDetalle() {
               <div className="sv-avatar" aria-hidden="true">{iniciales(servicio.nombre, servicio.apellido)}</div>
               <div>
                 <b>{servicio.nombre} {servicio.apellido}</b>
+                {Boolean(servicio.verificado) && <span className="sv-verificado" title="Identidad y oficio verificados por Urbify">✓ Verificado</span>}
                 {servicio.telefono && <a className="sv-tel" href={`tel:${String(servicio.telefono).replace(/\s+/g, '')}`}>{servicio.telefono}</a>}
               </div>
             </div>

@@ -287,7 +287,7 @@ function BuscarContent() {
               <div className="bs-avatar" aria-hidden="true">{iniciales(s.nombre, s.apellido)}</div>
               <div className="bs-tarjeta-info">
                 <h3>{s.titulo}</h3>
-                <p className="bs-quien">{s.nombre} {s.apellido} · {s.categoria_nombre}</p>
+                <p className="bs-quien">{s.nombre} {s.apellido}{Boolean(s.verificado) && <span className="bs-verificado" title="Identidad y oficio verificados por Urbify">✓ Verificado</span>} · {s.categoria_nombre}</p>
                 <p className="bs-meta">
                   <Estrella valor={s.calificacion_promedio} />
                   <span>({s.total_calificaciones})</span>

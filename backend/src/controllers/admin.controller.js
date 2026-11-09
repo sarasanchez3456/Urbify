@@ -40,6 +40,7 @@ exports.resumen = async (req, res, next) => {
 
     const [[suspendidos]] = await query('SELECT COUNT(*) AS n FROM usuarios WHERE activo = 0');
     const [[reportesNuevos]] = await query("SELECT COUNT(*) AS n FROM reportes WHERE estado = 'nuevo'");
+    const [[verifPendientes]] = await query("SELECT COUNT(*) AS n FROM verificaciones WHERE estado = 'pendiente'");
     res.json({
       usuarios_por_rol: usuarios,
       servicios: { total: Number(servicios[0].total), disponibles: Number(servicios[0].disponibles) },
@@ -51,6 +52,7 @@ exports.resumen = async (req, res, next) => {
         servicios_no_disponibles: Number(servicios[0].total) - Number(servicios[0].disponibles),
         usuarios_suspendidos: Number(suspendidos.n),
         reportes_nuevos: Number(reportesNuevos.n),
+        verificaciones_pendientes: Number(verifPendientes.n),
         resenas_bajas: Number(calif[0].bajas),
       },
     });
@@ -296,8 +298,86 @@ exports.actualizarReporte = async (req, res, next) => {
   }
 };
 
+// ── Verificaciones ──
+// Se listan las enviadas a revisión (pendientes) y las ya respondidas; los borradores no se ven.
+exports.listarVerificaciones = async (req, res, next) => {
+  try {
+    const [filas] = await query(
+      `SELECT v.id, v.estado, v.motivo_rechazo, v.fecha_envio, v.fecha_respuesta,
+              u.id AS proveedor_id, u.nombre, u.apellido, u.oficio, u.direccion
+         FROM verificaciones v JOIN usuarios u ON u.id = v.proveedor_id
+        WHERE v.estado <> 'borrador'
+        ORDER BY FIELD(v.estado, 'pendiente', 'rechazada', 'aprobada'), v.fecha_envio DESC
+        LIMIT 200`
+    );
+    const ids = filas.map((f) => f.id);
+    let docs = [];
+    if (ids.length > 0) {
+      [docs] = await query(`SELECT id, verificacion_id, tipo, mime FROM verificacion_documentos WHERE verificacion_id IN (${ids.map(() => '?').join(',')})`, ids);
+    }
+    res.json(filas.map((f) => ({ ...f, documentos: docs.filter((d) => d.verificacion_id === f.id).map((d) => ({ id: d.id, tipo: d.tipo, mime: d.mime })) })));
+  } catch (err) {
+    return next(err);
+  }
+};
+
+// Entrega un documento solo al administrador, sin guardarlo en caché y sin que el navegador lo reinterprete.
+exports.documentoVerificacion = async (req, res, next) => {
+  try {
+    const [filas] = await query(
+      `SELECT d.mime, d.contenido, v.proveedor_id FROM verificacion_documentos d JOIN verificaciones v ON v.id = d.verificacion_id WHERE d.id = ?`,
+      [Number(req.params.id)]
+    );
+    if (filas.length === 0) return res.status(404).json({ error: 'Documento no encontrado' });
+    res.set({
+      'Content-Type': filas[0].mime,
+      'Content-Disposition': 'inline',
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox",
+    });
+    res.send(filas[0].contenido);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+exports.responderVerificacion = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const accion = req.body?.accion;
+    if (!['aprobar', 'rechazar'].includes(accion)) return res.status(400).json({ error: "accion debe ser 'aprobar' o 'rechazar'" });
+    const motivo = accion === 'rechazar' ? motivoValido(req.body?.motivo) : null;
+    if (accion === 'rechazar' && !motivo) return res.status(400).json({ error: 'Explica el rechazo en 10 a 300 caracteres para que el profesional sepa qué corregir.' });
+
+    const [filas] = await query(
+      `SELECT v.id, v.estado, v.proveedor_id, u.nombre, u.apellido FROM verificaciones v JOIN usuarios u ON u.id = v.proveedor_id WHERE v.id = ?`,
+      [id]
+    );
+    if (filas.length === 0) return res.status(404).json({ error: 'Verificación no encontrada' });
+    const v = filas[0];
+    if (v.estado !== 'pendiente') return res.status(409).json({ error: 'Esta verificación ya fue respondida o aún no se envía' });
+
+    const aprobar = accion === 'aprobar';
+    const [r] = await query(
+      "UPDATE verificaciones SET estado = ?, motivo_rechazo = ?, revisado_por = ?, fecha_respuesta = NOW() WHERE id = ? AND estado = 'pendiente'",
+      [aprobar ? 'aprobada' : 'rechazada', motivo, req.usuarioId, id]
+    );
+    if (r.affectedRows === 0) return res.status(409).json({ error: 'La verificación cambió, vuelve a consultarla' });
+    if (aprobar) await query('UPDATE usuarios SET verificado = 1 WHERE id = ?', [v.proveedor_id]);
+    await query('INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)', [
+      v.proveedor_id,
+      aprobar ? '¡Tu cuenta fue verificada! Ahora tu perfil muestra la insignia de profesional verificado.' : `Tu verificación fue rechazada. Motivo: ${motivo} Puedes volver a intentarlo.`,
+    ]).catch(() => {});
+    await registrarAuditoria(req.usuarioId, 'verificacion', aprobar ? 'Aprobó la verificación de' : 'Rechazó la verificación de', nombreDe(v), motivo);
+    res.json({ mensaje: aprobar ? 'Profesional verificado' : 'Verificación rechazada', estado: aprobar ? 'aprobada' : 'rechazada' });
+  } catch (err) {
+    return next(err);
+  }
+};
+
 // ── Auditoría ──
-const TIPOS_AUDITORIA = ['usuario', 'servicio', 'solicitud', 'resena', 'categoria', 'reporte'];
+const TIPOS_AUDITORIA = ['usuario', 'servicio', 'solicitud', 'resena', 'categoria', 'reporte', 'verificacion'];
 exports.listarAuditoria = async (req, res, next) => {
   try {
     const tipo = req.query.tipo;

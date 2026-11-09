@@ -1,0 +1,129 @@
+/* ── Verificación (proveedor) ── Prefijo "vf-". Paleta de Urbify. */
+.vf {
+  --vf-primary: oklch(0.40 0.18 255);
+  --vf-primary-hover: oklch(0.55 0.16 240);
+  --vf-teal: oklch(0.72 0.13 200);
+  --vf-ink: oklch(0.25 0.06 240);
+  --vf-soft: oklch(0.40 0.04 240);
+  --vf-line: oklch(0.40 0.18 255 / 0.14);
+  --vf-bad: oklch(0.50 0.19 25);
+
+  max-width: 720px;
+  display: grid;
+  gap: 16px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--vf-ink);
+  padding-bottom: 32px;
+}
+
+.vf-tarjeta {
+  background: #fff;
+  border: 1px solid var(--vf-line);
+  border-radius: 18px;
+  padding: 22px 24px;
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+
+.vf-tarjeta h2 { margin: 0; font-family: 'Playfair Display', serif; font-size: 1.2rem; }
+.vf-tarjeta p { margin: 0; line-height: 1.55; }
+.vf-suave { font-size: 0.9rem; color: var(--vf-soft); }
+.vf-centro { justify-items: center; text-align: center; color: var(--vf-soft); }
+
+.vf-exito {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 16px;
+  background: oklch(0.95 0.05 155);
+  border-color: oklch(0.80 0.1 155 / 0.6);
+}
+
+.vf-sello {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: oklch(0.55 0.14 155);
+  color: #fff;
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.vf-pendiente { background: oklch(0.97 0.03 90); border-color: oklch(0.80 0.1 85 / 0.7); }
+.vf-rechazo { background: oklch(0.97 0.02 25); border-color: oklch(0.80 0.1 25 / 0.5); }
+
+.vf-docs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
+.vf-docs li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--vf-line);
+  border-radius: 14px;
+}
+
+.vf-docs li.is-listo { border-color: oklch(0.80 0.1 155 / 0.7); background: oklch(0.97 0.025 155); }
+
+.vf-docs b { display: block; }
+.vf-docs small { display: block; margin-top: 2px; font-size: 0.82rem; color: var(--vf-soft); line-height: 1.4; }
+.vf-docs .vf-problema { color: var(--vf-bad); font-weight: 600; }
+
+.vf-estado {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--vf-line);
+  display: grid;
+  place-items: center;
+  font-size: 0.8rem;
+  color: #fff;
+}
+
+.is-listo .vf-estado { background: oklch(0.55 0.14 155); border-color: oklch(0.55 0.14 155); }
+
+.vf-archivo { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+.vf-error {
+  width: 100%;
+  padding: 11px 13px;
+  border-radius: 10px;
+  background: oklch(0.55 0.2 25 / 0.09);
+  color: oklch(0.42 0.17 25);
+  font-size: 0.88rem;
+}
+
+.vf-btn {
+  padding: 11px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--vf-line);
+  background: #fff;
+  color: var(--vf-primary);
+  font: 600 0.9rem 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.vf-btn:hover:not(:disabled) { border-color: var(--vf-primary); }
+.vf-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.vf-btn:focus-visible { outline: 3px solid var(--vf-teal); outline-offset: 2px; }
+.vf-btn--principal { background: var(--vf-primary); border-color: var(--vf-primary); color: #fff; }
+.vf-btn--principal:hover:not(:disabled) { background: var(--vf-primary-hover); border-color: var(--vf-primary-hover); }
+
+@media (max-width: 520px) {
+  .vf-docs li { grid-template-columns: 28px minmax(0, 1fr); }
+  .vf-docs li .vf-btn { grid-column: 1 / -1; }
+}

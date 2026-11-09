@@ -49,6 +49,7 @@ export default function Dashboard() {
   const [solicitudes, setSolicitudes] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [horarioConfigurado, setHorarioConfigurado] = useState(true);
+  const [verificado, setVerificado] = useState(true); // true mientras carga: no parpadea el aviso
   const [estado, setEstado] = useState('cargando'); // 'cargando' | 'listo' | 'error'
   const [busqueda, setBusqueda] = useState('');
 
@@ -56,12 +57,15 @@ export default function Dashboard() {
     let cancelado = false;
     (async () => {
       try {
-        const [sol, extra] = await Promise.all([
+        const [sol, extra, verif] = await Promise.all([
           api.get(esCliente ? '/solicitudes/cliente' : '/solicitudes/proveedor'),
           // Cliente: categorías para buscar. Proveedor: si ya configuró su agenda.
           api.get(esCliente ? '/categorias' : '/proveedores/mi-horario').catch((e) => { logError(e); return null; }),
+          // Proveedor: si ya está verificado (para ofrecerle la verificación).
+          esCliente ? null : api.get('/verificaciones/mia').then((r) => r.data).catch((e) => { logError(e); return { verificado: true }; }),
         ]);
         if (cancelado) return;
+        if (!esCliente) setVerificado(Boolean(verif?.verificado));
         setSolicitudes(Array.isArray(sol.data) ? sol.data : []);
         if (esCliente) setCategorias(Array.isArray(extra?.data) ? extra.data : []);
         else if (extra) setHorarioConfigurado(Boolean(extra.data?.horario_configurado));
@@ -220,6 +224,14 @@ export default function Dashboard() {
             </div>
 
             <div className="in-columna">
+              {!verificado && (
+                <section className="in-tarjeta in-aviso-agenda" aria-label="Verificación">
+                  <h2>Consigue la insignia “Verificado”</h2>
+                  <p>Los clientes confían más en profesionales verificados. Solo toma subir tres documentos.</p>
+                  <Link to="/verificacion" className="in-btn in-btn--principal">Verificar mi cuenta</Link>
+                </section>
+              )}
+
               {!horarioConfigurado && (
                 <section className="in-tarjeta in-aviso-agenda" aria-label="Agenda">
                   <h2>Configura tu agenda</h2>
