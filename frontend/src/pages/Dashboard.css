@@ -1,0 +1,330 @@
+/* ── Inicio ── Prefijo "in-". Paleta de Urbify. */
+.in {
+  --in-primary: oklch(0.40 0.18 255);
+  --in-primary-hover: oklch(0.55 0.16 240);
+  --in-teal: oklch(0.72 0.13 200);
+  --in-ink: oklch(0.25 0.06 240);
+  --in-soft: oklch(0.40 0.04 240);
+  --in-line: oklch(0.40 0.18 255 / 0.14);
+
+  max-width: 1100px;
+  display: grid;
+  gap: 22px;
+  padding-bottom: 32px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--in-ink);
+}
+
+.in-cabecera p {
+  margin: 0 0 4px;
+  font-size: 0.88rem;
+  color: var(--in-soft);
+}
+
+.in-cabecera h1 {
+  margin: 0;
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.7rem, 3vw, 2.3rem);
+  line-height: 1.12;
+}
+
+.in-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.in-columna {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.in-tarjeta {
+  background: #fff;
+  border: 1px solid var(--in-line);
+  border-radius: 20px;
+  padding: 22px 24px;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.in-tarjeta h2 {
+  margin: 0;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.2rem;
+}
+
+.in-tarjeta ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.in-tarjeta p { margin: 0; line-height: 1.5; }
+.in-suave { font-size: 0.9rem; color: var(--in-soft); }
+
+.in-vacio {
+  text-align: center;
+  color: var(--in-soft);
+}
+
+.in-vacio-interno {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  color: var(--in-soft);
+}
+
+.in-titulo-fila {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.in-titulo-fila a {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--in-primary);
+  text-decoration: none;
+}
+
+.in-titulo-fila a:hover { text-decoration: underline; }
+
+/* Buscar */
+.in-buscar form {
+  display: flex;
+  gap: 8px;
+}
+
+.in-buscar input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--in-line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--in-ink);
+  background: oklch(0.99 0.005 80);
+  outline: none;
+}
+
+.in-buscar input:focus-visible {
+  border-color: var(--in-primary);
+  box-shadow: 0 0 0 3px oklch(0.72 0.13 200 / 0.3);
+}
+
+.in-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.in-chip {
+  padding: 7px 14px;
+  border-radius: 99px;
+  border: 1px solid var(--in-line);
+  font-size: 0.85rem;
+  color: var(--in-ink);
+  text-decoration: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.in-chip:hover {
+  border-color: var(--in-primary);
+  background: oklch(0.40 0.18 255 / 0.05);
+}
+
+/* Próxima cita */
+.in-proxima {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.in-proxima-fecha {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  color: var(--in-primary);
+}
+
+/* Tarjetas que piden acción */
+.in-atencion {
+  border-color: oklch(0.80 0.1 85 / 0.7);
+  background: oklch(0.97 0.03 90);
+}
+
+.in-aviso-agenda {
+  border-color: var(--in-teal);
+  background: oklch(0.72 0.13 200 / 0.1);
+}
+
+.in-aviso-agenda p { font-size: 0.9rem; color: var(--in-soft); }
+
+/* Filas */
+.in-fila,
+.in-visita {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 8px;
+  border-radius: 12px;
+  color: inherit;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.in-visita { grid-template-columns: 96px minmax(0, 1fr) auto; }
+
+.in-fila:hover,
+.in-visita:hover { background: oklch(0.40 0.18 255 / 0.06); }
+
+.in-fila:focus-visible,
+.in-visita:focus-visible,
+.in-btn:focus-visible,
+.in-chip:focus-visible {
+  outline: 3px solid var(--in-teal);
+  outline-offset: 2px;
+}
+
+.in-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.8rem;
+  background: linear-gradient(135deg, var(--in-teal), var(--in-primary));
+}
+
+.in-fila-texto { min-width: 0; }
+
+.in-fila-texto b,
+.in-fila-texto small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.in-fila-texto b { font-size: 0.93rem; }
+.in-fila-texto small { font-size: 0.8rem; color: var(--in-soft); }
+
+.in-visita-hora {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--in-primary);
+}
+
+.in-estado {
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+.in-estado--pendiente { background: oklch(0.95 0.07 90); color: oklch(0.38 0.09 70); }
+.in-estado--aceptada { background: oklch(0.93 0.04 250); color: oklch(0.35 0.15 255); }
+.in-estado--en_proceso { background: oklch(0.93 0.04 300); color: oklch(0.38 0.14 300); }
+.in-estado--completada { background: oklch(0.93 0.06 155); color: oklch(0.33 0.09 155); }
+.in-estado--cancelada { background: oklch(0.94 0.04 25); color: oklch(0.40 0.15 25); }
+
+/* Cifras */
+.in-cifras {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.in-cifras > div {
+  padding: 14px 10px;
+  border-radius: 14px;
+  background: oklch(0.40 0.18 255 / 0.05);
+  text-align: center;
+}
+
+.in-cifras dd {
+  margin: 0;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--in-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.in-cifras dt {
+  font-size: 0.78rem;
+  color: var(--in-soft);
+}
+
+.in-accesos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Botones */
+.in-btn {
+  display: inline-block;
+  padding: 11px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--in-line);
+  background: #fff;
+  color: var(--in-primary);
+  font: 600 0.9rem 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+  text-decoration: none;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.in-btn:hover { border-color: var(--in-primary); }
+
+.in-btn--principal {
+  background: var(--in-primary);
+  border-color: var(--in-primary);
+  color: #fff;
+}
+
+.in-btn--principal:hover {
+  background: var(--in-primary-hover);
+  border-color: var(--in-primary-hover);
+}
+
+.in-solo-lectores {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .in-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 520px) {
+  .in-tarjeta { padding: 18px 16px; }
+  .in-buscar form { flex-direction: column; }
+  .in-visita { grid-template-columns: minmax(0, 1fr) auto; }
+  .in-visita-hora { grid-column: 1 / -1; }
+}
+
+.in-cabecera p::first-letter,
+.in-proxima-fecha::first-letter,
+.in-visita-hora::first-letter { text-transform: uppercase; }
