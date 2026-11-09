@@ -1,0 +1,344 @@
+/* ── Mis Solicitudes ── Prefijo "ms-". Mismos colores de la paleta de Urbify. */
+
+.ms {
+  --ms-primary: oklch(0.40 0.18 255);
+  --ms-primary-hover: oklch(0.55 0.16 240);
+  --ms-teal: oklch(0.72 0.13 200);
+  --ms-ink: oklch(0.25 0.06 240);
+  --ms-soft: oklch(0.40 0.04 240);
+  --ms-line: oklch(0.40 0.18 255 / 0.14);
+  --ms-bad: oklch(0.50 0.19 25);
+
+  max-width: 1040px;
+  margin: 0 auto;
+  color: var(--ms-ink);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.ms-tarjeta {
+  background: #fff;
+  border: 1px solid var(--ms-line);
+  border-radius: 18px;
+  padding: 26px;
+}
+
+.ms-estado {
+  text-align: center;
+  color: var(--ms-soft);
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  padding: 48px 26px;
+}
+
+.ms-estado h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.2rem;
+  color: var(--ms-ink);
+  margin: 0;
+}
+
+.ms-estado p {
+  margin: 0;
+}
+
+/* Pestañas */
+.ms-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 26px;
+  border-bottom: 1px solid var(--ms-line);
+}
+
+.ms-tab {
+  padding: 10px 16px;
+  font: 600 0.92rem 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ms-soft);
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.ms-tab:hover {
+  color: var(--ms-primary);
+}
+
+.ms-tab.is-on {
+  color: var(--ms-primary);
+  border-bottom-color: var(--ms-primary);
+}
+
+.ms-tab:focus-visible {
+  outline: 3px solid var(--ms-teal);
+  outline-offset: -3px;
+  border-radius: 6px;
+}
+
+.ms-tab em {
+  font-style: normal;
+  margin-left: 6px;
+  font-size: 0.78rem;
+  background: oklch(0.40 0.18 255 / 0.1);
+  color: var(--ms-primary);
+  padding: 1px 8px;
+  border-radius: 99px;
+}
+
+/* Grupos */
+.ms-grupo {
+  margin-bottom: 30px;
+}
+
+.ms-grupo h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 12px;
+}
+
+.ms-grupo h3 span {
+  font: 600 0.78rem 'Plus Jakarta Sans', sans-serif;
+  color: var(--ms-soft);
+}
+
+.ms-lista {
+  background: #fff;
+  border: 1px solid var(--ms-line);
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.ms-lista--destacada {
+  border-color: oklch(0.72 0.13 200 / 0.6);
+  box-shadow: 0 0 0 4px oklch(0.72 0.13 200 / 0.12);
+}
+
+/* Filas */
+.ms-fila {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.1fr) 96px auto;
+  gap: 20px;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--ms-line);
+  transition: background 0.2s;
+}
+
+.ms-fila:last-child {
+  border-bottom: 0;
+}
+
+.ms-fila:hover {
+  background: oklch(0.97 0.012 80 / 0.7);
+}
+
+.ms-fila-info h4 {
+  margin: 0;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.02rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.ms-fila-titulo {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  letter-spacing: 0;
+  text-transform: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ms-fila-titulo:hover {
+  color: var(--ms-primary);
+}
+
+.ms-fila-titulo:focus-visible {
+  outline: 3px solid var(--ms-teal);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.ms-fila-info p {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  color: var(--ms-soft);
+}
+
+.ms-fila-info .ms-cambio {
+  margin-top: 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  display: inline-block;
+  background: oklch(0.95 0.07 90 / 0.7);
+  color: oklch(0.35 0.09 70);
+}
+
+.ms-pasos {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.ms-paso {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: oklch(0.40 0.18 255 / 0.12);
+}
+
+.ms-paso--hecho {
+  background: var(--ms-primary);
+}
+
+.ms-paso--actual {
+  background: var(--ms-teal);
+}
+
+.ms-estado-texto {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ms-soft);
+}
+
+.ms-estado-texto--cancelada {
+  margin-top: 0;
+  color: var(--ms-bad);
+}
+
+.ms-fila-precio {
+  text-align: right;
+}
+
+.ms-fila-precio b {
+  display: block;
+  color: var(--ms-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.ms-fila-precio small {
+  font-size: 0.75rem;
+  color: var(--ms-soft);
+}
+
+.ms-fila-acciones {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.ms-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 16px;
+  border-radius: 10px;
+  font: 600 0.88rem 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid var(--ms-line);
+  background: #fff;
+  color: var(--ms-primary);
+  transition: border-color 0.2s, background 0.2s;
+  text-decoration: none;
+}
+
+.ms-btn:hover:not(:disabled) {
+  border-color: var(--ms-primary);
+}
+
+.ms-btn:focus-visible {
+  outline: 3px solid var(--ms-teal);
+  outline-offset: 2px;
+}
+
+.ms-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ms-btn--principal {
+  background: var(--ms-primary);
+  border-color: var(--ms-primary);
+  color: #fff;
+}
+
+.ms-btn--principal:hover:not(:disabled) {
+  background: var(--ms-primary-hover);
+  border-color: var(--ms-primary-hover);
+}
+
+.ms-btn--peligro {
+  color: var(--ms-bad);
+}
+
+.ms-enlace {
+  justify-content: center;
+}
+
+/* Aviso temporal */
+.ms-aviso {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  padding: 13px 22px;
+  border-radius: 14px;
+  font-weight: 600;
+  color: #fff;
+  z-index: 950;
+  animation: ms-sube 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ms-aviso--ok { background: oklch(0.33 0.09 155); }
+.ms-aviso--info { background: var(--ms-ink); }
+.ms-aviso--error { background: var(--ms-bad); }
+
+@keyframes ms-sube {
+  from { opacity: 0; transform: translate(-50%, 24px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@media (max-width: 1000px) {
+  .ms-fila {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .ms-fila-estado {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+
+  .ms-fila-acciones {
+    grid-column: 1 / -1;
+    order: 4;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .ms-fila {
+    padding: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-aviso {
+    animation: none;
+  }
+}

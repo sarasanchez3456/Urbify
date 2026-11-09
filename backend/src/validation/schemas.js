@@ -132,6 +132,8 @@ module.exports = {
       solicitud_id: id,
       puntuacion: { type: 'integer', minimum: 1, maximum: 5 },
       comentario: texto(1000),
+      // Motivos rápidos (códigos de utils/motivosCalificacion.js); el controlador valida cuáles y que coincidan con la puntuación.
+      motivos: { type: ['array', 'null'], items: { type: 'string', maxLength: 40 }, maxItems: 5 },
     },
   },
   calificacionEditar: {

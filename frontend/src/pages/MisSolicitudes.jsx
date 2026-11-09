@@ -1,250 +1,328 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import DashboardLayout from '../components/DashboardLayout';
+import SolicitudDrawer from '../components/SolicitudDrawer';
+import CalificarPanel from '../components/CalificarPanel';
 import {
-  ClipboardList,
-  CheckCircle,
-  XCircle,
-  Play,
-  Star,
-  Search,
-  Calendar,
-  DollarSign,
-  User,
-  Clock,
-  MapPin,
-} from 'lucide-react';
+  ETIQUETAS_ESTADO, ESTADOS_EN_CURSO, TIPO_TARIFA, estadoDelPaso, estaSinCalificar, formatearDinero,
+  fechaServicioCorta, fechaRelativa,
+} from '../utils/solicitudes';
 import { logError } from '../utils/log';
+import './MisSolicitudes.css';
 
-const glassCard = {
-  backgroundColor: 'rgba(255, 255, 255, 0.6)',
-  backdropFilter: 'blur(16px)',
-  border: '1px solid rgba(0, 0, 0, 0.05)',
-};
+const FILTROS = [
+  ['todas', 'Todas'],
+  ['curso', 'En curso'],
+  ['completadas', 'Completadas'],
+  ['canceladas', 'Canceladas'],
+];
 
-const subtleBorder = '1px solid rgba(0, 0, 0, 0.05)';
+// Texto corto que acompaña la barra de progreso de cada solicitud.
+function textoEstado(sol, esCliente) {
+  switch (sol.estado) {
+    case 'pendiente':
+      return esCliente ? `Pendiente · enviada ${fechaRelativa(sol.fecha_solicitud)}` : 'Pendiente de tu respuesta';
+    case 'completada':
+      if (!esCliente) return 'Completada';
+      return estaSinCalificar(sol) ? 'Completada · sin calificar' : `Completada · calificada ${'★'.repeat(sol.calificacion_puntuacion)}`;
+    default:
+      return ETIQUETAS_ESTADO[sol.estado] || sol.estado;
+  }
+}
 
-const btnGradient = {
-  color: 'white',
-  background: 'linear-gradient(135deg, oklch(0.40 0.18 255), #1e4f43)',
-};
+function Fila({ sol, esCliente, ocupada, onDetalle, onCalificar, onAccion, onCambio }) {
+  const contraparte = esCliente
+    ? `${sol.proveedor_nombre || ''} ${sol.proveedor_apellido || ''}`.trim()
+    : `${sol.cliente_nombre || ''} ${sol.cliente_apellido || ''}`.trim();
+  const cancelada = sol.estado === 'cancelada';
+  const sinCalificar = esCliente && estaSinCalificar(sol);
+  const cambioPendiente = Boolean(sol.reprogramacion_id) && ['pendiente', 'aceptada'].includes(sol.estado);
+
+  return (
+    <div className="ms-fila">
+      <div className="ms-fila-info">
+        <h4>
+          <button type="button" className="ms-fila-titulo" onClick={() => onDetalle(sol.id)}>{sol.servicio_titulo}</button>
+        </h4>
+        <p>{esCliente ? 'Proveedor' : 'Cliente'} · {contraparte || '—'}</p>
+        {sol.fecha_servicio && !cancelada && <p>Visita: {fechaServicioCorta(sol.fecha_servicio)}</p>}
+        {!esCliente && sol.direccion && !cancelada && <p>{sol.direccion}</p>}
+        {cambioPendiente && (
+          <p className="ms-cambio">
+            {esCliente ? 'Pediste cambiar la visita a' : 'Pide cambiar la visita a'}: <b>{fechaServicioCorta(sol.reprogramacion_fecha)}</b>
+          </p>
+        )}
+      </div>
+
+      <div className="ms-fila-estado">
+        {!cancelada && (
+          <div className="ms-pasos" role="img" aria-label={`Estado: ${ETIQUETAS_ESTADO[sol.estado]}`}>
+            {[0, 1, 2, 3].map((i) => <i key={i} className={`ms-paso ms-paso--${estadoDelPaso(sol.estado, i)}`} />)}
+          </div>
+        )}
+        <div className={`ms-estado-texto${cancelada ? ' ms-estado-texto--cancelada' : ''}`}>{textoEstado(sol, esCliente)}</div>
+      </div>
+
+      <div className="ms-fila-precio">
+        <b>{formatearDinero(sol.tarifa)}</b>
+        {TIPO_TARIFA[sol.tipo_tarifa_acordada] && <small>{TIPO_TARIFA[sol.tipo_tarifa_acordada]}</small>}
+      </div>
+
+      <div className="ms-fila-acciones">
+        {sinCalificar && (
+          <button type="button" className="ms-btn ms-btn--principal" onClick={() => onCalificar(sol.id)}>Calificar</button>
+        )}
+        {!esCliente && sol.estado === 'pendiente' && (
+          <>
+            <button type="button" className="ms-btn ms-btn--principal" disabled={ocupada} onClick={() => onAccion(sol.id, 'aceptada')}>Aceptar</button>
+            <button type="button" className="ms-btn ms-btn--peligro" disabled={ocupada} onClick={() => onAccion(sol.id, 'cancelada')}>Rechazar</button>
+          </>
+        )}
+        {!esCliente && cambioPendiente && sol.estado === 'aceptada' && (
+          <>
+            <button type="button" className="ms-btn ms-btn--principal" disabled={ocupada} onClick={() => onCambio(sol, 'aceptar')}>Aceptar cambio</button>
+            <button type="button" className="ms-btn ms-btn--peligro" disabled={ocupada} onClick={() => onCambio(sol, 'rechazar')}>Rechazar cambio</button>
+          </>
+        )}
+        {!esCliente && sol.estado === 'aceptada' && !cambioPendiente && (
+          <button type="button" className="ms-btn ms-btn--principal" disabled={ocupada} onClick={() => onAccion(sol.id, 'en_proceso')}>Iniciar servicio</button>
+        )}
+        {!esCliente && sol.estado === 'en_proceso' && (
+          <button type="button" className="ms-btn ms-btn--principal" disabled={ocupada} onClick={() => onAccion(sol.id, 'completada')}>Marcar completada</button>
+        )}
+        <button type="button" className="ms-btn" onClick={() => onDetalle(sol.id)}>Ver detalle</button>
+      </div>
+    </div>
+  );
+}
 
 export default function MisSolicitudes() {
   const { usuario } = useAuth();
+  const esCliente = usuario?.rol === 'cliente';
+  const endpoint = esCliente ? '/solicitudes/cliente' : '/solicitudes/proveedor';
+
   const [solicitudes, setSolicitudes] = useState([]);
-  const [cargando, setCargando] = useState(true);
+  const [estado, setEstado] = useState('cargando'); // 'cargando' | 'listo' | 'error'
+  const [filtro, setFiltro] = useState('todas');
+  const [abiertaId, setAbiertaId] = useState(null);
+  const [calificandoId, setCalificandoId] = useState(null);
+  const [accionandoId, setAccionandoId] = useState(null);
+  const [aviso, setAviso] = useState(null); // { texto, tipo: 'ok' | 'error' | 'info' }
+  const temporizadorAviso = useRef(null);
+
+  const mostrarAviso = useCallback((texto, tipo = 'ok') => {
+    setAviso({ texto, tipo });
+    clearTimeout(temporizadorAviso.current);
+    temporizadorAviso.current = setTimeout(() => setAviso(null), 3200);
+  }, []);
+
+  useEffect(() => () => clearTimeout(temporizadorAviso.current), []);
+
+  const cargar = useCallback(async () => {
+    try {
+      const res = await api.get(endpoint);
+      setSolicitudes(Array.isArray(res.data) ? res.data : []);
+      setEstado('listo');
+    } catch (err) {
+      logError('Error al cargar solicitudes:', err);
+      setEstado((anterior) => (anterior === 'listo' ? 'listo' : 'error'));
+    }
+  }, [endpoint]);
 
   useEffect(() => {
-    const endpoint = usuario?.rol === 'cliente' ? '/solicitudes/cliente' : '/solicitudes/proveedor';
-    api.get(endpoint)
-      .then((res) => setSolicitudes(res.data))
-      .catch((err) => logError('Error al cargar solicitudes:', err))
-      .finally(() => setCargando(false));
-  }, [usuario]);
+    setEstado('cargando');
+    cargar();
+  }, [cargar]);
 
-  const cambiarEstado = async (id, estado) => {
+  // Cambia el estado de una solicitud (el proveedor acepta, rechaza, inicia o completa; el cliente cancela
+  // una pendiente). El servidor valida quién puede hacer cada cambio; si falla se muestra su mensaje.
+  const cambiarEstado = useCallback(async (id, nuevo) => {
     try {
-      await api.put(`/solicitudes/${id}/estado`, { estado });
+      await api.put(`/solicitudes/${id}/estado`, { estado: nuevo });
       window.dispatchEvent(new Event('notificacion_actualizada'));
-      const endpoint = usuario?.rol === 'cliente' ? '/solicitudes/cliente' : '/solicitudes/proveedor';
-      const res = await api.get(endpoint);
-      setSolicitudes(res.data);
+      const mensajes = {
+        aceptada: 'Solicitud aceptada',
+        en_proceso: 'Servicio iniciado',
+        completada: 'Servicio marcado como completado',
+        cancelada: esCliente ? 'Solicitud cancelada' : 'Solicitud rechazada',
+      };
+      mostrarAviso(mensajes[nuevo] || 'Solicitud actualizada');
+      await cargar();
+      return true;
     } catch (err) {
-      logError(err);
+      logError('Error al cambiar el estado de la solicitud:', err);
+      mostrarAviso(err.response?.data?.error || 'No se pudo actualizar la solicitud. Intenta de nuevo.', 'error');
+      await cargar();
+      return false;
     }
+  }, [cargar, esCliente, mostrarAviso]);
+
+  const accionar = async (id, nuevo) => {
+    setAccionandoId(id);
+    await cambiarEstado(id, nuevo);
+    setAccionandoId(null);
   };
 
-  const getStatusStyle = (estado) => {
-    const map = {
-      pendiente: { bg: 'rgba(234, 179, 8, 0.1)', text: '#facc15', border: 'rgba(234, 179, 8, 0.2)', icon: Clock },
-      aceptada: { bg: 'rgba(59, 130, 246, 0.1)', text: '#60a5fa', border: 'rgba(59, 130, 246, 0.2)', icon: CheckCircle },
-      en_proceso: { bg: 'rgba(168, 85, 247, 0.1)', text: '#c084fc', border: 'rgba(168, 85, 247, 0.2)', icon: Play },
-      completada: { bg: 'rgba(34, 197, 94, 0.1)', text: '#4ade80', border: 'rgba(34, 197, 94, 0.2)', icon: CheckCircle },
-      cancelada: { bg: 'rgba(239, 68, 68, 0.1)', text: '#f87171', border: 'rgba(239, 68, 68, 0.2)', icon: XCircle },
-    };
-    return map[estado] || { bg: 'rgba(255, 255, 255, 0.6)', text: 'oklch(0.45 0.03 240)', border: 'rgba(0, 0, 0, 0.05)', icon: ClipboardList };
+  // Responde un pedido de cambio de fecha: el profesional lo acepta o rechaza, el cliente lo cancela.
+  const responderCambio = useCallback(async (sol, accion) => {
+    try {
+      await api.put(`/solicitudes/${sol.id}/reprogramaciones/${sol.reprogramacion_id}`, { accion });
+      window.dispatchEvent(new Event('notificacion_actualizada'));
+      mostrarAviso({ aceptar: 'Cita movida a la nueva fecha', rechazar: 'Cambio rechazado, la cita sigue igual', cancelar: 'Cambio cancelado' }[accion]);
+      await cargar();
+      return true;
+    } catch (err) {
+      logError('Error al responder el cambio de fecha:', err);
+      mostrarAviso(err.response?.data?.error || 'No se pudo responder el cambio. Intenta de nuevo.', 'error');
+      await cargar();
+      return false;
+    }
+  }, [cargar, mostrarAviso]);
+
+  const accionarCambio = async (sol, accion) => {
+    setAccionandoId(sol.id);
+    await responderCambio(sol, accion);
+    setAccionandoId(null);
   };
 
-  if (cargando) {
-    return (
-      <DashboardLayout titulo="Mis Solicitudes" subtitulo={usuario?.rol === 'cliente' ? 'Solicitudes que has realizado' : 'Solicitudes que has recibido'}>
-        <div className="flex items-center justify-center h-64" style={{ color: 'oklch(0.45 0.03 240)' }}>Cargando...</div>
-      </DashboardLayout>
-    );
-  }
+  const abrirCalificar = (id) => {
+    setAbiertaId(null);
+    setCalificandoId(id);
+  };
+
+  // Listas por grupo según el rol (ver los textos de cada grupo más abajo).
+  const listas = useMemo(() => {
+    // Al profesional también le piden acción los cambios de fecha pendientes, aunque la solicitud ya esté aceptada.
+    const pideCambio = (s) => Boolean(s.reprogramacion_id) && ['pendiente', 'aceptada'].includes(s.estado);
+    const accion = esCliente ? solicitudes.filter(estaSinCalificar) : solicitudes.filter((s) => s.estado === 'pendiente' || pideCambio(s));
+    const curso = esCliente
+      ? solicitudes.filter((s) => ESTADOS_EN_CURSO.includes(s.estado))
+      : solicitudes.filter((s) => (s.estado === 'aceptada' && !pideCambio(s)) || s.estado === 'en_proceso');
+    const completadas = esCliente ? solicitudes.filter((s) => s.estado === 'completada' && !estaSinCalificar(s)) : solicitudes.filter((s) => s.estado === 'completada');
+    const canceladas = solicitudes.filter((s) => s.estado === 'cancelada');
+    return { accion, curso, completadas, canceladas };
+  }, [solicitudes, esCliente]);
+
+  const cuentas = useMemo(() => ({
+    todas: solicitudes.length,
+    curso: solicitudes.filter((s) => ESTADOS_EN_CURSO.includes(s.estado)).length,
+    completadas: solicitudes.filter((s) => s.estado === 'completada').length,
+    canceladas: solicitudes.filter((s) => s.estado === 'cancelada').length,
+  }), [solicitudes]);
+
+  const grupos = useMemo(() => {
+    const tituloAccion = esCliente ? 'Requieren tu acción' : 'Requieren tu respuesta';
+    const A = { clave: 'accion', titulo: tituloAccion, items: listas.accion, destacado: true };
+    const C = { clave: 'curso', titulo: 'En curso', items: listas.curso };
+    const D = { clave: 'completadas', titulo: 'Completadas', items: listas.completadas };
+    const X = { clave: 'canceladas', titulo: 'Canceladas', items: listas.canceladas };
+    let elegidos;
+    if (filtro === 'curso') elegidos = esCliente ? [C] : [A, C];
+    else if (filtro === 'completadas') elegidos = esCliente ? [A, D] : [D];
+    else if (filtro === 'canceladas') elegidos = [X];
+    else elegidos = [A, C, D, X];
+    return elegidos.filter((g) => g.items.length > 0);
+  }, [listas, filtro, esCliente]);
+
+  const abierta = solicitudes.find((s) => s.id === abiertaId) || null;
+  const calificando = solicitudes.find((s) => s.id === calificandoId) || null;
+  const subtitulo = esCliente ? 'Solicitudes que has realizado' : 'Solicitudes que has recibido';
 
   return (
-    <DashboardLayout titulo="Mis Solicitudes" subtitulo={usuario?.rol === 'cliente' ? 'Solicitudes que has realizado' : 'Solicitudes que has recibido'}>
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div>
-          <p className="text-sm" style={{ color: 'oklch(0.45 0.03 240)' }}>{solicitudes.length} solicitud{solicitudes.length !== 1 ? 'es' : ''}</p>
-        </div>
+    <DashboardLayout titulo="Mis Solicitudes" subtitulo={subtitulo}>
+      <div className="ms">
+        {estado === 'cargando' && <div className="ms-tarjeta ms-estado">Cargando...</div>}
 
-        {solicitudes.length === 0 ? (
-          <div className="text-center py-16 rounded-xl" style={glassCard}>
-            <ClipboardList size={48} className="mx-auto mb-4" style={{ opacity: 0.3, color: 'oklch(0.45 0.03 240)' }} />
-            <h3 className="text-lg font-semibold mb-2" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>No hay solicitudes</h3>
-            <p className="text-sm mb-6" style={{ color: 'oklch(0.45 0.03 240)' }}>
-              {usuario?.rol === 'cliente'
-                ? 'Busca servicios y solicita un profesional'
-                : 'Aún no has recibido solicitudes'}
-            </p>
-            {usuario?.rol === 'cliente' && (
-              <Link
-                to="/buscar"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg transition-all text-sm font-semibold"
-                style={btnGradient}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.45 0.18 255), oklch(0.77 0.13 200))'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.40 0.18 255), #1e4f43)'; }}
-              >
-                <Search size={16} />
-                Buscar Servicios
-              </Link>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {solicitudes.map((sol) => {
-              const status = getStatusStyle(sol.estado);
-              const StatusIcon = status.icon;
-              return (
-                <div
-                  key={sol.id}
-                  className="rounded-xl p-5 transition-all"
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-                    backdropFilter: 'blur(12px)',
-                    border: '1px solid rgba(0, 0, 0, 0.05)',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.1)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.05)'; }}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="text-base font-semibold" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>
-                      {sol.servicio_titulo}
-                    </h3>
-                    <span
-                      className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full capitalize whitespace-nowrap ml-3"
-                      style={{
-                        backgroundColor: status.bg,
-                        color: status.text,
-                        border: `1px solid ${status.border}`,
-                      }}
-                    >
-                      <StatusIcon size={12} />
-                      {sol.estado.replace('_', ' ')}
-                    </span>
-                  </div>
-
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center gap-2 text-sm" style={{ color: 'oklch(0.45 0.03 240)' }}>
-                      <User size={14} />
-                      <span>
-                        {usuario?.rol === 'cliente'
-                          ? `Proveedor: ${sol.proveedor_nombre} ${sol.proveedor_apellido}`
-                          : `Cliente: ${sol.cliente_nombre} ${sol.cliente_apellido}`
-                        }
-                      </span>
-                    </div>
-                    {sol.descripcion && (
-                      <p className="text-sm line-clamp-2" style={{ color: 'oklch(0.45 0.03 240)' }}>{sol.descripcion}</p>
-                    )}
-                    {sol.direccion && usuario?.rol === 'proveedor' && (
-                      <div className="flex items-start gap-2 text-sm" style={{ color: 'oklch(0.45 0.03 240)' }}>
-                        <MapPin size={14} className="mt-0.5 shrink-0" style={{ color: 'oklch(0.40 0.18 255)' }} />
-                        <span>{sol.direccion}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-4 text-sm" style={{ color: 'oklch(0.45 0.03 240)' }}>
-                      <span className="flex items-center gap-1">
-                        <Calendar size={14} />
-                        {sol.fecha_solicitud ? new Date(sol.fecha_solicitud).toLocaleDateString('es-ES', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                        }) : ''}
-                      </span>
-                      <span className="flex items-center gap-1" style={{ color: 'oklch(0.40 0.18 255)' }}>
-                        <DollarSign size={14} />
-                        ${parseFloat(sol.tarifa || 0).toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {usuario?.rol === 'proveedor' && sol.estado === 'pendiente' && (
-                    <div className="flex gap-2 pt-3" style={{ borderTop: subtleBorder }}>
-                      <button
-                        onClick={() => cambiarEstado(sol.id, 'aceptada')}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors"
-                        style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)', color: '#4ade80' }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(34, 197, 94, 0.2)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(34, 197, 94, 0.1)'; }}
-                      >
-                        <CheckCircle size={14} />
-                        Aceptar
-                      </button>
-                      <button
-                        onClick={() => cambiarEstado(sol.id, 'cancelada')}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors"
-                        style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#f87171' }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'; }}
-                      >
-                        <XCircle size={14} />
-                        Rechazar
-                      </button>
-                    </div>
-                  )}
-                  {usuario?.rol === 'proveedor' && sol.estado === 'aceptada' && (
-                    <div className="pt-3" style={{ borderTop: subtleBorder }}>
-                      <button
-                        onClick={() => cambiarEstado(sol.id, 'en_proceso')}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors"
-                        style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa' }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.2)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.1)'; }}
-                      >
-                        <Play size={14} />
-                        Iniciar Servicio
-                      </button>
-                    </div>
-                  )}
-                  {usuario?.rol === 'proveedor' && sol.estado === 'en_proceso' && (
-                    <div className="pt-3" style={{ borderTop: subtleBorder }}>
-                      <button
-                        onClick={() => cambiarEstado(sol.id, 'completada')}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors"
-                        style={{ backgroundColor: 'rgba(168, 85, 247, 0.1)', color: '#c084fc' }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(168, 85, 247, 0.2)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(168, 85, 247, 0.1)'; }}
-                      >
-                        <CheckCircle size={14} />
-                        Marcar Completada
-                      </button>
-                    </div>
-                  )}
-                  {usuario?.rol === 'cliente' && sol.estado === 'completada' && (
-                    <div className="pt-3" style={{ borderTop: subtleBorder }}>
-                      <Link
-                        to={`/calificar/${sol.id}`}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors"
-                        style={{ backgroundColor: 'rgba(255, 107, 53, 0.1)', color: '#ff6b35' }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255, 107, 53, 0.2)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255, 107, 53, 0.1)'; }}
-                      >
-                        <Star size={14} />
-                        Calificar Servicio
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+        {estado === 'error' && (
+          <div className="ms-tarjeta ms-estado" role="alert">
+            <p>No se pudieron cargar tus solicitudes.</p>
+            <button type="button" className="ms-btn ms-btn--principal" onClick={() => { setEstado('cargando'); cargar(); }}>Reintentar</button>
           </div>
         )}
+
+        {estado === 'listo' && solicitudes.length === 0 && (
+          <div className="ms-tarjeta ms-estado">
+            <h3>No hay solicitudes</h3>
+            <p>{esCliente ? 'Busca servicios y solicita un profesional' : 'Aún no has recibido solicitudes'}</p>
+            {esCliente && <Link to="/buscar" className="ms-btn ms-btn--principal ms-enlace">Buscar Servicios</Link>}
+          </div>
+        )}
+
+        {estado === 'listo' && solicitudes.length > 0 && (
+          <>
+            <div className="ms-tabs" role="tablist" aria-label="Filtrar solicitudes">
+              {FILTROS.map(([clave, etiqueta]) => (
+                <button
+                  key={clave}
+                  type="button"
+                  role="tab"
+                  aria-selected={filtro === clave}
+                  className={`ms-tab${filtro === clave ? ' is-on' : ''}`}
+                  onClick={() => setFiltro(clave)}
+                >
+                  {etiqueta}<em>{cuentas[clave]}</em>
+                </button>
+              ))}
+            </div>
+
+            {grupos.length === 0 && <div className="ms-tarjeta ms-estado"><p>No hay solicitudes en esta categoría.</p></div>}
+
+            {grupos.map((g) => (
+              <section className="ms-grupo" key={g.clave} aria-label={g.titulo}>
+                <h3>{g.titulo}<span>{g.items.length}</span></h3>
+                <div className={`ms-lista${g.destacado ? ' ms-lista--destacada' : ''}`}>
+                  {g.items.map((s) => (
+                    <Fila
+                      key={s.id}
+                      sol={s}
+                      esCliente={esCliente}
+                      ocupada={accionandoId === s.id}
+                      onDetalle={setAbiertaId}
+                      onCalificar={abrirCalificar}
+                      onAccion={accionar}
+                      onCambio={accionarCambio}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </>
+        )}
+
+        {aviso && <div className={`ms-aviso ms-aviso--${aviso.tipo}`} role={aviso.tipo === 'error' ? 'alert' : 'status'}>{aviso.texto}</div>}
       </div>
+
+      {abierta && (
+        <SolicitudDrawer
+          solicitud={abierta}
+          rol={esCliente ? 'cliente' : 'proveedor'}
+          onCerrar={() => setAbiertaId(null)}
+          onCambiarEstado={cambiarEstado}
+          onCalificar={(s) => abrirCalificar(s.id)}
+          onResponderCambio={responderCambio}
+          onCambioPedido={() => { mostrarAviso('Pedido enviado. Esperando la respuesta del profesional.'); cargar(); }}
+        />
+      )}
+
+      {calificando && (
+        <CalificarPanel
+          solicitud={calificando}
+          onCerrar={() => setCalificandoId(null)}
+          onCalificada={(puntuacion) => {
+            setSolicitudes((prev) => prev.map((s) => (s.id === calificando.id ? { ...s, calificacion_puntuacion: puntuacion } : s)));
+            setCalificandoId(null);
+            mostrarAviso('¡Gracias! Tu calificación fue enviada.');
+            cargar();
+          }}
+          onYaCalificada={() => {
+            setCalificandoId(null);
+            mostrarAviso('Esta solicitud ya estaba calificada.', 'info');
+            cargar();
+          }}
+        />
+      )}
     </DashboardLayout>
   );
 }

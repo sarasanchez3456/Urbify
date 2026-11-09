@@ -19,6 +19,7 @@ const COLUMNAS = [
   { tabla: 'usuarios', nombre: 'categoria_id', ddl: 'categoria_id INT NULL' },
   { tabla: 'solicitudes', nombre: 'tarifa_acordada', ddl: 'tarifa_acordada DECIMAL(10,2) NULL' },
   { tabla: 'solicitudes', nombre: 'tipo_tarifa_acordada', ddl: 'tipo_tarifa_acordada VARCHAR(20) NULL' },
+  { tabla: 'calificaciones', nombre: 'motivos', ddl: 'motivos VARCHAR(120) NULL' },
 ];
 
 // Mismos índices que declara schema.sql.
@@ -107,6 +108,17 @@ async function migrate() {
     }
 
     await asegurarRolAdmin(conn);
+
+    // Historial de estados: las solicitudes anteriores a esta tabla reciben su fila de creación (con la fecha en que
+    // se hicieron). Los cambios de estado anteriores no se pueden reconstruir: no hay de dónde sacar su fecha.
+    // Idempotente: solo toca las solicitudes que aún no tienen ninguna fila.
+    const [relleno] = await conn.query(
+      `INSERT INTO solicitud_historial (solicitud_id, estado_anterior, estado_nuevo, usuario_id, fecha)
+       SELECT s.id, NULL, 'pendiente', s.cliente_id, s.fecha_solicitud
+         FROM solicitudes s
+        WHERE NOT EXISTS (SELECT 1 FROM solicitud_historial h WHERE h.solicitud_id = s.id)`
+    );
+    if (relleno.affectedRows > 0) console.log(`Migración: historial de ${relleno.affectedRows} solicitudes inicializado`);
 
     console.log('Migración completada exitosamente');
   } catch (err) {

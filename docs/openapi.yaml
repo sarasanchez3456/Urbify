@@ -538,7 +538,11 @@ paths:
       description: |
         El proveedor se toma del servicio (no se envía `proveedor_id`). `fecha_servicio` es obligatoria
         y debe ser futura. Se guarda la tarifa vigente (`tarifa_acordada`), se notifica a ambas partes
-        y se envían correos (best-effort).
+        y se envían correos (best-effort). La hora se reserva de forma atómica: cada cita ocupa 1 hora del
+        proveedor, así que si ya tiene otra cita pendiente/aceptada/en proceso a menos de 60 minutos, o
+        la hora está fuera de su horario semanal (si lo configuró), responde **409** con `codigo`
+        `ocupado` o `fuera_de_horario`. Si viene `direccion` debe tener 5 a 255 caracteres, con solo
+        letras, números y `# - . , / ( ) '` (si no, 400).
       x-roles: [cliente]
       requestBody:
         required: true
@@ -567,6 +571,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /solicitudes/cliente:
     get:
       tags: [Solicitudes]
@@ -620,6 +625,104 @@ paths:
                 estado: { $ref: '#/components/schemas/EstadoSolicitud' }
       responses:
         '200': { $ref: '#/components/responses/Mensaje' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /solicitudes/{id}/historial:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Solicitudes]
+      summary: Historial de estados de la solicitud
+      description: Una fila por cambio de estado (la primera es la creación, con estado_anterior null). Solo el cliente y el proveedor de la solicitud. Las solicitudes anteriores a esta función solo tienen la fila de creación.
+      x-roles: [cliente, proveedor]
+      responses:
+        '200':
+          description: Cambios de estado en orden cronológico
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    estado_anterior: { type: string, nullable: true }
+                    estado_nuevo: { $ref: '#/components/schemas/EstadoSolicitud' }
+                    fecha: { $ref: '#/components/schemas/Fecha' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /solicitudes/{id}/reprogramaciones:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Solicitudes]
+      summary: Pedidos de cambio de fecha de la solicitud
+      x-roles: [cliente, proveedor]
+      responses:
+        '200':
+          description: Del más reciente al más antiguo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: integer }
+                    solicitud_id: { type: integer }
+                    solicitado_por: { type: integer }
+                    fecha_actual: { $ref: '#/components/schemas/Fecha' }
+                    fecha_propuesta: { $ref: '#/components/schemas/Fecha' }
+                    estado: { type: string, enum: [pendiente, aceptada, rechazada, cancelada] }
+                    fecha_creacion: { $ref: '#/components/schemas/Fecha' }
+                    fecha_respuesta: { $ref: '#/components/schemas/Fecha' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Solicitudes]
+      summary: Pedir cambiar la fecha de la cita
+      description: Solo el cliente, y solo con la solicitud pendiente o aceptada. La hora propuesta debe estar libre en la agenda del profesional (`GET /proveedores/{id}/agenda`) y queda reservada mientras el pedido esté pendiente. Un solo pedido pendiente por solicitud. Si la hora ya no está libre responde 409 con `codigo` `ocupado` o `fuera_de_horario`.
+      x-roles: [cliente]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fecha_propuesta]
+              properties:
+                fecha_propuesta: { type: string, description: 'ISO 8601; sin zona se toma como hora de Colombia' }
+      responses:
+        '201': { description: Pedido enviado al profesional }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /solicitudes/{id}/reprogramaciones/{rid}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - { name: rid, in: path, required: true, schema: { type: integer } }
+    put:
+      tags: [Solicitudes]
+      summary: Aceptar, rechazar o cancelar un pedido de cambio de fecha
+      description: "`aceptar` y `rechazar` solo el profesional (aceptar mueve la cita a la fecha propuesta); `cancelar` solo el cliente que lo pidió. Un pedido ya respondido responde 409."
+      x-roles: [cliente, proveedor]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [accion]
+              properties:
+                accion: { type: string, enum: [aceptar, rechazar, cancelar] }
+      responses:
+        '200': { description: Pedido actualizado }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -704,6 +807,14 @@ paths:
                 solicitud_id: { type: integer, minimum: 1, maximum: 2147483647 }
                 puntuacion: { type: integer, minimum: 1, maximum: 5 }
                 comentario: { type: string, maxLength: 1000, nullable: true }
+                motivos:
+                  type: array
+                  nullable: true
+                  maxItems: 5
+                  description: Motivos rápidos, sin repetir. Con 4 o 5 estrellas solo positivos; con 3 o menos, solo negativos.
+                  items:
+                    type: string
+                    enum: [puntual, trabajo_limpio, buen_precio, buena_comunicacion, lo_recomiendo, llego_tarde, no_termino, poca_comunicacion, precio_distinto, dejo_desorden]
       responses:
         '201':
           description: Calificación creada
@@ -777,6 +888,86 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
 
   # ------------------------------------------------------------ Proveedores
+  /proveedores/mi-horario:
+    get:
+      tags: [Proveedores]
+      summary: Mi horario semanal de atención
+      x-roles: [proveedor]
+      responses:
+        '200': { $ref: '#/components/responses/Horario' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      tags: [Proveedores]
+      summary: Guardar mi horario semanal
+      description: Reemplaza todo el horario. `dia_semana` 0 = domingo ... 6 = sábado, horas HH:MM de Colombia, cada franja de al menos 1 hora y sin solaparse con otra del mismo día. Una lista vacía borra el horario (se ofrece 08:00-18:00 por defecto). Mientras haya horario guardado, solo se pueden reservar horas dentro de él.
+      x-roles: [proveedor]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [franjas]
+              properties:
+                franjas:
+                  type: array
+                  maxItems: 28
+                  items:
+                    type: object
+                    required: [dia_semana, hora_inicio, hora_fin]
+                    properties:
+                      dia_semana: { type: integer, minimum: 0, maximum: 6 }
+                      hora_inicio: { type: string, example: '09:00' }
+                      hora_fin: { type: string, example: '12:00' }
+      responses:
+        '200': { $ref: '#/components/responses/Horario' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /proveedores/{id}/agenda:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Proveedores]
+      summary: Horas libres y ocupadas de un proveedor
+      description: Por día, cada hora con `estado` libre, ocupado o pasado (no revela datos de otras citas). Cada cita ocupa 1 hora; ocupan agenda las solicitudes pendientes, aceptadas o en proceso y las fechas propuestas en pedidos de cambio pendientes. Con `solicitud_id` (una solicitud del usuario con ese proveedor) esa cita no cuenta como ocupada y su hora actual viene con `actual` true.
+      x-roles: [cliente, proveedor, admin]
+      parameters:
+        - { name: desde, in: query, schema: { type: string, example: '2026-11-09' }, description: 'AAAA-MM-DD, hoy por defecto' }
+        - { name: dias, in: query, schema: { type: integer, minimum: 1, maximum: 14, default: 7 } }
+        - { name: solicitud_id, in: query, schema: { type: integer } }
+      responses:
+        '200':
+          description: Agenda por día
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  proveedor_id: { type: integer }
+                  zona: { type: string, example: America/Bogota }
+                  duracion_minutos: { type: integer, example: 60 }
+                  horario_configurado: { type: boolean }
+                  dias:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        fecha: { type: string, example: '2026-11-09' }
+                        dia_semana: { type: integer }
+                        horas:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              inicio: { $ref: '#/components/schemas/Fecha' }
+                              hora: { type: string, example: '09:00' }
+                              estado: { type: string, enum: [libre, ocupado, pasado] }
+                              actual: { type: boolean }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /proveedores/cercanos:
     get:
       tags: [Proveedores]
@@ -935,6 +1126,22 @@ components:
             type: object
             properties:
               mensaje: { type: string }
+    Horario:
+      description: Horario semanal del proveedor
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              horario_configurado: { type: boolean }
+              franjas:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    dia_semana: { type: integer, minimum: 0, maximum: 6 }
+                    hora_inicio: { type: string, example: '09:00' }
+                    hora_fin: { type: string, example: '12:00' }
     BadRequest:
       description: Datos inválidos o acción no válida en el estado actual
       content:
@@ -1205,6 +1412,12 @@ components:
             proveedor_nombre: { type: string }
             proveedor_apellido: { type: string }
             proveedor_foto: { type: string, nullable: true }
+            proveedor_telefono: { type: string, nullable: true, description: Teléfono del proveedor de esta solicitud (el cliente ya lo ve en las búsquedas) }
+            servicio_categoria_id: { type: integer, description: Categoría del servicio solicitado }
+            calificacion_puntuacion: { type: integer, minimum: 1, maximum: 5, nullable: true, description: Puntuación que el cliente dio a esta solicitud; null si aún no la ha calificado }
+            calificacion_motivos: { type: array, items: { type: string }, description: Motivos rápidos que marcó al calificar (vacío si no marcó ninguno o no ha calificado) }
+            reprogramacion_id: { type: integer, nullable: true, description: Pedido de cambio de fecha pendiente de respuesta del profesional, si lo hay }
+            reprogramacion_fecha: { $ref: '#/components/schemas/Fecha' }
     SolicitudProveedor:
       allOf:
         - $ref: '#/components/schemas/Solicitud'
@@ -1215,6 +1428,8 @@ components:
             cliente_foto: { type: string, nullable: true }
             cliente_direccion: { type: string, nullable: true }
             cliente_telefono: { type: string, nullable: true }
+            reprogramacion_id: { type: integer, nullable: true, description: Pedido de cambio de fecha pendiente de tu respuesta, si lo hay }
+            reprogramacion_fecha: { $ref: '#/components/schemas/Fecha' }
     Mensaje:
       type: object
       properties:
@@ -1230,6 +1445,7 @@ components:
       properties:
         puntuacion: { type: integer, minimum: 1, maximum: 5 }
         comentario: { type: string, nullable: true }
+        motivos: { type: array, items: { type: string }, description: Motivos rápidos que marcó el cliente (puede estar vacío) }
         fecha_creacion: { $ref: '#/components/schemas/Fecha' }
         nombre: { type: string }
         apellido: { type: string }

@@ -1,0 +1,134 @@
+/* Selector de día y hora con las horas reales del profesional. Prefijo "sh-". */
+.sh {
+  --sh-primary: oklch(0.40 0.18 255);
+  --sh-teal: oklch(0.72 0.13 200);
+  --sh-ink: oklch(0.25 0.06 240);
+  --sh-soft: oklch(0.40 0.04 240);
+  --sh-line: oklch(0.40 0.18 255 / 0.14);
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--sh-ink);
+}
+
+.sh-vacio,
+.sh-aviso,
+.sh-error {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.sh-vacio { color: var(--sh-soft); }
+
+.sh-aviso {
+  padding: 12px 14px;
+  border-radius: 12px;
+  color: var(--sh-soft);
+  background: oklch(0.72 0.13 200 / 0.14);
+}
+
+.sh-error {
+  padding: 12px 14px;
+  border-radius: 12px;
+  color: oklch(0.50 0.19 25);
+  background: oklch(0.55 0.2 25 / 0.08);
+}
+
+.sh-dias {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.sh-dia {
+  flex: none;
+  min-width: 76px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--sh-line);
+  background: #fff;
+  color: var(--sh-ink);
+  font: 600 0.9rem 'Plus Jakarta Sans', sans-serif;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+  display: grid;
+  gap: 2px;
+  text-align: center;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.sh-dia small {
+  font-weight: 400;
+  font-size: 0.74rem;
+  color: var(--sh-soft);
+}
+
+.sh-dia:hover { border-color: var(--sh-primary); }
+
+.sh-dia.is-on {
+  background: var(--sh-primary);
+  border-color: var(--sh-primary);
+  color: #fff;
+}
+
+.sh-dia.is-on small { color: oklch(1 0 0 / 0.8); }
+
+.sh-horas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 8px;
+}
+
+.sh-hora {
+  padding: 11px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--sh-line);
+  background: #fff;
+  color: var(--sh-ink);
+  font: 600 0.9rem 'Plus Jakarta Sans', sans-serif;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+  display: grid;
+  gap: 1px;
+  font-variant-numeric: tabular-nums;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.sh-hora small {
+  font-weight: 500;
+  font-size: 0.7rem;
+}
+
+.sh-hora:hover:not(:disabled) { border-color: var(--sh-primary); }
+
+.sh-hora.is-on {
+  background: var(--sh-primary);
+  border-color: var(--sh-primary);
+  color: #fff;
+}
+
+.sh-hora.is-ocupada {
+  background: oklch(0.40 0.18 255 / 0.05);
+  color: var(--sh-soft);
+  text-decoration: line-through;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.sh-hora.is-actual {
+  text-decoration: none;
+  border-style: dashed;
+  border-color: var(--sh-teal);
+  opacity: 1;
+}
+
+.sh-hora:focus-visible,
+.sh-dia:focus-visible {
+  outline: 3px solid var(--sh-teal);
+  outline-offset: 2px;
+}

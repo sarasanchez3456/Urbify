@@ -82,6 +82,9 @@ exports.serviciosPorCategoria = async (req, res, next) => {
   }
 };
 
+// Palabras que no ayudan a buscar.
+const PALABRAS_VACIAS = new Set(['del', 'las', 'los', 'una', 'uno', 'unos', 'unas', 'por', 'para', 'con', 'sin', 'que', 'mis', 'mas', 'más', 'necesito', 'quiero', 'busco', 'tengo', 'hay', 'est', 'esta', 'está']);
+
 exports.buscarServicios = async (req, res, next) => {
   try {
     const { q, categoria_id, disponible } = req.query;
@@ -100,11 +103,30 @@ exports.buscarServicios = async (req, res, next) => {
                ) cal_stats ON cal_stats.proveedor_id = u.id
                WHERE u.activo = 1`;
     const params = [];
+    let ordenParams = []; // parámetros del ORDER BY (van después de los del WHERE)
 
+    // La búsqueda funciona por palabras ("fuga en el baño" encuentra "Reparación de fugas y grifería"): un servicio
+    // aparece si alguna palabra significativa está en su título, descripción o categoría, y los que coinciden con
+    // más palabras salen primero. La comparación ignora mayúsculas y tildes (collation de la base).
+    let orden = 's.fecha_creacion DESC';
     if (q) {
-      const escaped = q.replace(/[%_[\]]/g, '\\$&');
-      sql += ` AND (s.titulo LIKE ? OR s.descripcion LIKE ? OR c.nombre LIKE ?)`;
-      params.push(`%${escaped}%`, `%${escaped}%`, `%${escaped}%`);
+      const palabras = [...new Set(
+        q.toLowerCase().split(/[^\p{L}\p{N}]+/u)
+          .filter((p) => p.length >= 3 && !PALABRAS_VACIAS.has(p))
+          // Raíz de la palabra: "fugas" encuentra "fuga" y "plomero" o "pintor" encuentran las categorías "Plomería" y "Pintura".
+          .map((p) => (p.length >= 6 ? p.slice(0, 4) : p.length > 4 && p.endsWith('s') ? p.slice(0, -1) : p))
+      )].slice(0, 6);
+      // Si todas eran palabras vacías ("el de la") se busca la frase completa.
+      const terminos = palabras.length > 0 ? palabras : [q.trim()];
+      const coincide = terminos.map(() => '(s.titulo LIKE ? OR s.descripcion LIKE ? OR c.nombre LIKE ?)');
+      const patrones = terminos.flatMap((t) => {
+        const p = `%${t.replace(/[%_\\]/g, '\\$&')}%`;
+        return [p, p, p];
+      });
+      sql += ` AND (${coincide.join(' OR ')})`;
+      params.push(...patrones);
+      orden = `(${coincide.map((c) => `(${c})`).join(' + ')}) DESC, s.fecha_creacion DESC`;
+      ordenParams = patrones;
     }
     if (categoria_id) {
       sql += ` AND s.categoria_id = ?`;
@@ -119,9 +141,9 @@ exports.buscarServicios = async (req, res, next) => {
       params.push(dispNum);
     }
 
-    sql += ` ORDER BY s.fecha_creacion DESC`;
+    sql += ` ORDER BY ${orden}`;
 
-    const [servicios] = await query(sql, params);
+    const [servicios] = await query(sql, [...params, ...ordenParams]);
     res.json(protegerLista(servicios, veContactoExacto(req)));
   } catch (err) {
     return next(err);

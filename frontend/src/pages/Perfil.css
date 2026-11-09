@@ -1,9 +1,400 @@
-.perfil-rol {
-  text-align: center;
-  color: rgba(193, 200, 193, 0.5);
-  margin-bottom: 1.5rem;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
+/* ── Mi Perfil ──
+   Estilos de la pantalla Mi Perfil. Todas las clases llevan el prefijo "pf-" para no chocar con
+   las clases globales (.card, .btn, .container...) de styles/global.css.
+   Colores: los mismos tokens de la paleta de Urbify (azul cobalto, turquesa y fondo cálido). */
+
+.pf {
+  --pf-primary: oklch(0.40 0.18 255);
+  --pf-primary-hover: oklch(0.55 0.16 240);
+  --pf-teal: oklch(0.72 0.13 200);
+  --pf-ink: oklch(0.25 0.06 240);
+  --pf-soft: oklch(0.40 0.04 240);
+  --pf-line: oklch(0.40 0.18 255 / 0.14);
+  --pf-bad: oklch(0.50 0.19 25);
+
+  max-width: 1040px;
+  margin: 0 auto;
+  color: var(--pf-ink);
   font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.pf-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.pf-card {
+  background: #fff;
+  border: 1px solid var(--pf-line);
+  border-radius: 18px;
+  padding: 26px;
+}
+
+.pf-estado {
+  text-align: center;
+  color: var(--pf-soft);
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+}
+
+/* Cabecera */
+.pf-head {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.pf-avatar {
+  width: 76px;
+  height: 76px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font: 700 1.9rem 'Playfair Display', serif;
+  background: linear-gradient(135deg, var(--pf-teal), var(--pf-primary));
+  box-shadow: 0 0 0 4px #fff, 0 0 0 5px var(--pf-line);
+}
+
+.pf-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.pf-role {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--pf-primary);
+  background: oklch(0.40 0.18 255 / 0.09);
+  padding: 3px 11px;
+  border-radius: 99px;
+}
+
+/* Progreso del perfil */
+.pf-progress {
+  margin-bottom: 26px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: oklch(0.97 0.012 80);
+  border: 1px solid var(--pf-line);
+}
+
+.pf-progress-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.86rem;
+  margin-bottom: 8px;
+}
+
+.pf-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: oklch(0.40 0.18 255 / 0.12);
+  overflow: hidden;
+}
+
+.pf-bar > i {
+  display: block;
+  height: 100%;
+  background: var(--pf-primary);
+  border-radius: 3px;
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pf-progress p {
+  font-size: 0.82rem;
+  color: var(--pf-soft);
+  margin: 8px 0 0;
+}
+
+/* Secciones del formulario */
+.pf-sec {
+  padding: 22px 0;
+  border-top: 1px solid var(--pf-line);
+}
+
+.pf-sec:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.pf-sec h3,
+.pf-side h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.pf-sd {
+  font-size: 0.86rem;
+  color: var(--pf-soft);
+  margin: 0 0 16px;
+}
+
+.pf-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.pf-field {
+  display: block;
+}
+
+.pf-field + .pf-field {
+  margin-top: 16px;
+}
+
+.pf-row .pf-field + .pf-field {
+  margin-top: 0;
+}
+
+.pf-label {
+  display: block;
+  font-size: 0.86rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.pf-input {
+  width: 100%;
+  border: 1px solid var(--pf-line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font: inherit;
+  color: var(--pf-ink);
+  background: oklch(0.99 0.005 80);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.pf-input:focus-visible {
+  border-color: var(--pf-primary);
+  background: #fff;
+  box-shadow: 0 0 0 3px oklch(0.72 0.13 200 / 0.3);
+}
+
+.pf-input[aria-invalid='true'] {
+  border-color: var(--pf-bad);
+}
+
+.pf-hint {
+  font-size: 0.8rem;
+  color: var(--pf-soft);
+  margin: 6px 0 0;
+}
+
+.pf-error {
+  font-size: 0.8rem;
+  color: var(--pf-bad);
+  margin: 6px 0 0;
+}
+
+.pf-alert {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  color: var(--pf-bad);
+  background: oklch(0.55 0.2 25 / 0.08);
+  border: 1px solid oklch(0.55 0.2 25 / 0.2);
+}
+
+/* Cuenta */
+.pf-acc {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.92rem;
+}
+
+.pf-acc small {
+  display: block;
+  color: var(--pf-soft);
+  font-size: 0.86rem;
+  overflow-wrap: anywhere;
+}
+
+.pf-note {
+  font-size: 0.8rem;
+  color: var(--pf-soft);
+  text-align: right;
+}
+
+/* Tarjeta lateral */
+.pf-side {
+  position: sticky;
+  top: 0;
+}
+
+.pf-st {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--pf-line);
+  font-size: 0.9rem;
+  color: var(--pf-soft);
+}
+
+.pf-st b {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  color: var(--pf-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.pf-st b.pf-st-s {
+  font-size: 1rem;
+}
+
+.pf-lnk {
+  display: inline-block;
+  margin-top: 14px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--pf-primary);
+}
+
+.pf-lnk:hover {
+  color: var(--pf-primary-hover);
+}
+
+/* Barra de guardado: aparece solo cuando hay cambios */
+.pf-savebar {
+  position: sticky;
+  bottom: 12px;
+  margin-top: 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--pf-ink);
+  color: #fff;
+  padding: 12px 14px 12px 20px;
+  border-radius: 16px;
+  box-shadow: 0 18px 36px -16px oklch(0.2 0.05 240 / 0.6);
+  animation: pf-sube 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pf-savebar-btns {
+  display: flex;
+  gap: 8px;
+}
+
+@keyframes pf-sube {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.pf-btn {
+  padding: 10px 18px;
+  border-radius: 10px;
+  font: 600 0.9rem 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+  border: 1px solid oklch(1 0 0 / 0.3);
+  background: transparent;
+  color: #fff;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.pf-btn:hover:not(:disabled) {
+  background: oklch(1 0 0 / 0.1);
+}
+
+.pf-btn--primary {
+  background: #fff;
+  color: var(--pf-primary);
+  border-color: #fff;
+}
+
+.pf-btn--primary:hover:not(:disabled) {
+  background: oklch(0.95 0.03 230);
+}
+
+.pf-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* En la tarjeta de error de carga (fondo claro) el botón es azul */
+.pf-estado .pf-btn {
+  background: var(--pf-primary);
+  border-color: var(--pf-primary);
+  color: #fff;
+}
+
+.pf-estado .pf-btn:hover:not(:disabled) {
+  background: var(--pf-primary-hover);
+}
+
+.pf-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  background: oklch(0.33 0.09 155);
+  color: #fff;
+  padding: 14px 22px;
+  border-radius: 14px;
+  font-weight: 600;
+  z-index: 950;
+  animation: pf-sube 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (max-width: 1000px) {
+  .pf-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-side {
+    position: static;
+  }
+}
+
+@media (max-width: 560px) {
+  .pf-row {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-row .pf-field + .pf-field {
+    margin-top: 16px;
+  }
+
+  .pf-card {
+    padding: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-savebar,
+  .pf-toast {
+    animation: none;
+  }
+
+  .pf-bar > i {
+    transition: none;
+  }
 }

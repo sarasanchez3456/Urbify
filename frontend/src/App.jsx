@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Background } from './components/Background';
@@ -10,10 +10,10 @@ import Auth from './pages/Auth';
 import Buscar from './pages/Buscar';
 import Mapa from './pages/Mapa';
 import ServicioDetalle from './pages/ServicioDetalle';
-import SolicitarServicio from './pages/SolicitarServicio';
 import Perfil from './pages/Perfil';
 import MisServicios from './pages/MisServicios';
 import MisSolicitudes from './pages/MisSolicitudes';
+import MiAgenda from './pages/MiAgenda';
 import Calificar from './pages/Calificar';
 import Dashboard from './pages/Dashboard';
 import AdminPanel from './pages/AdminPanel';
@@ -28,7 +28,12 @@ function RutaProtegida({ children, rol }) {
   return children;
 }
 
-const rutasDashboard = ['/dashboard', '/admin', '/perfil', '/mis-servicios', '/mis-solicitudes', '/solicitar', '/calificar', '/buscar', '/mapa', '/servicio'];
+function RedirigirASolicitud() {
+  const { id } = useParams();
+  return <Navigate to={`/servicio/${id}`} replace />;
+}
+
+const rutasDashboard = ['/dashboard', '/admin', '/perfil', '/mis-servicios', '/mis-solicitudes', '/mi-agenda', '/solicitar', '/calificar', '/buscar', '/mapa', '/servicio'];
 
 export default function App() {
   const navigate = useNavigate();
@@ -55,14 +60,8 @@ export default function App() {
           <Route path="/buscar" element={<Buscar />} />
           <Route path="/mapa" element={<Mapa />} />
           <Route path="/servicio/:id" element={<ServicioDetalle />} />
-          <Route
-            path="/solicitar/:id"
-            element={
-              <RutaProtegida rol="cliente">
-                <SolicitarServicio />
-              </RutaProtegida>
-            }
-          />
+          {/* Solicitar y ver el servicio son un solo flujo: el formulario vive en la página del servicio */}
+          <Route path="/solicitar/:id" element={<RedirigirASolicitud />} />
           <Route
             path="/dashboard"
             element={
@@ -92,6 +91,14 @@ export default function App() {
             element={
               <RutaProtegida rol="proveedor">
                 <MisServicios />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/mi-agenda"
+            element={
+              <RutaProtegida rol="proveedor">
+                <MiAgenda />
               </RutaProtegida>
             }
           />

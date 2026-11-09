@@ -1,0 +1,197 @@
+/* Panel lateral reutilizable (detalle de solicitud, chat, calificar...). Prefijo "pl-". */
+
+.pl-raiz {
+  --pl-primary: oklch(0.40 0.18 255);
+  --pl-primary-hover: oklch(0.55 0.16 240);
+  --pl-teal: oklch(0.72 0.13 200);
+  --pl-ink: oklch(0.25 0.06 240);
+  --pl-soft: oklch(0.40 0.04 240);
+  --pl-line: oklch(0.40 0.18 255 / 0.14);
+  --pl-bad: oklch(0.50 0.19 25);
+
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--pl-ink);
+}
+
+.pl-velo {
+  position: absolute;
+  inset: 0;
+  background: oklch(0.18 0.04 240 / 0.45);
+  animation: pl-velo 0.3s ease both;
+}
+
+.pl-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  background: oklch(0.99 0.005 80);
+  box-shadow: -24px 0 60px -30px oklch(0.2 0.05 240 / 0.5);
+  outline: none;
+  animation: pl-entra 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes pl-velo {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pl-entra {
+  from { transform: translateX(104%); }
+  to { transform: none; }
+}
+
+.pl-cabecera {
+  padding: 24px 26px 18px;
+  border-bottom: 1px solid var(--pl-line);
+  background: #fff;
+}
+
+.pl-cabecera-fila {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.pl-cerrar {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--pl-soft);
+  padding: 2px 9px;
+  border-radius: 8px;
+}
+
+.pl-cerrar:hover {
+  background: oklch(0.40 0.18 255 / 0.08);
+}
+
+.pl-titulo {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.pl-subtitulo {
+  margin: 8px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 0.9rem;
+  color: var(--pl-soft);
+}
+
+.pl-subtitulo b {
+  font-size: 1.35rem;
+  color: var(--pl-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.pl-cuerpo {
+  flex: 1;
+  overflow-y: auto;
+  padding: 22px 26px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 26px;
+  align-content: start;
+}
+
+.pl-cuerpo h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 12px;
+}
+
+.pl-pie {
+  padding: 16px 26px 22px;
+  border-top: 1px solid var(--pl-line);
+  background: #fff;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pl-boton {
+  flex: 1;
+  min-width: 140px;
+  padding: 13px 16px;
+  border-radius: 12px;
+  font: 600 0.95rem 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+  text-align: center;
+  cursor: pointer;
+  border: 1px solid var(--pl-line);
+  background: #fff;
+  color: var(--pl-primary);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.pl-boton:hover:not(:disabled) {
+  border-color: var(--pl-primary);
+}
+
+.pl-boton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pl-boton--principal {
+  background: var(--pl-primary);
+  border-color: var(--pl-primary);
+  color: #fff;
+}
+
+.pl-boton--principal:hover:not(:disabled) {
+  background: var(--pl-primary-hover);
+  border-color: var(--pl-primary-hover);
+}
+
+.pl-boton--peligro {
+  color: var(--pl-bad);
+}
+
+.pl-boton--peligro-solido {
+  background: var(--pl-bad);
+  border-color: var(--pl-bad);
+  color: #fff;
+}
+
+.pl-aviso {
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.pl-aviso--error {
+  color: var(--pl-bad);
+  background: oklch(0.55 0.2 25 / 0.08);
+  border: 1px solid oklch(0.55 0.2 25 / 0.2);
+}
+
+.pl-aviso--info {
+  color: var(--pl-soft);
+  background: oklch(0.72 0.13 200 / 0.14);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pl-velo,
+  .pl-panel {
+    animation: none;
+  }
+}

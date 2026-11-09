@@ -15,6 +15,7 @@ import {
   ChevronDown,
   Plus,
   Home,
+  CalendarDays,
 } from 'lucide-react';
 
 import NotificationBell from './NotificationBell';
@@ -34,6 +35,7 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
     { path: '/perfil', label: 'Mi Perfil', icon: User, roles: ['cliente', 'proveedor'] },
     { path: '/mis-solicitudes', label: usuario?.rol === 'proveedor' ? 'Notificaciones' : 'Mis Solicitudes', icon: ClipboardList, roles: ['cliente', 'proveedor'] },
     { path: '/mis-servicios', label: 'Mis Servicios', icon: Wrench, roles: ['proveedor'] },
+    { path: '/mi-agenda', label: 'Mi agenda', icon: CalendarDays, roles: ['proveedor'] },
     { path: '/buscar', label: 'Buscar Servicios', icon: Search, roles: ['cliente'] },
   ].filter((item) => item.roles.includes(usuario?.rol));
 

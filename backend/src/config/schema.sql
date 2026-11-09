@@ -107,11 +107,54 @@ CREATE TABLE IF NOT EXISTS calificaciones (
   proveedor_id     INT NOT NULL,
   puntuacion       TINYINT NOT NULL CHECK (puntuacion BETWEEN 1 AND 5),
   comentario       TEXT,
+  motivos          VARCHAR(120) NULL,
   fecha_creacion        DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (solicitud_id)  REFERENCES solicitudes(id),
   FOREIGN KEY (cliente_id)    REFERENCES usuarios(id),
   FOREIGN KEY (proveedor_id)  REFERENCES usuarios(id),
   INDEX idx_calificaciones_proveedor (proveedor_id)
+);
+
+-- Horario semanal en el que cada proveedor atiende (hora de Colombia). dia_semana: 0 = domingo ... 6 = sábado.
+-- Sin filas, el proveedor no ha configurado su horario (se ofrece un horario por defecto, ver utils/agenda.js).
+CREATE TABLE IF NOT EXISTS disponibilidad_proveedor (
+  id             INT AUTO_INCREMENT PRIMARY KEY,
+  proveedor_id   INT NOT NULL,
+  dia_semana     TINYINT NOT NULL CHECK (dia_semana BETWEEN 0 AND 6),
+  hora_inicio    TIME NOT NULL,
+  hora_fin       TIME NOT NULL,
+  FOREIGN KEY (proveedor_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  INDEX idx_disponibilidad_proveedor (proveedor_id, dia_semana)
+);
+
+-- Pedidos de cambio de fecha de una solicitud ya aceptada. El profesional los acepta o rechaza; mientras estén
+-- pendientes, la fecha propuesta queda reservada para que otro cliente no la elija.
+CREATE TABLE IF NOT EXISTS reprogramaciones (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  solicitud_id     INT NOT NULL,
+  solicitado_por   INT NOT NULL,
+  fecha_actual     DATETIME NOT NULL,
+  fecha_propuesta  DATETIME NOT NULL,
+  estado           VARCHAR(20) NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'aceptada', 'rechazada', 'cancelada')),
+  fecha_creacion   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  fecha_respuesta  DATETIME NULL,
+  FOREIGN KEY (solicitud_id)   REFERENCES solicitudes(id) ON DELETE CASCADE,
+  FOREIGN KEY (solicitado_por) REFERENCES usuarios(id),
+  INDEX idx_reprogramaciones_solicitud (solicitud_id, estado),
+  INDEX idx_reprogramaciones_propuesta (estado, fecha_propuesta)
+);
+
+-- Historial de estados de cada solicitud: una fila por cambio (cuándo se creó, se aceptó, se inició...).
+-- estado_anterior es NULL en la fila de creación. Se borra junto con la solicitud.
+CREATE TABLE IF NOT EXISTS solicitud_historial (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  solicitud_id     INT NOT NULL,
+  estado_anterior  VARCHAR(20) NULL,
+  estado_nuevo     VARCHAR(20) NOT NULL,
+  usuario_id       INT NULL,
+  fecha            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id) ON DELETE CASCADE,
+  INDEX idx_historial_solicitud (solicitud_id, fecha)
 );
 
 CREATE TABLE IF NOT EXISTS tokens_sesion (

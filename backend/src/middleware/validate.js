@@ -27,6 +27,7 @@ function mensaje(err) {
     case 'pattern': return err.params.pattern === '\\S' ? `${campo} no puede estar vacío` : `${campo} no tiene un formato válido`;
     case 'minimum': return `${campo} debe ser mayor o igual a ${err.params.limit}`;
     case 'maximum': return `${campo} debe ser menor o igual a ${err.params.limit}`;
+    case 'maxItems': return `${campo} admite hasta ${err.params.limit} elementos`;
     case 'enum': return `${campo} debe ser uno de: ${err.params.allowedValues.filter((v) => v !== null).join(', ')}`;
     default: return `${campo} no es válido`;
   }

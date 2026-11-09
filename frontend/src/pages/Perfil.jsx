@@ -1,192 +1,360 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import DashboardLayout from '../components/DashboardLayout';
-import { User, Phone, MapPin as MapPinIcon, Save } from 'lucide-react';
 import { logError } from '../utils/log';
+import './Perfil.css';
 
-const glassCard = {
-  backgroundColor: 'rgba(255, 255, 255, 0.6)',
-  backdropFilter: 'blur(16px)',
-  border: '1px solid rgba(0, 0, 0, 0.05)',
-};
+const CAMPOS = ['nombre', 'apellido', 'telefono', 'direccion'];
+const ETIQUETAS = { nombre: 'nombre', apellido: 'apellido', telefono: 'teléfono', direccion: 'dirección' };
+const ROLES = { cliente: 'Cliente', proveedor: 'Proveedor', admin: 'Administrador' };
+const VACIO = { nombre: '', apellido: '', telefono: '', direccion: '' };
 
-const glassInner = {
-  backgroundColor: 'rgba(255, 255, 255, 0.6)',
-  backdropFilter: 'blur(12px)',
-  border: '1px solid rgba(0, 0, 0, 0.05)',
-};
+// Misma regla que el backend (utils/telefono.js): solo dígitos, "+" inicial opcional, de 7 a 15 dígitos.
+// Los espacios se aceptan al escribir y se ignoran al validar.
+const TELEFONO_VALIDO = /^\+?\d{7,15}$/;
 
-const subtleBorder = '1px solid rgba(0, 0, 0, 0.05)';
+// Devuelve el mensaje de error del teléfono, o '' si es válido (o está vacío y no había uno guardado).
+// El backend ignora un teléfono vacío (no lo borra), por eso no se deja vaciar uno que ya existe:
+// la pantalla diría "guardado" y el número volvería solo.
+function mensajeTelefono(valor, teniaTelefono) {
+  const limpio = valor.replace(/\s+/g, '');
+  if (!limpio) {
+    return teniaTelefono ? 'No se puede dejar vacío. Si quieres cambiarlo, escribe el número nuevo.' : '';
+  }
+  if (/[^\d+]/.test(limpio) || limpio.indexOf('+', 1) !== -1) {
+    return 'Solo se permiten números. Quita las letras o símbolos para poder guardar.';
+  }
+  return TELEFONO_VALIDO.test(limpio) ? '' : 'El teléfono debe tener de 7 a 15 números.';
+}
+
+const desdeUsuario = (u) => ({
+  nombre: u.nombre || '',
+  apellido: u.apellido || '',
+  telefono: u.telefono ? String(u.telefono) : '',
+  direccion: u.direccion || '',
+});
+
+function formatearMiembroDesde(fecha) {
+  if (!fecha) return '—';
+  const d = new Date(fecha);
+  if (Number.isNaN(d.getTime())) return '—';
+  // Ej.: "agosto de 2026" → "Agosto de 2026" (solo la primera letra en mayúscula).
+  const texto = d.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
 
 export default function Perfil() {
   const { usuario } = useAuth();
-  const [form, setForm] = useState({
-    nombre: '', apellido: '', telefono: '', direccion: '',
-  });
-  const [cargando, setCargando] = useState(true);
+  const rol = usuario?.rol;
+
+  const [form, setForm] = useState(VACIO);
+  const [guardado, setGuardado] = useState(VACIO); // lo que hay en el servidor, para detectar cambios
+  const [cuenta, setCuenta] = useState({ correo: '', fecha_creacion: null });
+  const [resumen, setResumen] = useState(null);
+  const [estado, setEstado] = useState('cargando'); // 'cargando' | 'listo' | 'error'
   const [guardando, setGuardando] = useState(false);
-  const [error, setError] = useState('');
-  const [mensaje, setMensaje] = useState('');
+  const [errorGuardar, setErrorGuardar] = useState('');
+  const [aviso, setAviso] = useState('');
+  const [avisoTel, setAvisoTel] = useState('');
+  const temporizadorAviso = useRef(null);
+  const temporizadorTel = useRef(null);
+  const telefonoRef = useRef(null);
 
   const cargarPerfil = useCallback(() => {
+    setEstado('cargando');
     api.get('/auth/perfil')
       .then((res) => {
         const u = res.data;
-        setForm({ nombre: u.nombre, apellido: u.apellido, telefono: u.telefono || '', direccion: u.direccion || '' });
+        setForm(desdeUsuario(u));
+        setGuardado(desdeUsuario(u));
+        setCuenta({ correo: u.correo || '', fecha_creacion: u.fecha_creacion || null });
+        setEstado('listo');
       })
-      .catch((err) => logError('Error al cargar perfil:', err))
-      .finally(() => setCargando(false));
+      .catch((err) => {
+        logError('Error al cargar perfil:', err);
+        setEstado('error');
+      });
   }, []);
 
   useEffect(() => {
     cargarPerfil();
   }, [cargarPerfil]);
 
+  // Resumen de actividad (solo clientes y proveedores; el administrador no tiene solicitudes propias).
+  useEffect(() => {
+    if (rol !== 'cliente' && rol !== 'proveedor') return undefined;
+    let cancelado = false;
+    api.get(rol === 'cliente' ? '/solicitudes/cliente' : '/solicitudes/proveedor')
+      .then((res) => {
+        if (cancelado) return;
+        const lista = Array.isArray(res.data) ? res.data : [];
+        setResumen({ total: lista.length, completadas: lista.filter((s) => s.estado === 'completada').length });
+      })
+      .catch((err) => logError('Error al cargar el resumen de la cuenta:', err));
+    return () => {
+      cancelado = true;
+    };
+  }, [rol]);
+
+  useEffect(() => () => {
+    clearTimeout(temporizadorAviso.current);
+    clearTimeout(temporizadorTel.current);
+  }, []);
+
+  const errorTelefono = useMemo(
+    () => mensajeTelefono(form.telefono, guardado.telefono.trim() !== ''),
+    [form.telefono, guardado.telefono]
+  );
+  const nombreVacio = form.nombre.trim() === '';
+  const apellidoVacio = form.apellido.trim() === '';
+  const modificado = CAMPOS.some((c) => form[c] !== guardado[c]);
+  const puedeGuardar = modificado && !errorTelefono && !nombreVacio && !apellidoVacio && !guardando;
+
+  const faltan = CAMPOS.filter((c) => form[c].trim() === '').map((c) => ETIQUETAS[c]);
+  const porcentaje = Math.round(((CAMPOS.length - faltan.length) / CAMPOS.length) * 100);
+
+  const cambiar = (campo) => (e) => {
+    const valor = e.target.value;
+    setForm((prev) => ({ ...prev, [campo]: valor }));
+    setErrorGuardar('');
+  };
+
+  // Al teclear en el teléfono las letras no aparecen. Se usa el evento nativo "beforeinput" (React no lo
+  // expone) porque también se dispara con teclados móviles y métodos de entrada, no solo con teclas físicas.
+  // Si el texto llega de otra forma (pegar), queda a la vista con su error y el botón de guardar se apaga.
+  const avisarSoloNumeros = useCallback(() => {
+    setAvisoTel('Este campo solo acepta números.');
+    clearTimeout(temporizadorTel.current);
+    temporizadorTel.current = setTimeout(() => setAvisoTel(''), 1600);
+  }, []);
+
+  useEffect(() => {
+    const campo = telefonoRef.current;
+    if (!campo) return undefined;
+    const alEscribir = (e) => {
+      if (e.inputType === 'insertText' && e.data && /[^\d\s+]/.test(e.data)) {
+        e.preventDefault();
+        avisarSoloNumeros();
+      }
+    };
+    campo.addEventListener('beforeinput', alEscribir);
+    return () => campo.removeEventListener('beforeinput', alEscribir);
+  }, [estado, avisarSoloNumeros]);
+
+  const mostrarAviso = (texto) => {
+    setAviso(texto);
+    clearTimeout(temporizadorAviso.current);
+    temporizadorAviso.current = setTimeout(() => setAviso(''), 2800);
+  };
+
+  const descartar = () => {
+    setForm(guardado);
+    setErrorGuardar('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!puedeGuardar) return;
     setGuardando(true);
-    setError('');
-    setMensaje('');
+    setErrorGuardar('');
     try {
-      await api.put('/auth/perfil', form);
-      setMensaje('Perfil actualizado exitosamente');
+      const res = await api.put('/auth/perfil', {
+        nombre: form.nombre.trim(),
+        apellido: form.apellido.trim(),
+        telefono: form.telefono.trim(),
+        direccion: form.direccion.trim(),
+      });
+      // El servidor devuelve el perfil guardado (con el teléfono normalizado): es la fuente de verdad.
+      const u = res.data?.usuario;
+      const nuevo = u
+        ? desdeUsuario(u)
+        : {
+            nombre: form.nombre.trim(),
+            apellido: form.apellido.trim(),
+            telefono: form.telefono.trim(),
+            direccion: form.direccion.trim(),
+          };
+      setForm(nuevo);
+      setGuardado(nuevo);
+      mostrarAviso('Perfil actualizado');
     } catch (err) {
-      setError('Error al actualizar perfil');
+      logError('Error al actualizar perfil:', err);
+      setErrorGuardar(err.response?.data?.error || 'No se pudo guardar el perfil. Intenta de nuevo.');
     } finally {
       setGuardando(false);
     }
   };
 
+  const textoErrorTel = errorTelefono || avisoTel;
+  const inicial = form.nombre.trim().charAt(0).toUpperCase() || 'U';
+  const nombreCompleto = `${form.nombre} ${form.apellido}`.trim() || 'Tu nombre';
+
   return (
     <DashboardLayout titulo="Mi Perfil" subtitulo="Administra tu información personal">
-      <div className="max-w-3xl mx-auto">
-        {error && (
-          <div
-            className="mb-4 px-4 py-3 rounded-lg text-sm"
-            style={{
-              backgroundColor: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.2)',
-              color: '#f87171',
-            }}
-          >
-            {error}
-          </div>
-        )}
-        {mensaje && (
-          <div
-            className="mb-4 px-4 py-3 rounded-lg text-sm"
-            style={{
-              backgroundColor: 'rgba(34, 197, 94, 0.1)',
-              border: '1px solid rgba(34, 197, 94, 0.2)',
-              color: '#4ade80',
-            }}
-          >
-            {mensaje}
+      <div className="pf">
+        {estado === 'cargando' && <div className="pf-card pf-estado">Cargando...</div>}
+
+        {estado === 'error' && (
+          <div className="pf-card pf-estado" role="alert">
+            <p>No se pudo cargar tu perfil.</p>
+            <button type="button" className="pf-btn" onClick={cargarPerfil}>Reintentar</button>
           </div>
         )}
 
-        <div className="rounded-xl p-6 lg:p-8" style={glassCard}>
-          {cargando ? (
-            <div className="text-center py-12" style={{ color: 'oklch(0.45 0.03 240)' }}>Cargando...</div>
-          ) : (
-            <>
-              <div className="flex items-center gap-4 mb-8 pb-6" style={{ borderBottom: subtleBorder }}>
-                <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold" style={{
-                  backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                  color: 'oklch(0.40 0.18 255)',
-                }}>
-                  {form.nombre?.charAt(0)?.toUpperCase() || 'U'}
+        {estado === 'listo' && (
+          <form className="pf-grid" onSubmit={handleSubmit} noValidate>
+            <div>
+              <div className="pf-card">
+                <div className="pf-head">
+                  <div className="pf-avatar" aria-hidden="true">{inicial}</div>
+                  <div>
+                    <h2 className="pf-name">{nombreCompleto}</h2>
+                    {rol && <span className="pf-role">{ROLES[rol] || rol}</span>}
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-xl font-semibold" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>
-                    {form.nombre} {form.apellido}
-                  </h2>
-                  <span className="text-sm capitalize" style={{ color: 'oklch(0.45 0.03 240)' }}>{usuario?.rol}</span>
+
+                <div className="pf-progress">
+                  <div className="pf-progress-top">
+                    <span>Tu perfil está al <b>{porcentaje}%</b></span>
+                  </div>
+                  <div className="pf-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={porcentaje} aria-label="Perfil completado">
+                    <i style={{ width: `${porcentaje}%` }} />
+                  </div>
+                  <p>{faltan.length ? `Te falta: ${faltan.join(', ')}.` : 'Tienes todos tus datos completos.'}</p>
                 </div>
+
+                {errorGuardar && <div className="pf-alert" role="alert">{errorGuardar}</div>}
+
+                <section className="pf-sec">
+                  <h3>Datos personales</h3>
+                  <p className="pf-sd">Así te verán las personas con las que uses Urbify.</p>
+                  <div className="pf-row">
+                    <div className="pf-field">
+                      <label className="pf-label" htmlFor="pf-nombre">Nombre</label>
+                      <input
+                        id="pf-nombre"
+                        className="pf-input"
+                        value={form.nombre}
+                        onChange={cambiar('nombre')}
+                        maxLength={100}
+                        autoComplete="given-name"
+                        aria-invalid={nombreVacio}
+                        aria-describedby={nombreVacio ? 'pf-nombre-err' : undefined}
+                      />
+                      {nombreVacio && <p className="pf-error" id="pf-nombre-err">Escribe tu nombre.</p>}
+                    </div>
+                    <div className="pf-field">
+                      <label className="pf-label" htmlFor="pf-apellido">Apellido</label>
+                      <input
+                        id="pf-apellido"
+                        className="pf-input"
+                        value={form.apellido}
+                        onChange={cambiar('apellido')}
+                        maxLength={100}
+                        autoComplete="family-name"
+                        aria-invalid={apellidoVacio}
+                        aria-describedby={apellidoVacio ? 'pf-apellido-err' : undefined}
+                      />
+                      {apellidoVacio && <p className="pf-error" id="pf-apellido-err">Escribe tu apellido.</p>}
+                    </div>
+                  </div>
+                </section>
+
+                <section className="pf-sec">
+                  <h3>Contacto y dirección</h3>
+                  <p className="pf-sd">Para coordinar tus visitas.</p>
+                  <div className="pf-field">
+                    <label className="pf-label" htmlFor="pf-telefono">Teléfono</label>
+                    <input
+                      id="pf-telefono"
+                      ref={telefonoRef}
+                      className="pf-input"
+                      type="tel"
+                      inputMode="tel"
+                      maxLength={20}
+                      placeholder="300 123 4567"
+                      autoComplete="tel"
+                      value={form.telefono}
+                      onChange={cambiar('telefono')}
+                      aria-invalid={Boolean(errorTelefono)}
+                      aria-describedby={textoErrorTel ? 'pf-telefono-err' : 'pf-telefono-ayuda'}
+                    />
+                    {textoErrorTel
+                      ? <p className="pf-error" id="pf-telefono-err">{textoErrorTel}</p>
+                      : <p className="pf-hint" id="pf-telefono-ayuda">Solo números, de 7 a 15.</p>}
+                  </div>
+                  <div className="pf-field">
+                    <label className="pf-label" htmlFor="pf-direccion">Dirección</label>
+                    <input
+                      id="pf-direccion"
+                      className="pf-input"
+                      maxLength={255}
+                      autoComplete="street-address"
+                      placeholder="Calle y barrio"
+                      value={form.direccion}
+                      onChange={cambiar('direccion')}
+                    />
+                  </div>
+                </section>
+
+                <section className="pf-sec">
+                  <h3>Cuenta</h3>
+                  <div className="pf-acc">
+                    <div>
+                      Correo
+                      <small>{cuenta.correo || '—'}</small>
+                    </div>
+                    <span className="pf-note">No se puede cambiar aquí</span>
+                  </div>
+                </section>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm mb-1.5" style={{ color: 'oklch(0.45 0.03 240)' }}>Nombre</label>
-                    <input
-                      value={form.nombre}
-                      onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                      required
-                      className="w-full px-4 py-2.5 rounded-lg transition-colors"
-                      style={{ ...glassInner, color: 'oklch(0.25 0.06 240)', outline: 'none' }}
-                      onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.2)'; }}
-                      onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.05)'; }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm mb-1.5" style={{ color: 'oklch(0.45 0.03 240)' }}>Apellido</label>
-                    <input
-                      value={form.apellido}
-                      onChange={(e) => setForm({ ...form, apellido: e.target.value })}
-                      required
-                      className="w-full px-4 py-2.5 rounded-lg transition-colors"
-                      style={{ ...glassInner, color: 'oklch(0.25 0.06 240)', outline: 'none' }}
-                      onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.2)'; }}
-                      onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.05)'; }}
-                    />
+              {modificado && (
+                <div className="pf-savebar" role="group" aria-label="Cambios sin guardar">
+                  <span>Tienes cambios sin guardar</span>
+                  <div className="pf-savebar-btns">
+                    <button type="button" className="pf-btn" onClick={descartar} disabled={guardando}>Descartar</button>
+                    <button type="submit" className="pf-btn pf-btn--primary" disabled={!puedeGuardar}>
+                      {guardando ? 'Guardando...' : 'Guardar cambios'}
+                    </button>
                   </div>
                 </div>
+              )}
+            </div>
 
-                <div>
-                  <label className="block text-sm mb-1.5" style={{ color: 'oklch(0.45 0.03 240)' }}>
-                    <Phone size={14} className="inline mr-1" />
-                    Teléfono
-                  </label>
-                  <input
-                    type="tel"
-                    inputMode="tel"
-                    maxLength={20}
-                    placeholder="300 123 4567"
-                    value={form.telefono}
-                    // Solo números, espacios y un + inicial
-                    onChange={(e) => setForm({ ...form, telefono: e.target.value.replace(/[^\d\s+]/g, '') })}
-                    className="w-full px-4 py-2.5 rounded-lg transition-colors"
-                    style={{ ...glassInner, color: 'oklch(0.25 0.06 240)', outline: 'none' }}
-                    onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.2)'; }}
-                    onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.05)'; }}
-                  />
+            <aside className="pf-side">
+              <div className="pf-card">
+                <h3>Tu cuenta</h3>
+                <p className="pf-sd">Un vistazo a tu actividad.</p>
+                <div className="pf-st">
+                  <span>Miembro desde</span>
+                  <b className="pf-st-s">{formatearMiembroDesde(cuenta.fecha_creacion)}</b>
                 </div>
+                {resumen && (
+                  <>
+                    <div className="pf-st">
+                      <span>{rol === 'proveedor' ? 'Solicitudes recibidas' : 'Solicitudes realizadas'}</span>
+                      <b>{resumen.total}</b>
+                    </div>
+                    <div className="pf-st">
+                      <span>Servicios completados</span>
+                      <b>{resumen.completadas}</b>
+                    </div>
+                  </>
+                )}
+                {(rol === 'cliente' || rol === 'proveedor') && (
+                  <Link className="pf-lnk" to="/mis-solicitudes">
+                    {rol === 'proveedor' ? 'Ver solicitudes recibidas →' : 'Ver mis solicitudes →'}
+                  </Link>
+                )}
+              </div>
+            </aside>
+          </form>
+        )}
 
-                <div>
-                  <label className="block text-sm mb-1.5" style={{ color: 'oklch(0.45 0.03 240)' }}>
-                    <MapPinIcon size={14} className="inline mr-1" />
-                    Dirección
-                  </label>
-                  <input
-                    value={form.direccion}
-                    onChange={(e) => setForm({ ...form, direccion: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-lg transition-colors"
-                    style={{ ...glassInner, color: 'oklch(0.25 0.06 240)', outline: 'none' }}
-                    onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.2)'; }}
-                    onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.05)'; }}
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={guardando}
-                  className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg transition-all disabled:opacity-50 text-sm font-semibold"
-                  style={{
-                    color: 'white',
-                    background: 'linear-gradient(135deg, oklch(0.40 0.18 255), #1e4f43)',
-                  }}
-                  onMouseEnter={(e) => { if (!guardando) e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.45 0.18 255), oklch(0.77 0.13 200))'; }}
-                  onMouseLeave={(e) => { if (!guardando) e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.40 0.18 255), #1e4f43)'; }}
-                >
-                  <Save size={16} />
-                  {guardando ? 'Guardando...' : 'Guardar Cambios'}
-                </button>
-              </form>
-            </>
-          )}
-        </div>
+        {aviso && <div className="pf-toast" role="status">{aviso}</div>}
       </div>
     </DashboardLayout>
   );
