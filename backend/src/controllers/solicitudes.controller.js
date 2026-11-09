@@ -176,7 +176,8 @@ exports.misSolicitudesComoCliente = async (req, res, next) => {
        (SELECT cal.puntuacion FROM calificaciones cal WHERE cal.solicitud_id = sol.id) AS calificacion_puntuacion,
        (SELECT cal.motivos FROM calificaciones cal WHERE cal.solicitud_id = sol.id) AS calificacion_motivos,
        (SELECT r.id FROM reprogramaciones r WHERE r.solicitud_id = sol.id AND r.estado = 'pendiente' LIMIT 1) AS reprogramacion_id,
-       (SELECT r.fecha_propuesta FROM reprogramaciones r WHERE r.solicitud_id = sol.id AND r.estado = 'pendiente' LIMIT 1) AS reprogramacion_fecha
+       (SELECT r.fecha_propuesta FROM reprogramaciones r WHERE r.solicitud_id = sol.id AND r.estado = 'pendiente' LIMIT 1) AS reprogramacion_fecha,
+       (SELECT rep.id FROM reportes rep WHERE rep.solicitud_id = sol.id AND rep.reportante_id = sol.cliente_id LIMIT 1) AS reporte_id
        FROM solicitudes sol
        JOIN servicios s ON sol.servicio_id = s.id
        JOIN usuarios u ON sol.proveedor_id = u.id

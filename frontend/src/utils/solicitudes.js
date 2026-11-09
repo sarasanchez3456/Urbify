@@ -57,7 +57,17 @@ export const MOTIVOS_NEGATIVOS = [
 ];
 export const ETIQUETA_MOTIVO = Object.fromEntries([...MOTIVOS_POSITIVOS, ...MOTIVOS_NEGATIVOS]);
 
-export const TIPO_TARIFA = { hora: 'por hora', fijo: 'tarifa fija' };
+// Motivos para reportar a un profesional (los mismos códigos que acepta el servidor).
+export const MOTIVOS_REPORTE = [
+  ['no_llego', 'No llegó a la cita'],
+  ['cobro_distinto', 'Cobro distinto al acordado'],
+  ['mal_servicio', 'Mal servicio'],
+  ['trato_inadecuado', 'Trato inadecuado'],
+  ['otro', 'Otro problema'],
+];
+export const ETIQUETA_MOTIVO_REPORTE = Object.fromEntries(MOTIVOS_REPORTE);
+
+export const TIPO_TARIFA ={ hora: 'por hora', fijo: 'tarifa fija' };
 export const TIPO_TARIFA_LARGO = { hora: 'Tarifa por hora', fijo: 'Tarifa fija' };
 
 export function formatearDinero(valor) {

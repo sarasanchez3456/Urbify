@@ -302,6 +302,7 @@ export default function MisSolicitudes() {
           onCambiarEstado={cambiarEstado}
           onCalificar={(s) => abrirCalificar(s.id)}
           onResponderCambio={responderCambio}
+          onReporteEnviado={(yaExistia) => { mostrarAviso(yaExistia ? 'Esta solicitud ya estaba reportada.' : 'Reporte enviado. La administración lo revisará.', yaExistia ? 'info' : 'ok'); cargar(); }}
           onCambioPedido={() => { mostrarAviso('Pedido enviado. Esperando la respuesta del profesional.'); cargar(); }}
         />
       )}

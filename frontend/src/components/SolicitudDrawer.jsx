@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import PanelLateral from './PanelLateral';
 import ReprogramarPanel from './ReprogramarPanel';
+import ReportarPanel from './ReportarPanel';
 import {
   ETIQUETAS_ESTADO, ETIQUETA_MOTIVO, PASOS, TIPO_TARIFA_LARGO, estadoDelPaso, estaSinCalificar, formatearDinero, fechaServicioLarga,
   fechaRelativa, fechaHoraCorta, iniciales, horaMensaje, etiquetaDia, claveDia,
@@ -154,7 +155,7 @@ function ChatSolicitud({ solicitud, rol, onVolver, onCerrar }) {
 
 // ── Detalle de la solicitud ──────────────────────────────────────────────────
 // Panel lateral con el seguimiento, los datos de la visita, el chat y las acciones de cada rol.
-export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEstado, onCalificar, onResponderCambio, onCambioPedido }) {
+export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEstado, onCalificar, onResponderCambio, onCambioPedido, onReporteEnviado }) {
   const [vista, setVista] = useState('detalle'); // 'detalle' | 'chat' | 'reprogramar'
   const [confirmando, setConfirmando] = useState(false);
   const [procesando, setProcesando] = useState(false);
@@ -223,6 +224,13 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
     >
       {vista === 'chat' ? (
         <ChatSolicitud solicitud={solicitud} rol={rol} onVolver={() => setVista('detalle')} onCerrar={onCerrar} />
+      ) : vista === 'reportar' ? (
+        <ReportarPanel
+          solicitud={solicitud}
+          onVolver={() => setVista('detalle')}
+          onCerrar={onCerrar}
+          onEnviado={(yaExistia) => { setVista('detalle'); onReporteEnviado(Boolean(yaExistia)); }}
+        />
       ) : vista === 'reprogramar' ? (
         <ReprogramarPanel
           solicitud={solicitud}
@@ -324,6 +332,16 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
           </div>
         )}
       </div>
+
+      {esCliente && solicitud.estado !== 'pendiente' && (
+        <div className="sp-reportar">
+          {solicitud.reporte_id ? (
+            <span>Ya reportaste esta solicitud. La administración la está revisando.</span>
+          ) : (
+            <button type="button" onClick={() => setVista('reportar')}>Reportar un problema con este servicio</button>
+          )}
+        </div>
+      )}
 
       <div className="pl-pie">
         {confirmando ? (

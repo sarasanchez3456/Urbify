@@ -1138,13 +1138,65 @@ paths:
         '200': { $ref: '#/components/responses/Mensaje' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /reportes:
+    post:
+      tags: [Solicitudes]
+      summary: Reportar un problema con el profesional de una solicitud
+      description: Solo el cliente de esa solicitud, una vez por solicitud (la segunda responde 409). La administración lo revisa; el profesional no lo ve.
+      x-roles: [cliente]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [solicitud_id, motivo, detalle]
+              properties:
+                solicitud_id: { type: integer }
+                motivo: { type: string, enum: [no_llego, cobro_distinto, mal_servicio, trato_inadecuado, otro] }
+                detalle: { type: string, minLength: 10, maxLength: 1000 }
+      responses:
+        '201': { description: Reporte creado }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /admin/reportes:
+    get:
+      tags: [Administración]
+      summary: Reportes de clientes contra profesionales
+      x-roles: [admin]
+      responses:
+        '200': { description: 'Primero los nuevos; incluye cuántos reportes hay contra el mismo profesional' }
+  /admin/reportes/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    put:
+      tags: [Administración]
+      summary: Poner un reporte en revisión o resolverlo
+      description: Resolver exige `nota` (10 a 300 caracteres). Un reporte resuelto no se reabre. Queda en la auditoría.
+      x-roles: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [estado]
+              properties:
+                estado: { type: string, enum: [revision, resuelto] }
+                nota: { type: string, minLength: 10, maxLength: 300 }
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /admin/auditoria:
     get:
       tags: [Administración]
       summary: Registro de acciones de los administradores (últimas 500)
       x-roles: [admin]
       parameters:
-        - { name: tipo, in: query, schema: { type: string, enum: [usuario, servicio, solicitud, resena, categoria] } }
+        - { name: tipo, in: query, schema: { type: string, enum: [usuario, servicio, solicitud, resena, categoria, reporte] } }
       responses:
         '200': { description: 'Lista con fecha, tipo, acción, objeto, motivo y administrador' }
         '400': { $ref: '#/components/responses/BadRequest' }

@@ -116,6 +116,27 @@ CREATE TABLE IF NOT EXISTS calificaciones (
   INDEX idx_calificaciones_proveedor (proveedor_id)
 );
 
+-- Reportes de un cliente contra el profesional de una solicitud. Un cliente reporta una solicitud una sola vez.
+CREATE TABLE IF NOT EXISTS reportes (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  reportante_id    INT NOT NULL,
+  reportado_id     INT NOT NULL,
+  solicitud_id     INT NOT NULL,
+  motivo           VARCHAR(30) NOT NULL,
+  detalle          VARCHAR(1000) NOT NULL,
+  estado           VARCHAR(20) NOT NULL DEFAULT 'nuevo' CHECK (estado IN ('nuevo', 'revision', 'resuelto')),
+  nota_admin       VARCHAR(300) NULL,
+  atendido_por     INT NULL,
+  fecha            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  fecha_resolucion DATETIME NULL,
+  FOREIGN KEY (reportante_id) REFERENCES usuarios(id),
+  FOREIGN KEY (reportado_id)  REFERENCES usuarios(id),
+  FOREIGN KEY (solicitud_id)  REFERENCES solicitudes(id),
+  FOREIGN KEY (atendido_por)  REFERENCES usuarios(id) ON DELETE SET NULL,
+  UNIQUE KEY uq_reporte_solicitud (reportante_id, solicitud_id),
+  INDEX idx_reportes_estado (estado, fecha)
+);
+
 -- Registro de lo que hacen los administradores: quién, qué, sobre qué y por qué. Solo se agrega, nunca se edita.
 CREATE TABLE IF NOT EXISTS auditoria (
   id          INT AUTO_INCREMENT PRIMARY KEY,

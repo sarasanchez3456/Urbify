@@ -14,6 +14,7 @@ const solicitudesRoutes = require('./routes/solicitudes.routes');
 const calificacionesRoutes = require('./routes/calificaciones.routes');
 const proveedoresRoutes = require('./routes/proveedores.routes');
 const adminRoutes = require('./routes/admin.routes');
+const reportesRoutes = require('./routes/reportes.routes');
 const statsRoutes = require('./routes/stats.routes');
 const notificacionesRoutes = require('./routes/notificaciones.routes');
 
@@ -78,6 +79,7 @@ app.use('/api/calificaciones', calificacionesRoutes);
 app.use('/api/proveedores', proveedoresRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/reportes', reportesRoutes);
 app.use('/api/notificaciones', notificacionesRoutes);
 
 app.use('/api/*', (req, res) => {

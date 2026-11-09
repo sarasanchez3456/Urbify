@@ -17,6 +17,8 @@ router.get('/solicitudes', admin.listarSolicitudes);
 router.put('/solicitudes/:id/cancelar', admin.cancelarSolicitud);
 router.get('/resenas', admin.listarResenas);
 router.put('/resenas/:id/oculta', admin.cambiarVisibilidadResena);
+router.get('/reportes', admin.listarReportes);
+router.put('/reportes/:id', admin.actualizarReporte);
 router.get('/auditoria', admin.listarAuditoria);
 
 module.exports = router;

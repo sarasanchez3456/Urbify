@@ -375,3 +375,9 @@
   .ad-tarjeta { padding: 18px 16px; }
   .ad-fila-cat { grid-template-columns: minmax(0, 1fr); gap: 6px; }
 }
+
+.ad-tag--rep-nuevo { background: oklch(0.95 0.07 90); color: oklch(0.38 0.09 70); }
+.ad-tag--rep-revision { background: oklch(0.93 0.04 250); color: oklch(0.35 0.15 255); }
+.ad-tag--rep-resuelto { background: oklch(0.93 0.06 155); color: oklch(0.33 0.09 155); }
+.ad-acciones-col { display: grid; gap: 4px; justify-items: end; align-content: start; }
+.ad-nota-resolucion { margin-top: 6px; font-size: 0.88rem; }

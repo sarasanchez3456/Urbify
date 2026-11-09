@@ -3,13 +3,13 @@ import { createPortal } from 'react-dom';
 import api from '../api/axios';
 import DashboardLayout from '../components/DashboardLayout';
 import PanelLateral from '../components/PanelLateral';
-import { ETIQUETAS_ESTADO, iniciales, formatearDinero, fechaRelativa, fechaHoraCorta } from '../utils/solicitudes';
+import { ETIQUETAS_ESTADO, ETIQUETA_MOTIVO_REPORTE, iniciales, formatearDinero, fechaRelativa, fechaHoraCorta } from '../utils/solicitudes';
 import { logError } from '../utils/log';
 import './AdminPanel.css';
 
 const SECCIONES = [
   ['resumen', 'Resumen'], ['usuarios', 'Usuarios'], ['servicios', 'Servicios'], ['solicitudes', 'Solicitudes'],
-  ['categorias', 'Categorías'], ['resenas', 'Reseñas'], ['auditoria', 'Auditoría'],
+  ['categorias', 'Categorías'], ['resenas', 'Reseñas'], ['reportes', 'Reportes'], ['auditoria', 'Auditoría'],
 ];
 const POR_PAGINA = 10;
 const ROLES = { cliente: 'Cliente', proveedor: 'Proveedor', admin: 'Administrador' };
@@ -50,7 +50,7 @@ function useDatos(ruta) {
 }
 
 // ── Ventana de confirmación; si hace falta, pide un motivo (queda en la auditoría) ──
-function Confirmar({ titulo, texto, confirmar, peligro, conMotivo, onCancelar, onConfirmar }) {
+function Confirmar({ titulo, texto, confirmar, peligro, conMotivo, etiquetaMotivo, onCancelar, onConfirmar }) {
   const [motivo, setMotivo] = useState('');
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -80,7 +80,7 @@ function Confirmar({ titulo, texto, confirmar, peligro, conMotivo, onCancelar, o
         {texto && <p>{texto}</p>}
         {conMotivo && (
           <label>
-            Motivo <em>(queda en el registro de auditoría, mínimo 10 letras)</em>
+            {etiquetaMotivo || 'Motivo'} <em>(queda en el registro de auditoría, mínimo 10 letras)</em>
             <textarea rows={3} maxLength={300} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Explica brevemente por qué" />
           </label>
         )}
@@ -137,6 +137,7 @@ function Resumen({ ir }) {
           [a.solicitudes_pendientes, 'solicitud pendiente de respuesta', 'solicitudes pendientes de respuesta', 'solicitudes', 'pendiente'],
           [a.resenas_bajas, 'reseña con 2 estrellas o menos', 'reseñas con 2 estrellas o menos', 'resenas', 'bajas'],
           [a.servicios_no_disponibles, 'servicio no disponible', 'servicios no disponibles', 'servicios', 'oculto'],
+          [a.reportes_nuevos, 'reporte nuevo', 'reportes nuevos', 'reportes', 'nuevo'],
           [a.usuarios_suspendidos, 'usuario suspendido', 'usuarios suspendidos', 'usuarios', 'sus'],
         ].filter((x) => x[0] > 0);
         return (
@@ -593,8 +594,77 @@ function Resenas({ filtroInicial }) {
   );
 }
 
+// ── Reportes ──
+const ESTADOS_REPORTE = { nuevo: 'Nuevo', revision: 'En revisión', resuelto: 'Resuelto' };
+function Reportes({ filtroInicial }) {
+  const { datos, error, cargar } = useDatos('/admin/reportes');
+  const [filtro, setFiltro] = useState(filtroInicial || '');
+  const [accion, setAccion] = useState(null); // { tipo: 'resolver' | 'suspender', reporte }
+  const [aviso, setAviso] = useState('');
+  const filtrados = (datos || []).filter((r) => !filtro || r.estado === filtro);
+
+  const marcarRevision = async (r) => {
+    setAviso('');
+    try {
+      await api.put(`/admin/reportes/${r.id}`, { estado: 'revision' });
+      await cargar();
+    } catch (err) {
+      setAviso(err.response?.data?.error || 'No se pudo actualizar el reporte.');
+    }
+  };
+
+  const confirmar = async (texto) => {
+    try {
+      if (accion.tipo === 'resolver') await api.put(`/admin/reportes/${accion.reporte.id}`, { estado: 'resuelto', nota: texto });
+      else await api.put(`/admin/usuarios/${accion.reporte.reportado_id}/estado`, { activo: false, motivo: texto });
+      setAccion(null);
+      await cargar();
+      return null;
+    } catch (err) {
+      return err.response?.data?.error || 'No se pudo completar la acción.';
+    }
+  };
+
+  return (
+    <Cargando datos={datos} error={error} cargar={cargar}>
+      <div className="ad-tarjeta">
+        <Chips etiqueta="Filtrar reportes" valor={filtro} onElegir={setFiltro} opciones={[['', `Todos (${(datos || []).length})`], ...Object.entries(ESTADOS_REPORTE).map(([k, t]) => [k, `${t} (${(datos || []).filter((r) => r.estado === k).length})`])]} />
+        <p className="ad-suave">Lo que los clientes reportan de un profesional. El profesional no ve estos reportes.</p>
+        {aviso && <div className="ad-error" role="alert">{aviso}</div>}
+        {filtrados.length === 0 ? <p className="ad-vacio-interno">No hay reportes con ese filtro.</p> : filtrados.map((r) => (
+          <div className="ad-resena" key={r.id}>
+            <div>
+              <b>{ETIQUETA_MOTIVO_REPORTE[r.motivo] || r.motivo}</b> <span className={`ad-tag ad-tag--rep-${r.estado}`}>{ESTADOS_REPORTE[r.estado]}</span>
+              <p>{r.detalle}</p>
+              <small>De {nombre(r.reportante_nombre, r.reportante_apellido)} contra <b>{nombre(r.reportado_nombre, r.reportado_apellido)}</b> · solicitud N.º {r.solicitud_id} · {fechaRelativa(r.fecha)}{r.total_contra_reportado > 1 ? ` · ${r.total_contra_reportado} reportes contra este profesional` : ''}</small>
+              {r.nota_admin && <p className="ad-nota-resolucion">Nota: {r.nota_admin}</p>}
+            </div>
+            <div className="ad-acciones-col">
+              {r.estado === 'nuevo' && <button type="button" className="ad-enlace" onClick={() => marcarRevision(r)}>Marcar en revisión</button>}
+              {r.estado !== 'resuelto' && <button type="button" className="ad-enlace" onClick={() => setAccion({ tipo: 'resolver', reporte: r })}>Resolver</button>}
+              {r.reportado_activo && <button type="button" className="ad-enlace ad-enlace--peligro" onClick={() => setAccion({ tipo: 'suspender', reporte: r })}>Suspender a {r.reportado_nombre}</button>}
+            </div>
+          </div>
+        ))}
+      </div>
+      {accion && (
+        <Confirmar
+          titulo={accion.tipo === 'resolver' ? 'Resolver el reporte' : `Suspender a ${accion.reporte.reportado_nombre}`}
+          texto={accion.tipo === 'resolver' ? 'Cuenta qué se hizo para resolverlo.' : 'No podrá iniciar sesión y se cerrarán sus sesiones abiertas. Puedes reactivarlo después. El reporte no se resuelve solo: ciérralo aparte.'}
+          confirmar={accion.tipo === 'resolver' ? 'Resolver' : 'Suspender'}
+          peligro={accion.tipo === 'suspender'}
+          conMotivo
+          etiquetaMotivo={accion.tipo === 'resolver' ? 'Nota de resolución' : 'Motivo'}
+          onCancelar={() => setAccion(null)}
+          onConfirmar={confirmar}
+        />
+      )}
+    </Cargando>
+  );
+}
+
 // ── Auditoría ──
-const TIPOS_AUDITORIA = [['', 'Todo'], ['usuario', 'Usuarios'], ['servicio', 'Servicios'], ['solicitud', 'Solicitudes'], ['resena', 'Reseñas'], ['categoria', 'Categorías']];
+const TIPOS_AUDITORIA = [['', 'Todo'], ['usuario', 'Usuarios'], ['servicio', 'Servicios'], ['solicitud', 'Solicitudes'], ['resena', 'Reseñas'], ['categoria', 'Categorías'], ['reporte', 'Reportes']];
 function Auditoria() {
   const [tipo, setTipo] = useState('');
   const [pagina, setPagina] = useState(0);
@@ -655,6 +725,7 @@ export default function AdminPanel() {
           {seccion === 'solicitudes' && <Solicitudes filtroInicial={filtro} />}
           {seccion === 'categorias' && <Categorias />}
           {seccion === 'resenas' && <Resenas filtroInicial={filtro} />}
+          {seccion === 'reportes' && <Reportes filtroInicial={filtro} />}
           {seccion === 'auditoria' && <Auditoria />}
         </div>
       </div>

@@ -39,6 +39,7 @@ exports.resumen = async (req, res, next) => {
     }
 
     const [[suspendidos]] = await query('SELECT COUNT(*) AS n FROM usuarios WHERE activo = 0');
+    const [[reportesNuevos]] = await query("SELECT COUNT(*) AS n FROM reportes WHERE estado = 'nuevo'");
     res.json({
       usuarios_por_rol: usuarios,
       servicios: { total: Number(servicios[0].total), disponibles: Number(servicios[0].disponibles) },
@@ -49,6 +50,7 @@ exports.resumen = async (req, res, next) => {
         solicitudes_pendientes: solicitudes.pendiente,
         servicios_no_disponibles: Number(servicios[0].total) - Number(servicios[0].disponibles),
         usuarios_suspendidos: Number(suspendidos.n),
+        reportes_nuevos: Number(reportesNuevos.n),
         resenas_bajas: Number(calif[0].bajas),
       },
     });
@@ -246,8 +248,56 @@ exports.cambiarVisibilidadResena = async (req, res, next) => {
   }
 };
 
+// ── Reportes ──
+exports.listarReportes = async (req, res, next) => {
+  try {
+    const [reportes] = await query(
+      `SELECT r.id, r.motivo, r.detalle, r.estado, r.nota_admin, r.fecha, r.fecha_resolucion, r.solicitud_id,
+              rep.nombre AS reportante_nombre, rep.apellido AS reportante_apellido,
+              pro.id AS reportado_id, pro.nombre AS reportado_nombre, pro.apellido AS reportado_apellido, pro.activo AS reportado_activo,
+              (SELECT COUNT(*) FROM reportes x WHERE x.reportado_id = r.reportado_id) AS total_contra_reportado
+         FROM reportes r
+         JOIN usuarios rep ON rep.id = r.reportante_id
+         JOIN usuarios pro ON pro.id = r.reportado_id
+        ORDER BY FIELD(r.estado, 'nuevo', 'revision', 'resuelto'), r.fecha DESC`
+    );
+    res.json(reportes.map((r) => ({ ...r, reportado_activo: Boolean(r.reportado_activo), total_contra_reportado: Number(r.total_contra_reportado) })));
+  } catch (err) {
+    return next(err);
+  }
+};
+
+// Pasa un reporte a "en revisión" o lo resuelve (la nota de resolución es obligatoria).
+exports.actualizarReporte = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const estado = req.body?.estado;
+    if (!['revision', 'resuelto'].includes(estado)) return res.status(400).json({ error: "estado debe ser 'revision' o 'resuelto'" });
+    const nota = estado === 'resuelto' ? motivoValido(req.body?.nota) : null;
+    if (estado === 'resuelto' && !nota) return res.status(400).json({ error: 'Escribe una nota de resolución de entre 10 y 300 caracteres.' });
+
+    const [filas] = await query(
+      `SELECT r.id, r.estado, pro.nombre, pro.apellido FROM reportes r JOIN usuarios pro ON pro.id = r.reportado_id WHERE r.id = ?`,
+      [id]
+    );
+    if (filas.length === 0) return res.status(404).json({ error: 'Reporte no encontrado' });
+    if (filas[0].estado === 'resuelto') return res.status(409).json({ error: 'Este reporte ya está resuelto' });
+    if (filas[0].estado === estado) return res.status(409).json({ error: 'El reporte ya está en ese estado' });
+
+    await query(
+      `UPDATE reportes SET estado = ?, atendido_por = ?, nota_admin = COALESCE(?, nota_admin),
+              fecha_resolucion = ${estado === 'resuelto' ? 'NOW()' : 'NULL'} WHERE id = ?`,
+      [estado, req.usuarioId, nota, id]
+    );
+    await registrarAuditoria(req.usuarioId, 'reporte', estado === 'resuelto' ? 'Resolvió un reporte contra' : 'Puso en revisión un reporte contra', nombreDe(filas[0]), nota);
+    res.json({ mensaje: estado === 'resuelto' ? 'Reporte resuelto' : 'Reporte en revisión', estado });
+  } catch (err) {
+    return next(err);
+  }
+};
+
 // ── Auditoría ──
-const TIPOS_AUDITORIA = ['usuario', 'servicio', 'solicitud', 'resena', 'categoria'];
+const TIPOS_AUDITORIA = ['usuario', 'servicio', 'solicitud', 'resena', 'categoria', 'reporte'];
 exports.listarAuditoria = async (req, res, next) => {
   try {
     const tipo = req.query.tipo;
