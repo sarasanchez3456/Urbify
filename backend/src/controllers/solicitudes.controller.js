@@ -390,8 +390,10 @@ exports.enviarMensaje = async (req, res, next) => {
       if (datos.length > 0) {
         const { nombre, apellido, rol, titulo } = datos[0];
         const vistaPrevia = contenido.length > 80 ? `${contenido.slice(0, 80).trimEnd()}…` : contenido;
-        await query('INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)', [
+        await query('INSERT INTO notificaciones (usuario_id, tipo, solicitud_id, mensaje) VALUES (?, ?, ?, ?)', [
           destinatarioId,
+          'mensaje',
+          solicitud.id,
           `${rol === 'proveedor' ? 'El proveedor' : 'El cliente'} ${nombre} ${apellido} te envió un mensaje sobre "${titulo}": "${vistaPrevia}"`,
         ]);
       }

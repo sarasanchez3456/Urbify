@@ -1,6 +1,6 @@
 import { formatoPesos } from '../utils/moneda';
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import DashboardLayout from '../components/DashboardLayout';
@@ -36,9 +36,12 @@ const btnGradient = {
 
 export default function MisSolicitudes() {
   const { usuario } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [solicitudes, setSolicitudes] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [chatSol, setChatSol] = useState(null);
+  const chatSolicitado = searchParams.get('chat');
 
   const nombreOtraParte = (sol) => (usuario?.rol === 'cliente'
     ? `${sol.proveedor_nombre} ${sol.proveedor_apellido}`
@@ -51,6 +54,26 @@ export default function MisSolicitudes() {
       .catch((err) => logError('Error al cargar solicitudes:', err))
       .finally(() => setCargando(false));
   }, [usuario]);
+
+  // Las notificaciones de chat llegan con el id de solicitud en la URL. Se abre solo si la
+  // solicitud pertenece a la lista propia; luego se elimina el parámetro para evitar reaperturas.
+  useEffect(() => {
+    if (cargando || !chatSolicitado) return;
+
+    const solicitudId = Number(chatSolicitado);
+    const solicitud = Number.isInteger(solicitudId) && solicitudId > 0
+      ? solicitudes.find((sol) => Number(sol.id) === solicitudId)
+      : null;
+
+    if (solicitud && solicitud.estado !== 'cancelada') {
+      setChatSol(solicitud);
+    }
+
+    const paramsSinChat = new URLSearchParams(searchParams);
+    paramsSinChat.delete('chat');
+    const search = paramsSinChat.toString();
+    navigate({ pathname: '/mis-solicitudes', search: search ? `?${search}` : '' }, { replace: true });
+  }, [cargando, chatSolicitado, solicitudes, searchParams, navigate]);
 
   const cambiarEstado = async (id, estado) => {
     try {

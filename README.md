@@ -374,6 +374,8 @@ Si el correo ya existe, ese usuario se promueve a `admin`. En una base de datos 
 | GET | `/api/stats/admin` | Estadísticas completas del sistema (solo `admin`) |
 | GET | `/api/notificaciones` | Notificaciones del usuario |
 
+Las notificaciones de mensajes de chat incluyen `tipo: "mensaje"` y `solicitud_id`. La web usa esos campos para abrir el chat existente de esa solicitud; las notificaciones antiguas sin esos campos conservan la navegación general a Mis Solicitudes.
+
 ---
 
 ## 👩‍💻 Equipo de Desarrollo
