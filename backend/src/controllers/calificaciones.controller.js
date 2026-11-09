@@ -69,14 +69,14 @@ exports.calificacionesProveedor = async (req, res, next) => {
        JOIN usuarios u ON cal.cliente_id = u.id
        JOIN solicitudes sol ON cal.solicitud_id = sol.id
        JOIN servicios s ON sol.servicio_id = s.id
-       WHERE cal.proveedor_id = ?
+       WHERE cal.proveedor_id = ? AND cal.oculta = 0
        ORDER BY cal.fecha_creacion DESC`,
       [proveedor_id]
     );
 
     const [promedio] = await query(
       `SELECT COALESCE(AVG(puntuacion), 0) AS promedio, COUNT(*) AS total
-       FROM calificaciones WHERE proveedor_id = ?`,
+       FROM calificaciones WHERE proveedor_id = ? AND oculta = 0`,
       [proveedor_id]
     );
 

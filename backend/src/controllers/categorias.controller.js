@@ -1,4 +1,5 @@
 const { query } = require('../config/db');
+const { registrarAuditoria } = require('../utils/auditoria');
 
 exports.listarCategorias = async (req, res, next) => {
   try {
@@ -19,6 +20,7 @@ exports.crearCategoria = async (req, res, next) => {
       'INSERT INTO categorias (nombre, descripcion, icono_url) VALUES (?, ?, ?)',
       [nombre, descripcion || null, icono_url || null]
     );
+    await registrarAuditoria(req.usuarioId, 'categoria', 'Creó la categoría', nombre);
     res.status(201).json({ mensaje: 'Categoría creada exitosamente', id: result.insertId });
   } catch (err) {
     return next(err);
@@ -29,10 +31,11 @@ exports.actualizarCategoria = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { nombre, descripcion, icono_url } = req.body;
-    const [existe] = await query('SELECT id FROM categorias WHERE id = ?', [id]);
+    const [existe] = await query('SELECT id, nombre FROM categorias WHERE id = ?', [id]);
     if (existe.length === 0) {
       return res.status(404).json({ error: 'Categoría no encontrada' });
     }
+    await registrarAuditoria(req.usuarioId, 'categoria', 'Editó la categoría', existe[0].nombre);
     await query(
       'UPDATE categorias SET nombre = COALESCE(?, nombre), descripcion = COALESCE(?, descripcion), icono_url = COALESCE(?, icono_url) WHERE id = ?',
       [nombre, descripcion, icono_url, id]
@@ -46,11 +49,12 @@ exports.actualizarCategoria = async (req, res, next) => {
 exports.eliminarCategoria = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const [existe] = await query('SELECT id FROM categorias WHERE id = ?', [id]);
+    const [existe] = await query('SELECT id, nombre FROM categorias WHERE id = ?', [id]);
     if (existe.length === 0) {
       return res.status(404).json({ error: 'Categoría no encontrada' });
     }
     await query('DELETE FROM categorias WHERE id = ?', [id]);
+    await registrarAuditoria(req.usuarioId, 'categoria', 'Eliminó la categoría', existe[0].nombre);
     res.json({ mensaje: 'Categoría eliminada exitosamente' });
   } catch (err) {
     console.error('Error al eliminar categoría:', err);

@@ -108,11 +108,26 @@ CREATE TABLE IF NOT EXISTS calificaciones (
   puntuacion       TINYINT NOT NULL CHECK (puntuacion BETWEEN 1 AND 5),
   comentario       TEXT,
   motivos          VARCHAR(120) NULL,
+  oculta           BOOLEAN NOT NULL DEFAULT 0,
   fecha_creacion        DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (solicitud_id)  REFERENCES solicitudes(id),
   FOREIGN KEY (cliente_id)    REFERENCES usuarios(id),
   FOREIGN KEY (proveedor_id)  REFERENCES usuarios(id),
   INDEX idx_calificaciones_proveedor (proveedor_id)
+);
+
+-- Registro de lo que hacen los administradores: quién, qué, sobre qué y por qué. Solo se agrega, nunca se edita.
+CREATE TABLE IF NOT EXISTS auditoria (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  admin_id    INT NULL,
+  tipo        VARCHAR(20) NOT NULL,
+  accion      VARCHAR(120) NOT NULL,
+  objeto      VARCHAR(200) NOT NULL DEFAULT '',
+  motivo      VARCHAR(300) NULL,
+  fecha       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (admin_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+  INDEX idx_auditoria_fecha (fecha),
+  INDEX idx_auditoria_tipo (tipo, fecha)
 );
 
 -- Horario semanal en el que cada proveedor atiende (hora de Colombia). dia_semana: 0 = domingo ... 6 = sábado.

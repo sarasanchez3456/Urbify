@@ -46,7 +46,7 @@ router.get('/cercanos', publicLimiter, authenticateOptional, async (req, res, ne
         FROM usuarios u
         LEFT JOIN (
           SELECT cal.proveedor_id, AVG(cal.puntuacion) AS promedio, COUNT(cal.id) AS total
-          FROM calificaciones cal
+          FROM calificaciones cal WHERE cal.oculta = 0
           GROUP BY cal.proveedor_id
         ) cal_stats ON cal_stats.proveedor_id = u.id
         WHERE u.rol = 'proveedor' AND u.activo = 1

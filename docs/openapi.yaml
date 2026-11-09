@@ -71,6 +71,7 @@ tags:
   - name: Proveedores
   - name: Estadísticas
   - name: Notificaciones
+  - name: Administración
 
 paths:
   /health:
@@ -1005,6 +1006,148 @@ paths:
               schema: { $ref: '#/components/schemas/StatsPublicas' }
               example: { proveedores_activos: 12, servicios_realizados: 87, calificacion_media: '4.6' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
+  /admin/resumen:
+    get:
+      tags: [Administración]
+      summary: Resumen del panel (cifras, actividad por semana y alertas)
+      x-roles: [admin]
+      parameters:
+        - { name: semanas, in: query, schema: { type: integer, enum: [4, 8, 12], default: 8 } }
+      responses:
+        '200': { description: 'usuarios_por_rol, servicios, solicitudes_por_estado, calificaciones (sin las ocultas), semanas [{hasta, usuarios, solicitudes}] y atencion {solicitudes_pendientes, servicios_no_disponibles, usuarios_suspendidos, resenas_bajas}' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/usuarios/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Administración]
+      summary: Detalle de un usuario con su actividad
+      x-roles: [admin]
+      responses:
+        '200': { description: Datos de la cuenta, conteos de solicitudes y servicios, calificación media y últimas 5 solicitudes }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/usuarios/{id}/estado:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    put:
+      tags: [Administración]
+      summary: Suspender o reactivar una cuenta
+      description: Exige `motivo` (10 a 300 caracteres) y queda en la auditoría. Al suspender se cierran las sesiones abiertas. No se puede suspender a un administrador ni a uno mismo.
+      x-roles: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [activo, motivo]
+              properties:
+                activo: { type: boolean }
+                motivo: { type: string, minLength: 10, maxLength: 300 }
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /admin/servicios:
+    get:
+      tags: [Administración]
+      summary: Todos los servicios con su proveedor
+      x-roles: [admin]
+      responses:
+        '200': { description: Lista de servicios }
+  /admin/servicios/{id}/disponible:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    put:
+      tags: [Administración]
+      summary: Ocultar o mostrar un servicio en las búsquedas
+      description: Exige `motivo` y queda en la auditoría.
+      x-roles: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [disponible, motivo]
+              properties:
+                disponible: { type: boolean }
+                motivo: { type: string, minLength: 10, maxLength: 300 }
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/solicitudes:
+    get:
+      tags: [Administración]
+      summary: Todas las solicitudes de la plataforma
+      x-roles: [admin]
+      responses:
+        '200': { description: Lista de solicitudes con cliente, proveedor y servicio }
+  /admin/solicitudes/{id}/cancelar:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    put:
+      tags: [Administración]
+      summary: Cancelar una solicitud abierta
+      description: Solo pendiente, aceptada o en proceso. Exige `motivo`; se avisa a ambas partes, se anota en el historial y en la auditoría.
+      x-roles: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [motivo]
+              properties:
+                motivo: { type: string, minLength: 10, maxLength: 300 }
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /admin/resenas:
+    get:
+      tags: [Administración]
+      summary: Todas las reseñas, también las ocultas
+      x-roles: [admin]
+      responses:
+        '200': { description: Lista de reseñas con cliente y profesional }
+  /admin/resenas/{id}/oculta:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    put:
+      tags: [Administración]
+      summary: Ocultar o restaurar una reseña
+      description: Una reseña oculta no se muestra ni cuenta en la calificación del profesional. Exige `motivo`.
+      x-roles: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [oculta, motivo]
+              properties:
+                oculta: { type: boolean }
+                motivo: { type: string, minLength: 10, maxLength: 300 }
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/auditoria:
+    get:
+      tags: [Administración]
+      summary: Registro de acciones de los administradores (últimas 500)
+      x-roles: [admin]
+      parameters:
+        - { name: tipo, in: query, schema: { type: string, enum: [usuario, servicio, solicitud, resena, categoria] } }
+      responses:
+        '200': { description: 'Lista con fecha, tipo, acción, objeto, motivo y administrador' }
+        '400': { $ref: '#/components/responses/BadRequest' }
   /stats/admin:
     get:
       tags: [Estadísticas]

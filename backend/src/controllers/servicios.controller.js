@@ -69,7 +69,7 @@ exports.serviciosPorCategoria = async (req, res, next) => {
        JOIN usuarios u ON s.proveedor_id = u.id
        LEFT JOIN (
          SELECT cal.proveedor_id, AVG(cal.puntuacion) AS promedio, COUNT(cal.id) AS total
-         FROM calificaciones cal
+         FROM calificaciones cal WHERE cal.oculta = 0
          GROUP BY cal.proveedor_id
        ) cal_stats ON cal_stats.proveedor_id = u.id
        WHERE s.categoria_id = ? AND s.disponible = 1 AND u.activo = 1
@@ -98,7 +98,7 @@ exports.buscarServicios = async (req, res, next) => {
                JOIN usuarios u ON s.proveedor_id = u.id
                LEFT JOIN (
                  SELECT cal.proveedor_id, AVG(cal.puntuacion) AS promedio, COUNT(cal.id) AS total
-                 FROM calificaciones cal
+                 FROM calificaciones cal WHERE cal.oculta = 0
                  GROUP BY cal.proveedor_id
                ) cal_stats ON cal_stats.proveedor_id = u.id
                WHERE u.activo = 1`;
@@ -163,7 +163,7 @@ exports.destacados = async (req, res, next) => {
        JOIN usuarios u ON s.proveedor_id = u.id
        LEFT JOIN (
          SELECT cal.proveedor_id, AVG(cal.puntuacion) AS promedio, COUNT(cal.id) AS total
-         FROM calificaciones cal
+         FROM calificaciones cal WHERE cal.oculta = 0
          GROUP BY cal.proveedor_id
        ) cal_stats ON cal_stats.proveedor_id = u.id
        WHERE s.disponible = 1 AND u.activo = 1
@@ -258,7 +258,7 @@ exports.detalleServicio = async (req, res, next) => {
        JOIN usuarios u ON s.proveedor_id = u.id
        LEFT JOIN (
          SELECT cal.proveedor_id, AVG(cal.puntuacion) AS promedio, COUNT(cal.id) AS total
-         FROM calificaciones cal
+         FROM calificaciones cal WHERE cal.oculta = 0
          GROUP BY cal.proveedor_id
        ) cal_stats ON cal_stats.proveedor_id = u.id
        WHERE s.id = ?`,
@@ -276,7 +276,7 @@ exports.detalleServicio = async (req, res, next) => {
          u.nombre, u.apellido, u.foto_url
          FROM calificaciones cal
          JOIN usuarios u ON cal.cliente_id = u.id
-         WHERE cal.proveedor_id = ?
+         WHERE cal.proveedor_id = ? AND cal.oculta = 0
          ORDER BY cal.fecha_creacion DESC
          LIMIT 10`,
         [servicios[0].proveedor_id]
