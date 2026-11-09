@@ -1,279 +1,274 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import DashboardLayout from '../components/DashboardLayout';
-import { Plus, ToggleLeft, ToggleRight, Trash2, Wrench, AlertCircle } from 'lucide-react';
+import PanelLateral from '../components/PanelLateral';
+import { formatearDinero } from '../utils/solicitudes';
 import { logError } from '../utils/log';
+import './MisServicios.css';
 
-const glassCard = {
-  backgroundColor: 'rgba(255, 255, 255, 0.6)',
-  backdropFilter: 'blur(16px)',
-  border: '1px solid rgba(0, 0, 0, 0.05)',
-};
+const FORM_VACIO = { categoria_id: '', titulo: '', descripcion: '', tarifa: '', tipo_tarifa: 'hora' };
 
-const glassInner = {
-  backgroundColor: 'rgba(255, 255, 255, 0.6)',
-  backdropFilter: 'blur(12px)',
-  border: '1px solid rgba(0, 0, 0, 0.05)',
-};
+// Crear o editar un servicio en un panel lateral. La tarifa solo admite dígitos (pesos enteros): lo que no sea
+// un número se descarta al escribir o pegar, y mientras no haya una tarifa válida no se puede guardar.
+function PanelServicio({ servicio, categorias, onCerrar, onGuardado }) {
+  const editando = Boolean(servicio);
+  const [form, setForm] = useState(editando
+    ? { categoria_id: String(servicio.categoria_id), titulo: servicio.titulo, descripcion: servicio.descripcion || '', tarifa: String(Math.round(Number(servicio.tarifa) || 0)), tipo_tarifa: servicio.tipo_tarifa || 'hora' }
+    : FORM_VACIO);
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState('');
 
-const subtleBorder = '1px solid rgba(0, 0, 0, 0.05)';
+  const cambiar = (campo, valor) => setForm((f) => ({ ...f, [campo]: valor }));
+  const tarifaNumero = Number(form.tarifa);
+  const titulo = form.titulo.trim();
+  const valido = (editando || form.categoria_id) && titulo.length >= 5 && form.tarifa !== '' && tarifaNumero > 0;
 
-const btnGradient = {
-  color: 'white',
-  background: 'linear-gradient(135deg, oklch(0.40 0.18 255), #1e4f43)',
-};
+  const guardar = async (e) => {
+    e.preventDefault();
+    if (!valido || enviando) return;
+    setEnviando(true);
+    setError('');
+    try {
+      const cuerpo = { titulo, descripcion: form.descripcion.trim(), tarifa: tarifaNumero, tipo_tarifa: form.tipo_tarifa };
+      if (editando) await api.put(`/servicios/${servicio.id}`, cuerpo);
+      else await api.post('/servicios', { ...cuerpo, categoria_id: Number(form.categoria_id) });
+      onGuardado(editando ? 'Servicio actualizado' : 'Servicio publicado');
+    } catch (err) {
+      logError('Error al guardar el servicio:', err);
+      setError(err.response?.data?.error || 'No se pudo guardar el servicio. Intenta de nuevo.');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  return (
+    <PanelLateral onCerrar={onCerrar} etiqueta={editando ? 'Editar servicio' : 'Nuevo servicio'} ancho={480}>
+      <form onSubmit={guardar} className="mv-form" noValidate>
+        <div className="pl-cabecera">
+          <div className="pl-cabecera-fila">
+            <h2 className="pl-titulo">{editando ? 'Editar servicio' : 'Nuevo servicio'}</h2>
+            <button type="button" className="pl-cerrar" onClick={onCerrar} aria-label="Cerrar">×</button>
+          </div>
+        </div>
+
+        <div className="pl-cuerpo">
+          <label className="mv-campo">
+            <span>Categoría</span>
+            {editando ? (
+              <input value={servicio.categoria_nombre} disabled />
+            ) : (
+              <select value={form.categoria_id} onChange={(e) => cambiar('categoria_id', e.target.value)} data-autofocus>
+                <option value="">Elige una categoría</option>
+                {categorias.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+              </select>
+            )}
+          </label>
+
+          <label className="mv-campo">
+            <span>Título</span>
+            <input value={form.titulo} maxLength={150} onChange={(e) => cambiar('titulo', e.target.value)} placeholder="Ej: Reparación de fugas en baños y cocinas" data-autofocus={editando ? true : undefined} />
+            {form.titulo !== '' && titulo.length < 5 && <small className="mv-error">Escribe al menos 5 letras.</small>}
+          </label>
+
+          <label className="mv-campo">
+            <span>Descripción <em>(opcional)</em></span>
+            <textarea rows={4} maxLength={2000} value={form.descripcion} onChange={(e) => cambiar('descripcion', e.target.value)} placeholder="Qué incluye, con qué trabajas y en qué zonas atiendes." />
+          </label>
+
+          <fieldset className="mv-campo">
+            <legend>Cómo cobras</legend>
+            <div className="mv-opciones">
+              {[['hora', 'Por hora'], ['fijo', 'Precio fijo']].map(([valor, texto]) => (
+                <label key={valor} className={`mv-opcion${form.tipo_tarifa === valor ? ' is-on' : ''}`}>
+                  <input type="radio" name="tipo_tarifa" value={valor} checked={form.tipo_tarifa === valor} onChange={() => cambiar('tipo_tarifa', valor)} />
+                  {texto}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <label className="mv-campo">
+            <span>Tarifa (pesos)</span>
+            <div className="mv-dinero">
+              <b aria-hidden="true">$</b>
+              <input
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={9}
+                value={form.tarifa}
+                onChange={(e) => cambiar('tarifa', e.target.value.replace(/\D/g, ''))}
+                placeholder="60000"
+              />
+            </div>
+            {form.tarifa !== '' && tarifaNumero > 0 && <small className="mv-ayuda">{formatearDinero(tarifaNumero)} {form.tipo_tarifa === 'hora' ? 'por hora' : 'en total'}</small>}
+            {form.tarifa !== '' && tarifaNumero === 0 && <small className="mv-error">La tarifa debe ser mayor que cero.</small>}
+            <small className="mv-ayuda">Solo números.</small>
+          </label>
+
+          {error && <div className="pl-aviso pl-aviso--error" role="alert">{error}</div>}
+        </div>
+
+        <div className="pl-pie">
+          <button type="submit" className="pl-boton pl-boton--principal" disabled={!valido || enviando}>
+            {enviando ? 'Guardando...' : editando ? 'Guardar cambios' : 'Publicar servicio'}
+          </button>
+          <button type="button" className="pl-boton" onClick={onCerrar} disabled={enviando}>Cancelar</button>
+        </div>
+      </form>
+    </PanelLateral>
+  );
+}
 
 export default function MisServicios() {
   const [servicios, setServicios] = useState([]);
-  const [cargando, setCargando] = useState(true);
-  const [mostrarForm, setMostrarForm] = useState(false);
   const [categorias, setCategorias] = useState([]);
-  const [form, setForm] = useState({ categoria_id: '', titulo: '', descripcion: '', tarifa: '', tipo_tarifa: 'hora' });
-  const [error, setError] = useState('');
+  const [estado, setEstado] = useState('cargando'); // 'cargando' | 'listo' | 'error'
+  const [panel, setPanel] = useState(null); // null | 'nuevo' | objeto del servicio que se edita
+  const [confirmandoId, setConfirmandoId] = useState(null);
+  const [ocupadoId, setOcupadoId] = useState(null);
+  const [aviso, setAviso] = useState(null);
+  const temporizador = useRef(null);
 
-  const cargarServicios = () => {
-    api.get('/servicios/mios')
-      .then((res) => setServicios(res.data))
-      .catch((err) => logError('Error al cargar servicios:', err))
-      .finally(() => setCargando(false));
-  };
+  const mostrarAviso = useCallback((texto, tipo = 'ok') => {
+    setAviso({ texto, tipo });
+    clearTimeout(temporizador.current);
+    temporizador.current = setTimeout(() => setAviso(null), 4500);
+  }, []);
+  useEffect(() => () => clearTimeout(temporizador.current), []);
 
-  useEffect(() => {
-    cargarServicios();
-    api.get('/categorias').then((res) => setCategorias(res.data)).catch((err) => logError('Error al cargar categorías:', err));
+  const cargar = useCallback(async () => {
+    try {
+      const res = await api.get('/servicios/mios');
+      setServicios(Array.isArray(res.data) ? res.data : []);
+      setEstado('listo');
+    } catch (err) {
+      logError('Error al cargar servicios:', err);
+      setEstado((e) => (e === 'listo' ? e : 'error'));
+    }
   }, []);
 
-  const handleCrear = async (e) => {
-    e.preventDefault();
-    setError('');
-    try {
-      await api.post('/servicios', { ...form, tarifa: parseFloat(form.tarifa || 0) });
-      setMostrarForm(false);
-      setForm({ categoria_id: '', titulo: '', descripcion: '', tarifa: '', tipo_tarifa: 'hora' });
-      cargarServicios();
-    } catch (err) {
-      setError(err.response?.data?.error || 'Error al crear servicio');
-    }
-  };
+  useEffect(() => {
+    cargar();
+    api.get('/categorias').then((r) => setCategorias(Array.isArray(r.data) ? r.data : [])).catch((e) => logError(e));
+  }, [cargar]);
 
-  const toggleDisponible = async (servicio) => {
+  const alternar = async (s) => {
+    if (ocupadoId) return;
+    setOcupadoId(s.id);
     try {
-      await api.put(`/servicios/${servicio.id}`, { disponible: servicio.disponible ? 0 : 1 });
-      cargarServicios();
+      await api.put(`/servicios/${s.id}`, { disponible: s.disponible ? 0 : 1 });
+      mostrarAviso(s.disponible ? 'Servicio pausado: ya no aparece en las búsquedas' : 'Servicio visible otra vez');
+      await cargar();
     } catch (err) {
       logError(err);
+      mostrarAviso(err.response?.data?.error || 'No se pudo cambiar el estado del servicio.', 'error');
+    } finally {
+      setOcupadoId(null);
     }
   };
 
-  const eliminar = async (id) => {
-    if (!confirm('¿Eliminar este servicio?')) return;
+  const eliminar = async (s) => {
+    if (ocupadoId) return;
+    setOcupadoId(s.id);
     try {
-      await api.delete(`/servicios/${id}`);
-      cargarServicios();
+      await api.delete(`/servicios/${s.id}`);
+      setConfirmandoId(null);
+      mostrarAviso('Servicio eliminado');
+      await cargar();
     } catch (err) {
       logError(err);
+      // 409: ya tiene solicitudes o reseñas; el servidor sugiere pausarlo.
+      mostrarAviso(err.response?.data?.error || 'No se pudo eliminar el servicio.', 'error');
+      setConfirmandoId(null);
+    } finally {
+      setOcupadoId(null);
     }
   };
 
-  if (cargando) {
-    return (
-      <DashboardLayout titulo="Mis Servicios" subtitulo="Gestiona los servicios que ofreces">
-        <div className="flex items-center justify-center h-64" style={{ color: 'oklch(0.45 0.03 240)' }}>Cargando...</div>
-      </DashboardLayout>
-    );
-  }
+  const visibles = servicios.filter((s) => s.disponible).length;
 
   return (
-    <DashboardLayout titulo="Mis Servicios" subtitulo="Gestiona los servicios que ofreces como proveedor">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <p className="text-sm" style={{ color: 'oklch(0.45 0.03 240)' }}>{servicios.length} servicio{servicios.length !== 1 ? 's' : ''} publicados</p>
+    <DashboardLayout titulo="Mis Servicios" subtitulo="Lo que ofreces a tus clientes">
+      <div className="mv">
+        {estado === 'cargando' && <div className="mv-tarjeta mv-estado">Cargando...</div>}
+        {estado === 'error' && (
+          <div className="mv-tarjeta mv-estado" role="alert">
+            <p>No se pudieron cargar tus servicios.</p>
+            <button type="button" className="mv-btn mv-btn--principal" onClick={() => { setEstado('cargando'); cargar(); }}>Reintentar</button>
           </div>
-          <button
-            onClick={() => setMostrarForm(!mostrarForm)}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg transition-all text-sm font-semibold"
-            style={btnGradient}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.45 0.18 255), oklch(0.77 0.13 200))'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.40 0.18 255), #1e4f43)'; }}
-          >
-            <Plus size={16} />
-            {mostrarForm ? 'Cancelar' : 'Nuevo Servicio'}
-          </button>
-        </div>
+        )}
 
-        {mostrarForm && (
-          <div className="rounded-xl p-6" style={glassCard}>
-            <h3 className="text-lg font-semibold mb-5" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>Crear Nuevo Servicio</h3>
-            {error && (
-              <div className="mb-4 px-4 py-3 rounded-lg text-sm flex items-center gap-2" style={{
-                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                border: '1px solid rgba(239, 68, 68, 0.2)',
-                color: '#f87171',
-              }}>
-                <AlertCircle size={16} />
-                {error}
+        {estado === 'listo' && (
+          <>
+            <div className="mv-barra">
+              <p>
+                {servicios.length === 0 ? 'Aún no has publicado servicios' : `${servicios.length} ${servicios.length === 1 ? 'servicio' : 'servicios'} · ${visibles} ${visibles === 1 ? 'visible' : 'visibles'} para los clientes`}
+              </p>
+              <button type="button" className="mv-btn mv-btn--principal" onClick={() => setPanel('nuevo')}>+ Nuevo servicio</button>
+            </div>
+
+            {servicios.length === 0 && (
+              <div className="mv-tarjeta mv-estado">
+                <h3>Publica tu primer servicio</h3>
+                <p>Los clientes te encuentran por lo que ofreces. Cuéntales qué haces y cuánto cobras.</p>
+                <button type="button" className="mv-btn mv-btn--principal" onClick={() => setPanel('nuevo')}>Crear servicio</button>
               </div>
             )}
-            <form onSubmit={handleCrear} className="space-y-4">
-              <div>
-                <label className="block text-sm mb-1.5" style={{ color: 'oklch(0.45 0.03 240)' }}>Categoría</label>
-                <select
-                  value={form.categoria_id}
-                  onChange={(e) => setForm({ ...form, categoria_id: e.target.value })}
-                  required
-                  className="w-full px-4 py-2.5 rounded-lg transition-colors"
-                  style={{ ...glassInner, color: 'oklch(0.25 0.06 240)', outline: 'none' }}
-                  onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.2)'; }}
-                  onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.05)'; }}
-                >
-                  <option value="" style={{ backgroundColor: 'white' }}>Seleccionar categoría</option>
-                  {categorias.map((c) => (
-                    <option key={c.id} value={c.id} style={{ backgroundColor: 'white' }}>{c.nombre}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm mb-1.5" style={{ color: 'oklch(0.45 0.03 240)' }}>Título del servicio</label>
-                <input
-                  value={form.titulo}
-                  onChange={(e) => setForm({ ...form, titulo: e.target.value })}
-                  required
-                  className="w-full px-4 py-2.5 rounded-lg transition-colors"
-                  style={{ ...glassInner, color: 'oklch(0.25 0.06 240)', outline: 'none' }}
-                  onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.2)'; }}
-                  onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.05)'; }}
-                />
-              </div>
-              <div>
-                <label className="block text-sm mb-1.5" style={{ color: 'oklch(0.45 0.03 240)' }}>Descripción</label>
-                <textarea
-                  rows="3"
-                  value={form.descripcion}
-                  onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-lg transition-colors resize-none"
-                  style={{ ...glassInner, color: 'oklch(0.25 0.06 240)', outline: 'none' }}
-                  onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.2)'; }}
-                  onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.05)'; }}
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm mb-1.5" style={{ color: 'oklch(0.45 0.03 240)' }}>Tarifa</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={form.tarifa}
-                    onChange={(e) => setForm({ ...form, tarifa: e.target.value })}
-                    required
-                    className="w-full px-4 py-2.5 rounded-lg transition-colors"
-                    style={{ ...glassInner, color: 'oklch(0.25 0.06 240)', outline: 'none' }}
-                    onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.2)'; }}
-                    onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.05)'; }}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-1.5" style={{ color: 'oklch(0.45 0.03 240)' }}>Tipo de tarifa</label>
-                  <select
-                    value={form.tipo_tarifa}
-                    onChange={(e) => setForm({ ...form, tipo_tarifa: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-lg transition-colors"
-                    style={{ ...glassInner, color: 'oklch(0.25 0.06 240)', outline: 'none' }}
-                    onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.2)'; }}
-                    onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.05)'; }}
-                  >
-                    <option value="hora" style={{ backgroundColor: 'white' }}>Por hora</option>
-                    <option value="fijo" style={{ backgroundColor: 'white' }}>Precio fijo</option>
-                  </select>
-                </div>
-              </div>
-              <button
-                type="submit"
-                className="px-6 py-2.5 rounded-lg transition-all text-sm font-semibold"
-                style={btnGradient}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.45 0.18 255), oklch(0.77 0.13 200))'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.40 0.18 255), #1e4f43)'; }}
-              >
-                Crear Servicio
-              </button>
-            </form>
-          </div>
+
+            <ul className="mv-lista">
+              {servicios.map((s) => {
+                const confirmando = confirmandoId === s.id;
+                return (
+                  <li key={s.id} className={`mv-tarjeta mv-servicio${s.disponible ? '' : ' is-pausado'}`}>
+                    <div className="mv-servicio-cabecera">
+                      <span className="mv-categoria">{s.categoria_nombre}</span>
+                      <label className="mv-interruptor" title={s.disponible ? 'Visible para los clientes' : 'Pausado: no aparece en las búsquedas'}>
+                        <input type="checkbox" checked={Boolean(s.disponible)} onChange={() => alternar(s)} disabled={ocupadoId === s.id} />
+                        <span className="mv-interruptor-pista" aria-hidden="true" />
+                        <span>{s.disponible ? 'Visible' : 'Pausado'}</span>
+                      </label>
+                    </div>
+                    <h3>{s.titulo}</h3>
+                    {s.descripcion && <p className="mv-descripcion">{s.descripcion}</p>}
+                    <div className="mv-precio">
+                      <b>{formatearDinero(s.tarifa)}</b>
+                      <span>{s.tipo_tarifa === 'fijo' ? 'precio fijo' : 'por hora'}</span>
+                    </div>
+
+                    {confirmando ? (
+                      <div className="mv-confirmar" role="alert">
+                        <p>¿Eliminar este servicio? No se puede deshacer. Si ya tuvo solicitudes, mejor pausarlo.</p>
+                        <div>
+                          <button type="button" className="mv-btn mv-btn--peligro-solido" onClick={() => eliminar(s)} disabled={ocupadoId === s.id}>Sí, eliminar</button>
+                          <button type="button" className="mv-btn" onClick={() => setConfirmandoId(null)}>No, volver</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mv-acciones">
+                        <button type="button" className="mv-btn" onClick={() => setPanel(s)}>Editar</button>
+                        <Link to={`/servicio/${s.id}`} className="mv-btn">Ver como cliente</Link>
+                        <button type="button" className="mv-btn mv-btn--peligro" onClick={() => setConfirmandoId(s.id)}>Eliminar</button>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
 
-        {servicios.length === 0 ? (
-          <div className="text-center py-16 rounded-xl" style={glassCard}>
-            <Wrench size={48} className="mx-auto mb-4" style={{ opacity: 0.3, color: 'oklch(0.45 0.03 240)' }} />
-            <h3 className="text-lg font-semibold mb-2" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>No tienes servicios publicados</h3>
-            <p className="text-sm mb-6" style={{ color: 'oklch(0.45 0.03 240)' }}>Crea tu primer servicio para empezar a recibir solicitudes</p>
-            <button
-              onClick={() => setMostrarForm(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg transition-all text-sm font-semibold"
-              style={btnGradient}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.45 0.18 255), oklch(0.77 0.13 200))'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.40 0.18 255), #1e4f43)'; }}
-            >
-              <Plus size={16} />
-              Crear Servicio
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {servicios.map((s) => (
-              <div
-                key={s.id}
-                className="rounded-xl p-5 transition-all"
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.6)',
-                  backdropFilter: 'blur(12px)',
-                  border: '1px solid rgba(0, 0, 0, 0.05)',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.1)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.05)'; }}
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{
-                      color: 'oklch(0.40 0.18 255)',
-                      backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                    }}>{s.categoria_nombre}</span>
-                    <h3 className="text-base font-semibold mt-2" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>{s.titulo}</h3>
-                  </div>
-                  <span className="text-lg font-bold" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.40 0.18 255)' }}>
-                    ${parseFloat(s.tarifa || 0).toFixed(2)}<span className="text-xs" style={{ color: 'oklch(0.45 0.03 240)' }}>/{s.tipo_tarifa}</span>
-                  </span>
-                </div>
-                <p className="text-sm mb-4 line-clamp-2" style={{ color: 'oklch(0.45 0.03 240)' }}>{s.descripcion}</p>
-                <div className="flex items-center justify-between pt-3" style={{ borderTop: subtleBorder }}>
-                  <button
-                    onClick={() => toggleDisponible(s)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                    style={{
-                      backgroundColor: s.disponible ? 'rgba(34, 197, 94, 0.1)' : 'rgba(234, 179, 8, 0.1)',
-                      color: s.disponible ? '#4ade80' : '#facc15',
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = s.disponible ? 'rgba(34, 197, 94, 0.2)' : 'rgba(234, 179, 8, 0.2)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = s.disponible ? 'rgba(34, 197, 94, 0.1)' : 'rgba(234, 179, 8, 0.1)'; }}
-                  >
-                    {s.disponible ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
-                    {s.disponible ? 'Disponible' : 'Pausado'}
-                  </button>
-                  <button
-                    onClick={() => eliminar(s.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                    style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#f87171' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'; }}
-                  >
-                    <Trash2 size={14} />
-                    Eliminar
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        {aviso && <div className={`mv-aviso mv-aviso--${aviso.tipo}`} role={aviso.tipo === 'error' ? 'alert' : 'status'}>{aviso.texto}</div>}
       </div>
+
+      {panel && (
+        <PanelServicio
+          servicio={panel === 'nuevo' ? null : panel}
+          categorias={categorias}
+          onCerrar={() => setPanel(null)}
+          onGuardado={(msg) => { setPanel(null); mostrarAviso(msg); cargar(); }}
+        />
+      )}
     </DashboardLayout>
   );
 }
