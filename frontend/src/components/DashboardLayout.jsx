@@ -33,7 +33,7 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
   const navItems = [
     { path: '/admin', label: 'Panel de administración', icon: LayoutDashboard, roles: ['admin'] },
     { path: '/dashboard', label: 'Inicio', icon: LayoutDashboard, roles: ['cliente', 'proveedor'] },
-    { path: '/perfil', label: 'Mi Perfil', icon: User, roles: ['cliente', 'proveedor'] },
+    { path: '/perfil', label: 'Mi Perfil', icon: User, roles: ['cliente', 'proveedor', 'admin'] },
     { path: '/mis-solicitudes', label: usuario?.rol === 'proveedor' ? 'Notificaciones' : 'Mis Solicitudes', icon: ClipboardList, roles: ['cliente', 'proveedor'] },
     { path: '/mis-servicios', label: 'Mis Servicios', icon: Wrench, roles: ['proveedor'] },
     { path: '/mi-agenda', label: 'Mi agenda', icon: CalendarDays, roles: ['proveedor'] },

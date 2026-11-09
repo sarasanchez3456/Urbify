@@ -398,3 +398,12 @@
     transition: none;
   }
 }
+
+.pf-lnk-btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import DashboardLayout from '../components/DashboardLayout';
+import CambiarContrasena from '../components/CambiarContrasena';
 import { logError } from '../utils/log';
 import './Perfil.css';
 
@@ -57,6 +58,7 @@ export default function Perfil() {
   const [guardando, setGuardando] = useState(false);
   const [errorGuardar, setErrorGuardar] = useState('');
   const [aviso, setAviso] = useState('');
+  const [cambiandoClave, setCambiandoClave] = useState(false);
   const [avisoTel, setAvisoTel] = useState('');
   const temporizadorAviso = useRef(null);
   const temporizadorTel = useRef(null);
@@ -350,9 +352,16 @@ export default function Perfil() {
                   </Link>
                 )}
               </div>
+              <div className="pf-card">
+                <h3>Seguridad</h3>
+                <p className="pf-sd">Te enviamos un código a tu correo para confirmar el cambio.</p>
+                <button type="button" className="pf-lnk pf-lnk-btn" onClick={() => setCambiandoClave(true)}>Cambiar contraseña →</button>
+              </div>
             </aside>
           </form>
         )}
+
+        {cambiandoClave && cuenta?.correo && <CambiarContrasena correo={cuenta.correo} onCerrar={() => setCambiandoClave(false)} />}
 
         {aviso && <div className="pf-toast" role="status">{aviso}</div>}
       </div>

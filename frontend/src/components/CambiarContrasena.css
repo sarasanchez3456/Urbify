@@ -1,0 +1,32 @@
+/* Cambiar contraseña desde el perfil. Prefijo "cc-". Usa las clases pl- del panel lateral. */
+.cc p { margin: 0; line-height: 1.55; font-size: 0.93rem; }
+.cc-form { display: grid; gap: 16px; }
+
+.cc-campo { display: grid; gap: 6px; }
+.cc-campo > span { font-weight: 600; font-size: 0.9rem; }
+
+.cc-campo input {
+  width: 100%;
+  border: 1px solid var(--pl-line);
+  border-radius: 12px;
+  padding: 11px 14px;
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--pl-ink);
+  background: #fff;
+  outline: none;
+}
+
+.cc-campo input:focus-visible {
+  border-color: var(--pl-primary);
+  box-shadow: 0 0 0 3px oklch(0.72 0.13 200 / 0.3);
+}
+
+.cc-codigo {
+  font-size: 1.3rem !important;
+  letter-spacing: 0.4em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.cc-error { font-size: 0.82rem; color: var(--pl-bad); }
