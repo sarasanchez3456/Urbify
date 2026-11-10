@@ -249,8 +249,13 @@ CREATE TABLE IF NOT EXISTS recuperaciones_contrasena (
 CREATE TABLE IF NOT EXISTS notificaciones (
   id               INT AUTO_INCREMENT PRIMARY KEY,
   usuario_id       INT NOT NULL,
+  tipo             VARCHAR(50) NOT NULL DEFAULT 'general',
+  solicitud_id     INT NULL,
   mensaje          TEXT NOT NULL,
   leida            BOOLEAN DEFAULT 0,
   fecha_creacion        DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  -- La notificación se conserva como historial aunque la solicitud se elimine.
+  FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id) ON DELETE SET NULL,
+  INDEX idx_notificaciones_solicitud (solicitud_id)
 );

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import DashboardLayout from '../components/DashboardLayout';
@@ -109,6 +109,10 @@ export default function MisSolicitudes() {
   const [abiertaId, setAbiertaId] = useState(null);
   const [calificandoId, setCalificandoId] = useState(null);
   const [accionandoId, setAccionandoId] = useState(null);
+  const [abrirEnChat, setAbrirEnChat] = useState(false);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const chatSolicitado = searchParams.get('chat');
   const [aviso, setAviso] = useState(null); // { texto, tipo: 'ok' | 'error' | 'info' }
   const temporizadorAviso = useRef(null);
 
@@ -135,6 +139,22 @@ export default function MisSolicitudes() {
     setEstado('cargando');
     cargar();
   }, [cargar]);
+
+  // Las notificaciones de chat llegan con ?chat=<id de la solicitud>: se abre el panel de esa solicitud directamente en el
+  // chat, solo si es una solicitud propia y no está cancelada. Después se quita el parámetro para no reabrirlo por error.
+  useEffect(() => {
+    if (estado !== 'listo' || !chatSolicitado) return;
+    const id = Number(chatSolicitado);
+    const sol = Number.isInteger(id) && id > 0 ? solicitudes.find((s) => s.id === id) : null;
+    if (sol && sol.estado !== 'cancelada') {
+      setAbiertaId(sol.id);
+      setAbrirEnChat(true);
+    }
+    const sinChat = new URLSearchParams(searchParams);
+    sinChat.delete('chat');
+    const resto = sinChat.toString();
+    navigate({ pathname: '/mis-solicitudes', search: resto ? `?${resto}` : '' }, { replace: true });
+  }, [estado, chatSolicitado, solicitudes, searchParams, navigate]);
 
   // Cambia el estado de una solicitud (el proveedor acepta, rechaza, inicia o completa; el cliente cancela
   // una pendiente). El servidor valida quién puede hacer cada cambio; si falla se muestra su mensaje.
@@ -296,9 +316,11 @@ export default function MisSolicitudes() {
 
       {abierta && (
         <SolicitudDrawer
+          key={abierta.id}
           solicitud={abierta}
           rol={esCliente ? 'cliente' : 'proveedor'}
-          onCerrar={() => setAbiertaId(null)}
+          vistaInicial={abrirEnChat ? 'chat' : 'detalle'}
+          onCerrar={() => { setAbiertaId(null); setAbrirEnChat(false); }}
           onCambiarEstado={cambiarEstado}
           onCalificar={(s) => abrirCalificar(s.id)}
           onResponderCambio={responderCambio}

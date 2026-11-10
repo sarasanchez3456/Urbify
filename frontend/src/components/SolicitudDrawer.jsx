@@ -155,8 +155,8 @@ function ChatSolicitud({ solicitud, rol, onVolver, onCerrar }) {
 
 // ── Detalle de la solicitud ──────────────────────────────────────────────────
 // Panel lateral con el seguimiento, los datos de la visita, el chat y las acciones de cada rol.
-export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEstado, onCalificar, onResponderCambio, onCambioPedido, onReporteEnviado }) {
-  const [vista, setVista] = useState('detalle'); // 'detalle' | 'chat' | 'reprogramar'
+export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEstado, onCalificar, onResponderCambio, onCambioPedido, onReporteEnviado, vistaInicial = 'detalle' }) {
+  const [vista, setVista] = useState(vistaInicial); // 'detalle' | 'chat' | 'reprogramar' | 'reportar'
   const [confirmando, setConfirmando] = useState(false);
   const [procesando, setProcesando] = useState(false);
   const esCliente = rol === 'cliente';

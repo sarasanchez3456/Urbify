@@ -35,8 +35,11 @@ function formatearTiempo(fechaStr) {
   return fecha.toLocaleDateString();
 }
 
-function getNotificationIcon(mensaje = '') {
+function getNotificationIcon(mensaje = '', tipo = '') {
   const m = mensaje.toLowerCase();
+  if (tipo === 'mensaje') {
+    return { Icon: MessageCircle, bg: 'rgba(14, 165, 233, 0.15)', color: '#0284c7' };
+  }
   // Primero los mensajes del chat: su vista previa puede contener palabras como "aceptada".
   if (m.includes('te envió un mensaje')) {
     return { Icon: MessageCircle, bg: 'rgba(14, 165, 233, 0.15)', color: '#0284c7' };
@@ -146,6 +149,11 @@ export default function NotificationBell() {
       await handleMarcarLeida(item.id);
     }
     setAbierto(false);
+    const solicitudId = Number(item.solicitud_id);
+    if (item.tipo === 'mensaje' && Number.isInteger(solicitudId) && solicitudId > 0) {
+      navigate(`/mis-solicitudes?chat=${solicitudId}`);
+      return;
+    }
     navigate('/mis-solicitudes');
   };
 
@@ -254,7 +262,7 @@ export default function NotificationBell() {
               </div>
             ) : (
               notificaciones.map((item) => {
-                const { Icon, bg, color } = getNotificationIcon(item.mensaje);
+                const { Icon, bg, color } = getNotificationIcon(item.mensaje, item.tipo);
                 const esNoLeida = !item.leida;
 
                 return (

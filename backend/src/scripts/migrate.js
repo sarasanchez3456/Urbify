@@ -22,6 +22,9 @@ const COLUMNAS = [
   { tabla: 'calificaciones', nombre: 'motivos', ddl: 'motivos VARCHAR(120) NULL' },
   { tabla: 'calificaciones', nombre: 'oculta', ddl: 'oculta BOOLEAN NOT NULL DEFAULT 0' },
   { tabla: 'usuarios', nombre: 'verificado', ddl: 'verificado BOOLEAN NOT NULL DEFAULT 0' },
+  // Las notificaciones existentes se mantienen y reciben el tipo por defecto "general".
+  { tabla: 'notificaciones', nombre: 'tipo', ddl: "tipo VARCHAR(50) NOT NULL DEFAULT 'general'" },
+  { tabla: 'notificaciones', nombre: 'solicitud_id', ddl: 'solicitud_id INT NULL' },
 ];
 
 // Mismos índices que declara schema.sql.
@@ -34,7 +37,36 @@ const INDICES = [
   { tabla: 'solicitudes', nombre: 'idx_solicitudes_proveedor', columnas: 'proveedor_id' },
   { tabla: 'calificaciones', nombre: 'idx_calificaciones_proveedor', columnas: 'proveedor_id' },
   { tabla: 'tokens_sesion', nombre: 'idx_tokens_sesion_token', columnas: 'usuario_id, expira_en' },
+  { tabla: 'notificaciones', nombre: 'idx_notificaciones_solicitud', columnas: 'solicitud_id' },
 ];
+
+// El schema crea esta FK en instalaciones nuevas. Esta comprobación la agrega en bases existentes y
+// corrige una FK previa que no preserve el historial con ON DELETE SET NULL.
+async function asegurarFkNotificacionesSolicitud(conn) {
+  const [claves] = await conn.query(
+    `SELECT kcu.CONSTRAINT_NAME AS nombre, rc.DELETE_RULE AS regla_borrado
+       FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+       LEFT JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc
+         ON rc.CONSTRAINT_SCHEMA = kcu.CONSTRAINT_SCHEMA
+        AND rc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+      WHERE kcu.TABLE_SCHEMA = ? AND kcu.TABLE_NAME = 'notificaciones'
+        AND kcu.COLUMN_NAME = 'solicitud_id' AND kcu.REFERENCED_TABLE_NAME = 'solicitudes'`,
+    [DB_NAME]
+  );
+
+  if (claves.some((clave) => clave.regla_borrado === 'SET NULL')) return;
+
+  for (const { nombre } of claves) {
+    await conn.query(`ALTER TABLE notificaciones DROP FOREIGN KEY \`${nombre}\``);
+    console.log(`Migración: FK ${nombre} de notificaciones.solicitud_id reemplazada`);
+  }
+  await conn.query(
+    `ALTER TABLE notificaciones
+       ADD CONSTRAINT fk_notificaciones_solicitud
+       FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id) ON DELETE SET NULL`
+  );
+  console.log('Migración: FK notificaciones.solicitud_id creada con ON DELETE SET NULL');
+}
 
 // Las bases creadas antes solo aceptaban 'cliente' y 'proveedor' en usuarios.rol
 // (CHECK con nombre automático). Se reemplaza por chk_usuarios_rol, que incluye 'admin'.
@@ -109,6 +141,7 @@ async function migrate() {
       }
     }
 
+    await asegurarFkNotificacionesSolicitud(conn);
     await asegurarRolAdmin(conn);
 
     // Historial de estados: las solicitudes anteriores a esta tabla reciben su fila de creación (con la fecha en que

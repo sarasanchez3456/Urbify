@@ -1822,6 +1822,8 @@ components:
       properties:
         id: { type: integer }
         usuario_id: { type: integer }
+        tipo: { type: string, description: 'Structured notification type; `mensaje` identifies a chat notification', example: mensaje }
+        solicitud_id: { type: integer, nullable: true, description: 'Related request; null for unrelated notifications or preserved history after deleting a request' }
         mensaje: { type: string }
         leida: { type: integer, enum: [0, 1] }
         fecha_creacion: { $ref: '#/components/schemas/Fecha' }
