@@ -577,3 +577,11 @@
     transition: none;
   }
 }
+
+.sp-reputacion {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--pl-soft);
+}

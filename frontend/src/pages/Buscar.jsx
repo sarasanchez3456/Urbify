@@ -356,6 +356,7 @@ export default function Buscar() {
   return (
     <div style={{ paddingTop: '2rem', paddingBottom: '4rem' }}>
       <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 1.5rem' }}>
+        <h1 className="bs-solo-lectores">Buscar servicios</h1>
         <BuscarContent />
       </div>
     </div>

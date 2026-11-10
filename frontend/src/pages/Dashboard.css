@@ -21,7 +21,7 @@
   color: var(--in-soft);
 }
 
-.in-cabecera h1 {
+.in-cabecera h2 {
   margin: 0;
   font-family: 'Playfair Display', serif;
   font-size: clamp(1.7rem, 3vw, 2.3rem);

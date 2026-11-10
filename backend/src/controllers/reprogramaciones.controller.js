@@ -8,9 +8,9 @@ const ESTADOS_QUE_SE_PUEDEN_REPROGRAMAR = ['pendiente', 'aceptada'];
 const fechaTexto = (valor) =>
   new Date(valor).toLocaleString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'medium', timeStyle: 'short' });
 
-const notificar = async (usuarioId, mensaje) => {
+const notificar = async (usuarioId, mensaje, solicitudId) => {
   try {
-    await query('INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)', [usuarioId, mensaje]);
+    await query("INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)", [solicitudId, usuarioId, mensaje]);
   } catch (err) {
     console.error('Error al guardar notificación de reprogramación:', err.message);
   }
@@ -100,7 +100,8 @@ exports.crearReprogramacion = async (req, res, next) => {
 
     await notificar(
       solicitud.proveedor_id,
-      `${solicitud.cli_nombre} quiere cambiar la cita de "${solicitud.servicio_titulo}" al ${fechaTexto(propuestaMs)}. Acéptalo o recházalo en Mis Solicitudes.`
+      `${solicitud.cli_nombre} quiere cambiar la cita de "${solicitud.servicio_titulo}" al ${fechaTexto(propuestaMs)}. Acéptalo o recházalo en Mis Solicitudes.`,
+      solicitud.id
     );
     res.status(201).json({ mensaje: 'Pedido de cambio de fecha enviado', reprogramacion: { id: resultado.id } });
   } catch (err) {
@@ -154,11 +155,11 @@ exports.responderReprogramacion = async (req, res, next) => {
 
     const fecha = fechaTexto(resultado.reprog.fecha_propuesta);
     if (accion === 'aceptar') {
-      await notificar(solicitud.cliente_id, `${solicitud.prov_nombre} aceptó cambiar tu cita de "${solicitud.servicio_titulo}" al ${fecha}.`);
+      await notificar(solicitud.cliente_id, `${solicitud.prov_nombre} aceptó cambiar tu cita de "${solicitud.servicio_titulo}" al ${fecha}.`, solicitud.id);
     } else if (accion === 'rechazar') {
-      await notificar(solicitud.cliente_id, `${solicitud.prov_nombre} no puede el ${fecha} para "${solicitud.servicio_titulo}". Tu cita sigue en la fecha anterior; puedes proponer otra hora.`);
+      await notificar(solicitud.cliente_id, `${solicitud.prov_nombre} no puede el ${fecha} para "${solicitud.servicio_titulo}". Tu cita sigue en la fecha anterior; puedes proponer otra hora.`, solicitud.id);
     } else {
-      await notificar(solicitud.proveedor_id, `${solicitud.cli_nombre} canceló su pedido de cambiar la cita de "${solicitud.servicio_titulo}".`);
+      await notificar(solicitud.proveedor_id, `${solicitud.cli_nombre} canceló su pedido de cambiar la cita de "${solicitud.servicio_titulo}".`, solicitud.id);
     }
     res.json({ mensaje: 'Listo', estado: nuevoEstado });
   } catch (err) {

@@ -89,8 +89,8 @@ exports.crearSolicitud = async (req, res, next) => {
     // Crear notificación para el proveedor
     try {
       await query(
-        'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
-        [
+        "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)",
+        [solicitudId, 
           proveedor_id,
           `Nueva solicitud de ${cliente[0].nombre} ${cliente[0].apellido} para el servicio "${servicio[0].titulo}"`
         ]
@@ -98,8 +98,8 @@ exports.crearSolicitud = async (req, res, next) => {
 
       // Crear notificación de confirmación para el cliente
       await query(
-        'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
-        [
+        "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)",
+        [solicitudId, 
           req.usuarioId,
           `Enviaste una solicitud a ${proveedor[0].nombre} ${proveedor[0].apellido} para el servicio "${servicio[0].titulo}"`
         ]
@@ -194,6 +194,9 @@ exports.misSolicitudesComoProveedor = async (req, res, next) => {
       `SELECT sol.*, s.titulo AS servicio_titulo, COALESCE(sol.tarifa_acordada, s.tarifa) AS tarifa,
        u.nombre AS cliente_nombre, u.apellido AS cliente_apellido, u.foto_url AS cliente_foto,
        u.direccion AS cliente_direccion, u.telefono AS cliente_telefono,
+       (SELECT cc.puntuacion FROM calificaciones_cliente cc WHERE cc.solicitud_id = sol.id) AS cliente_calificado,
+       (SELECT AVG(cc.puntuacion) FROM calificaciones_cliente cc WHERE cc.cliente_id = sol.cliente_id) AS cliente_promedio,
+       (SELECT COUNT(*) FROM calificaciones_cliente cc WHERE cc.cliente_id = sol.cliente_id) AS cliente_total_calificaciones,
        (SELECT r.id FROM reprogramaciones r WHERE r.solicitud_id = sol.id AND r.estado = 'pendiente' LIMIT 1) AS reprogramacion_id,
        (SELECT r.fecha_propuesta FROM reprogramaciones r WHERE r.solicitud_id = sol.id AND r.estado = 'pendiente' LIMIT 1) AS reprogramacion_fecha
        FROM solicitudes sol
@@ -288,8 +291,8 @@ exports.actualizarEstadoSolicitud = async (req, res, next) => {
     try {
       if (estado === 'aceptada') {
         await query(
-          'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
-          [
+          "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)",
+          [solicitudActual.id, 
             solicitudActual.cliente_id,
             `El proveedor ${solicitudActual.prov_nombre} ${solicitudActual.prov_apellido} aceptó tu solicitud para "${solicitudActual.servicio_titulo}"`
           ]
@@ -314,16 +317,16 @@ exports.actualizarEstadoSolicitud = async (req, res, next) => {
         }
       } else if (estado === 'en_proceso') {
         await query(
-          'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
-          [
+          "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)",
+          [solicitudActual.id, 
             solicitudActual.cliente_id,
             `El proveedor ${solicitudActual.prov_nombre} inició el trabajo para "${solicitudActual.servicio_titulo}"`
           ]
         );
       } else if (estado === 'completada') {
         await query(
-          'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
-          [
+          "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)",
+          [solicitudActual.id, 
             solicitudActual.cliente_id,
             `El servicio "${solicitudActual.servicio_titulo}" fue completado por ${solicitudActual.prov_nombre}. ¡Ya puedes calificar su trabajo!`
           ]
@@ -331,16 +334,16 @@ exports.actualizarEstadoSolicitud = async (req, res, next) => {
       } else if (estado === 'cancelada') {
         if (esProveedor) {
           await query(
-            'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
-            [
+            "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)",
+            [solicitudActual.id, 
               solicitudActual.cliente_id,
               `El proveedor ${solicitudActual.prov_nombre} canceló la solicitud para "${solicitudActual.servicio_titulo}"`
             ]
           );
         } else {
           await query(
-            'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
-            [
+            "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)",
+            [solicitudActual.id, 
               solicitudActual.proveedor_id,
               `El cliente ${solicitudActual.cli_nombre} canceló su solicitud para "${solicitudActual.servicio_titulo}"`
             ]

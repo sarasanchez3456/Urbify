@@ -288,3 +288,20 @@
     transition: none;
   }
 }
+
+.ag-nota-chica { margin: 0; font-size: 0.86rem; line-height: 1.5; color: var(--ag-soft); }
+.ag-tarjeta h3 { margin: 0; font-family: 'Playfair Display', serif; font-size: 1.1rem; }
+.ag-tarjeta:has(.sh) { display: grid; gap: 12px; }
+
+.ag-visitas { display: grid; gap: 16px; }
+.ag-visitas h4 { margin: 0 0 6px; font-size: 0.86rem; font-weight: 700; color: var(--ag-soft); }
+.ag-visitas h4::first-letter { text-transform: uppercase; }
+.ag-visitas ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ag-visitas li { display: grid; grid-template-columns: 78px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; border: 1px solid var(--ag-line); border-radius: 12px; }
+.ag-hora { font-weight: 700; color: var(--ag-primary); font-variant-numeric: tabular-nums; font-size: 0.9rem; }
+.ag-visitas b { display: block; font-size: 0.92rem; }
+.ag-visitas small { display: block; font-size: 0.8rem; color: var(--ag-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ag-estado { font-style: normal; font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 99px; white-space: nowrap; }
+.ag-estado--pendiente { background: oklch(0.95 0.07 90); color: oklch(0.38 0.09 70); }
+.ag-estado--aceptada { background: oklch(0.93 0.04 250); color: oklch(0.35 0.15 255); }
+.ag-estado--en_proceso { background: oklch(0.93 0.04 300); color: oklch(0.38 0.14 300); }

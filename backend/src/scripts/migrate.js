@@ -155,6 +155,25 @@ async function migrate() {
     );
     if (relleno.affectedRows > 0) console.log(`Migración: historial de ${relleno.affectedRows} solicitudes inicializado`);
 
+    // Avisos de mensajes anteriores al enlace con la solicitud: el texto trae el título del servicio
+    // ('... te envió un mensaje sobre "Título": "..."'). Solo se enlazan los que coinciden con UNA sola solicitud del
+    // destinatario; los ambiguos se dejan como estaban (abren Mis Solicitudes). Idempotente: solo toca tipo 'general'.
+    const [enlazados] = await conn.query(
+      `UPDATE notificaciones n
+         JOIN (
+           SELECT n2.id AS nid, MIN(sol.id) AS sid, COUNT(*) AS c
+             FROM notificaciones n2
+             JOIN solicitudes sol ON (sol.cliente_id = n2.usuario_id OR sol.proveedor_id = n2.usuario_id)
+             JOIN servicios sv ON sv.id = sol.servicio_id
+            WHERE n2.tipo = 'general' AND n2.solicitud_id IS NULL
+              AND n2.mensaje LIKE '%te envió un mensaje sobre "%'
+              AND sv.titulo = SUBSTRING_INDEX(SUBSTRING(n2.mensaje, LOCATE('sobre "', n2.mensaje) + 7), '": "', 1)
+            GROUP BY n2.id
+         ) x ON x.nid = n.id AND x.c = 1
+          SET n.tipo = 'mensaje', n.solicitud_id = x.sid`
+    );
+    if (enlazados.affectedRows > 0) console.log(`Migración: ${enlazados.affectedRows} avisos de mensajes enlazados a su solicitud`);
+
     console.log('Migración completada exitosamente');
   } catch (err) {
     // Sin stack ni "unhandled rejection": mensaje claro y código de salida 1 (también si la BD está caída).

@@ -4,6 +4,7 @@ import api from '../api/axios';
 import PanelLateral from './PanelLateral';
 import ReprogramarPanel from './ReprogramarPanel';
 import ReportarPanel from './ReportarPanel';
+import CalificarClientePanel from './CalificarClientePanel';
 import {
   ETIQUETAS_ESTADO, ETIQUETA_MOTIVO, PASOS, TIPO_TARIFA_LARGO, estadoDelPaso, estaSinCalificar, formatearDinero, fechaServicioLarga,
   fechaRelativa, fechaHoraCorta, iniciales, horaMensaje, etiquetaDia, claveDia,
@@ -64,7 +65,10 @@ function ChatSolicitud({ solicitud, rol, onVolver, onCerrar }) {
   useEffect(() => {
     cargar(false);
     const t = setInterval(() => cargar(true), INTERVALO_CHAT_MS);
-    return () => clearInterval(t);
+    // Con el chat abierto, un aviso en vivo trae el mensaje al instante sin esperar la consulta periódica.
+    const alAviso = () => cargar(true, true);
+    window.addEventListener('notificacion_nueva', alAviso);
+    return () => { clearInterval(t); window.removeEventListener('notificacion_nueva', alAviso); };
   }, [cargar]);
 
   // Al abrir y cuando llega un mensaje nuevo, se baja hasta el último.
@@ -155,7 +159,7 @@ function ChatSolicitud({ solicitud, rol, onVolver, onCerrar }) {
 
 // ── Detalle de la solicitud ──────────────────────────────────────────────────
 // Panel lateral con el seguimiento, los datos de la visita, el chat y las acciones de cada rol.
-export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEstado, onCalificar, onResponderCambio, onCambioPedido, onReporteEnviado, vistaInicial = 'detalle' }) {
+export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEstado, onCalificar, onResponderCambio, onCambioPedido, onReporteEnviado, onClienteCalificado, vistaInicial = 'detalle' }) {
   const [vista, setVista] = useState(vistaInicial); // 'detalle' | 'chat' | 'reprogramar' | 'reportar'
   const [confirmando, setConfirmando] = useState(false);
   const [procesando, setProcesando] = useState(false);
@@ -224,6 +228,13 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
     >
       {vista === 'chat' ? (
         <ChatSolicitud solicitud={solicitud} rol={rol} onVolver={() => setVista('detalle')} onCerrar={onCerrar} />
+      ) : vista === 'calificarCliente' ? (
+        <CalificarClientePanel
+          solicitud={solicitud}
+          onVolver={() => setVista('detalle')}
+          onCerrar={onCerrar}
+          onEnviada={(yaExistia) => { setVista('detalle'); onClienteCalificado(Boolean(yaExistia)); }}
+        />
       ) : vista === 'reportar' ? (
         <ReportarPanel
           solicitud={solicitud}
@@ -306,6 +317,11 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
               {mostrarTelefono && (
                 <a className="sp-telefono" href={`tel:${contraparte.telefono.replace(/\s+/g, '')}`}>{contraparte.telefono}</a>
               )}
+              {!esCliente && Number(solicitud.cliente_total_calificaciones) > 0 && (
+                <span className="sp-reputacion">
+                  ★ {Number(solicitud.cliente_promedio).toFixed(1).replace('.', ',')} como cliente ({solicitud.cliente_total_calificaciones})
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -358,6 +374,9 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
           <>
             {sinCalificar && (
               <button type="button" className="pl-boton pl-boton--principal" onClick={() => onCalificar(solicitud)}>Calificar</button>
+            )}
+            {!esCliente && solicitud.estado === 'completada' && (solicitud.cliente_calificado === null || solicitud.cliente_calificado === undefined) && (
+              <button type="button" className="pl-boton pl-boton--principal" onClick={() => setVista('calificarCliente')}>Calificar al cliente</button>
             )}
 
             {!esCliente && solicitud.estado === 'pendiente' && (

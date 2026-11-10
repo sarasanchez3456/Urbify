@@ -13,6 +13,8 @@ import Perfil from './pages/Perfil';
 import MisServicios from './pages/MisServicios';
 import MisSolicitudes from './pages/MisSolicitudes';
 import MiAgenda from './pages/MiAgenda';
+import NoEncontrada from './pages/NoEncontrada';
+import Ingresos from './pages/Ingresos';
 import Verificacion from './pages/Verificacion';
 import Dashboard from './pages/Dashboard';
 import AdminPanel from './pages/AdminPanel';
@@ -32,7 +34,7 @@ function RedirigirASolicitud() {
   return <Navigate to={`/servicio/${id}`} replace />;
 }
 
-const rutasDashboard = ['/dashboard', '/admin', '/perfil', '/mis-servicios', '/mis-solicitudes', '/mi-agenda', '/verificacion', '/solicitar', '/calificar', '/buscar', '/mapa', '/servicio'];
+const rutasDashboard = ['/dashboard', '/admin', '/perfil', '/mis-servicios', '/mis-solicitudes', '/mi-agenda', '/ingresos', '/verificacion', '/solicitar', '/calificar', '/buscar', '/mapa', '/servicio'];
 
 export default function App() {
   const navigate = useNavigate();
@@ -95,6 +97,14 @@ export default function App() {
             }
           />
           <Route
+            path="/ingresos"
+            element={
+              <RutaProtegida rol="proveedor">
+                <Ingresos />
+              </RutaProtegida>
+            }
+          />
+          <Route
             path="/verificacion"
             element={
               <RutaProtegida rol="proveedor">
@@ -120,6 +130,7 @@ export default function App() {
           />
           {/* Calificar ahora se hace desde el panel de Mis Solicitudes; los enlaces viejos llevan allí */}
           <Route path="/calificar/:id" element={<Navigate to="/mis-solicitudes" replace />} />
+          <Route path="*" element={<NoEncontrada />} />
         </Routes>
       </main>
     </div>

@@ -1,0 +1,40 @@
+/* Página no encontrada. Prefijo "nf-". */
+.nf {
+  min-height: 70vh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  padding: 96px 24px 48px;
+  text-align: center;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: oklch(0.25 0.06 240);
+}
+
+.nf-codigo {
+  margin: 0;
+  font: 700 clamp(4.5rem, 14vw, 8rem) / 1 'Playfair Display', serif;
+  background: linear-gradient(135deg, oklch(0.72 0.13 200), oklch(0.40 0.18 255));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.nf h1 { margin: 0; font: 700 1.6rem 'Playfair Display', serif; }
+.nf-texto { margin: 0; color: oklch(0.40 0.04 240); max-width: 38ch; line-height: 1.55; }
+
+.nf-acciones { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+
+.nf-btn {
+  padding: 12px 22px;
+  border-radius: 12px;
+  border: 1px solid oklch(0.40 0.18 255 / 0.14);
+  background: #fff;
+  color: oklch(0.40 0.18 255);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.nf-btn:hover { border-color: oklch(0.40 0.18 255); }
+.nf-btn:focus-visible { outline: 3px solid oklch(0.72 0.13 200); outline-offset: 2px; }
+.nf-btn--principal { background: oklch(0.40 0.18 255); border-color: oklch(0.40 0.18 255); color: #fff; }

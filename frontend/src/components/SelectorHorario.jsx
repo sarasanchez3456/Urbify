@@ -17,7 +17,7 @@ function etiquetaDiaAgenda(fecha) {
 // su horario y las que ya pasaron no se pueden elegir. `valor` es el inicio (ISO) elegido; `onElegir(inicio)` avisa
 // del cambio. Cambiar `recarga` (un número) vuelve a pedir la agenda, por ejemplo cuando el servidor dice que la
 // hora elegida ya fue tomada. `solicitudId` se usa al reprogramar: esa cita no cuenta como ocupada.
-export default function SelectorHorario({ proveedorId, solicitudId, valor, onElegir, recarga = 0 }) {
+export default function SelectorHorario({ proveedorId, solicitudId, valor, onElegir, recarga = 0, soloLectura = false }) {
   const [agenda, setAgenda] = useState(null); // null = cargando
   const [error, setError] = useState('');
   const [diaElegido, setDiaElegido] = useState('');
@@ -86,7 +86,7 @@ export default function SelectorHorario({ proveedorId, solicitudId, valor, onEle
                   <button
                     key={h.inicio}
                     type="button"
-                    disabled={!libre || h.actual}
+                    disabled={!libre || h.actual || soloLectura}
                     aria-pressed={seleccionada}
                     className={`sh-hora${seleccionada ? ' is-on' : ''}${h.actual ? ' is-actual' : ''}${!libre ? ' is-ocupada' : ''}`}
                     onClick={() => onElegir(h.inicio)}

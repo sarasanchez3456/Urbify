@@ -17,6 +17,7 @@ import {
   Home,
   CalendarDays,
   ShieldCheck,
+  Wallet,
 } from 'lucide-react';
 
 import NotificationBell from './NotificationBell';
@@ -38,6 +39,7 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
     { path: '/mis-solicitudes', label: usuario?.rol === 'proveedor' ? 'Notificaciones' : 'Mis Solicitudes', icon: ClipboardList, roles: ['cliente', 'proveedor'] },
     { path: '/mis-servicios', label: 'Mis Servicios', icon: Wrench, roles: ['proveedor'] },
     { path: '/mi-agenda', label: 'Mi agenda', icon: CalendarDays, roles: ['proveedor'] },
+    { path: '/ingresos', label: 'Billetera', icon: Wallet, roles: ['proveedor'] },
     { path: '/verificacion', label: 'Verificación', icon: ShieldCheck, roles: ['proveedor'] },
     { path: '/buscar', label: 'Buscar Servicios', icon: Search, roles: ['cliente'] },
   ].filter((item) => item.roles.includes(usuario?.rol));
@@ -97,6 +99,8 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
           <div className="flex items-center gap-4">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
+              aria-label={sidebarOpen ? 'Cerrar el menú' : 'Abrir el menú'}
+              aria-expanded={sidebarOpen}
               className="lg:hidden p-2 rounded-lg transition-colors"
               style={{ color: 'oklch(0.45 0.03 240)' }}
               onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)'; e.currentTarget.style.color = 'oklch(0.25 0.06 240)'; }}

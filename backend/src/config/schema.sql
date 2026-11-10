@@ -117,6 +117,21 @@ CREATE TABLE IF NOT EXISTS calificaciones (
   INDEX idx_calificaciones_proveedor (proveedor_id)
 );
 
+-- El profesional califica al cliente al terminar el servicio (una vez por solicitud). Solo lo ven los profesionales.
+CREATE TABLE IF NOT EXISTS calificaciones_cliente (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  solicitud_id     INT NOT NULL UNIQUE,
+  proveedor_id     INT NOT NULL,
+  cliente_id       INT NOT NULL,
+  puntuacion       TINYINT NOT NULL CHECK (puntuacion BETWEEN 1 AND 5),
+  comentario       VARCHAR(500) NULL,
+  fecha_creacion   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id) ON DELETE CASCADE,
+  FOREIGN KEY (proveedor_id) REFERENCES usuarios(id),
+  FOREIGN KEY (cliente_id)   REFERENCES usuarios(id),
+  INDEX idx_calificaciones_cliente (cliente_id)
+);
+
 -- Verificación de profesionales: el profesional sube sus documentos y un administrador los revisa.
 -- estado: borrador (aún subiendo documentos) -> pendiente (enviada a revisión) -> aprobada o rechazada.
 CREATE TABLE IF NOT EXISTS verificaciones (

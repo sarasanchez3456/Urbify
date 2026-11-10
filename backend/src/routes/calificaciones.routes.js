@@ -6,6 +6,7 @@ const { validarBody, idParams } = require('../middleware/validate');
 
 idParams(router, 'id', 'proveedor_id');
 
+router.post('/cliente', authenticate, authorize('proveedor'), require('../controllers/calificacionesCliente.controller').calificarCliente);
 router.post('/', authenticate, authorize('cliente'), validarBody('calificacionCrear'), calificacionesController.crearCalificacion);
 router.get('/proveedor/:proveedor_id', publicLimiter, calificacionesController.calificacionesProveedor);
 router.put('/:id', authenticate, authorize('cliente'), validarBody('calificacionEditar'), calificacionesController.actualizarCalificacion);

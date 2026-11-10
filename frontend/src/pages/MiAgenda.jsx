@@ -1,7 +1,12 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import api from '../api/axios';
 import DashboardLayout from '../components/DashboardLayout';
+import SelectorHorario from '../components/SelectorHorario';
+import { useAuth } from '../context/AuthContext';
 import { logError } from '../utils/log';
+import { ETIQUETAS_ESTADO, claveDia, horaMensaje } from '../utils/solicitudes';
+
+const etiquetaDiaLarga = (iso) => new Intl.DateTimeFormat('es-CO', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Bogota' }).format(new Date(iso));
 import './MiAgenda.css';
 
 // Lunes primero (el servidor usa 0 = domingo ... 6 = sábado).
@@ -38,6 +43,7 @@ function errorDeDia(lista) {
 }
 
 export default function MiAgenda() {
+  const { usuario } = useAuth();
   const [estado, setEstado] = useState('cargando'); // 'cargando' | 'listo' | 'error'
   const [porDia, setPorDia] = useState({});
   const [guardado, setGuardado] = useState('{}'); // lo último que tiene el servidor, para saber si hay cambios
@@ -73,7 +79,31 @@ export default function MiAgenda() {
   useEffect(() => { cargar(); }, [cargar]);
 
   const errores = useMemo(() => Object.fromEntries(DIAS.map((d) => [d.n, errorDeDia(porDia[d.n] || [])])), [porDia]);
-  const hayErrores = Object.values(errores).some(Boolean);
+  // Sin ningún día activo el servidor volvería al horario por defecto (8:00 a 6:00 todos los días): para eso existe
+  // "Borrar mi horario". Guardar una agenda vacía por accidente ofrecería horas que el profesional no quiere.
+  const sinDias = Object.keys(porDia).length === 0;
+  const hayErrores = Object.values(errores).some(Boolean) || sinDias;
+  const [vista, setVista] = useState(0); // sube al guardar para refrescar la vista previa
+  const [visitas, setVisitas] = useState(null); // [[día, [solicitudes]]] de las próximas visitas
+
+  useEffect(() => {
+    let cancelado = false;
+    api.get('/solicitudes/proveedor').then((res) => {
+      if (cancelado) return;
+      const ahora = Date.now() - 60 * 60 * 1000;
+      const activas = (Array.isArray(res.data) ? res.data : [])
+        .filter((s) => ['pendiente', 'aceptada', 'en_proceso'].includes(s.estado) && s.fecha_servicio && new Date(s.fecha_servicio).getTime() >= ahora)
+        .sort((a, b) => new Date(a.fecha_servicio) - new Date(b.fecha_servicio));
+      const grupos = new Map();
+      for (const s of activas) {
+        const k = claveDia(s.fecha_servicio);
+        if (!grupos.has(k)) grupos.set(k, []);
+        grupos.get(k).push(s);
+      }
+      setVisitas([...grupos.entries()]);
+    }).catch((err) => { logError(err); if (!cancelado) setVisitas([]); });
+    return () => { cancelado = true; };
+  }, []);
   const hayCambios = JSON.stringify(porDia) !== guardado;
 
   const cambiarDia = (dia, fn) => setPorDia((prev) => {
@@ -100,6 +130,7 @@ export default function MiAgenda() {
     try {
       const res = await api.put('/proveedores/mi-horario', { franjas });
       aplicar(res.data);
+      setVista((n) => n + 1);
       mostrarAviso(franjas.length > 0 ? 'Horario guardado' : 'Horario borrado: se ofrece el horario por defecto (8:00 a. m. a 6:00 p. m.)');
     } catch (err) {
       logError('Error al guardar el horario:', err);
@@ -185,11 +216,44 @@ export default function MiAgenda() {
                   {guardando ? 'Guardando...' : 'Guardar horario'}
                 </button>
                 {hayCambios && <button type="button" className="ag-btn" onClick={() => setPorDia(JSON.parse(guardado))} disabled={guardando}>Descartar cambios</button>}
+                {sinDias && hayCambios && <p className="ag-error" role="alert">Activa al menos un día. Para volver al horario por defecto usa "Borrar mi horario".</p>}
                 {configurado && !hayCambios && (
                   <button type="button" className="ag-btn ag-btn--peligro" onClick={() => guardar([])} disabled={guardando}>Borrar mi horario</button>
                 )}
               </div>
             </div>
+
+            <div className="ag-tarjeta">
+              <h3>Tus próximas visitas</h3>
+              {visitas === null ? <p className="ag-nota-chica">Cargando...</p> : visitas.length === 0 ? (
+                <p className="ag-nota-chica">No tienes visitas programadas.</p>
+              ) : (
+                <div className="ag-visitas">
+                  {visitas.map(([dia, lista]) => (
+                    <div key={dia}>
+                      <h4>{etiquetaDiaLarga(lista[0].fecha_servicio)}</h4>
+                      <ul>
+                        {lista.map((v) => (
+                          <li key={v.id}>
+                            <time className="ag-hora">{horaMensaje(v.fecha_servicio)}</time>
+                            <span><b>{v.servicio_titulo}</b><small>{`${v.cliente_nombre || ''} ${v.cliente_apellido || ''}`.trim()}{v.direccion ? ` · ${v.direccion}` : ''}</small></span>
+                            <em className={`ag-estado ag-estado--${v.estado}`}>{ETIQUETAS_ESTADO[v.estado]}</em>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {usuario?.id && (
+              <div className="ag-tarjeta">
+                <h3>Así lo ven tus clientes</h3>
+                <p className="ag-nota-chica">Estas son las horas que se ofrecen en los próximos 14 días. Las que no aparecen están fuera de tu horario; las tachadas ya tienen cita.</p>
+                <SelectorHorario proveedorId={usuario.id} valor="" onElegir={() => {}} recarga={vista} soloLectura />
+              </div>
+            )}
           </>
         )}
 

@@ -110,7 +110,7 @@ export default function Dashboard() {
       <div className="in">
         <header className="in-cabecera">
           <p>{fechaDeHoy()}</p>
-          <h1>{saludo()}{primerNombre ? `, ${primerNombre}` : ''}</h1>
+          <h2>{saludo()}{primerNombre ? `, ${primerNombre}` : ''}</h2>
         </header>
 
         {estado === 'cargando' && <div className="in-tarjeta in-vacio">Cargando...</div>}
@@ -259,6 +259,7 @@ export default function Dashboard() {
                 <div className="in-accesos">
                   <Link to="/mis-servicios" className="in-btn">Mis servicios</Link>
                   <Link to="/mi-agenda" className="in-btn">Mi agenda</Link>
+                  <Link to="/ingresos" className="in-btn">Billetera</Link>
                   <Link to="/perfil" className="in-btn">Mi perfil</Link>
                 </div>
               </section>

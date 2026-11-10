@@ -201,7 +201,7 @@ exports.cancelarSolicitud = async (req, res, next) => {
     await query('INSERT INTO solicitud_historial (solicitud_id, estado_anterior, estado_nuevo, usuario_id) VALUES (?, ?, ?, ?)', [id, sol.estado, 'cancelada', req.usuarioId]);
     await query("UPDATE reprogramaciones SET estado = 'cancelada', fecha_respuesta = NOW() WHERE solicitud_id = ? AND estado = 'pendiente'", [id]);
     for (const destino of [sol.cliente_id, sol.proveedor_id]) {
-      await query('INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)', [destino, `Un administrador canceló la solicitud de "${sol.titulo}". Motivo: ${motivo}`]).catch(() => {});
+      await query("INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)", [id, destino, `Un administrador canceló la solicitud de "${sol.titulo}". Motivo: ${motivo}`]).catch(() => {});
     }
     await registrarAuditoria(req.usuarioId, 'solicitud', 'Canceló la solicitud', `N.º ${id} · ${sol.titulo}`, motivo);
     res.json({ mensaje: 'Solicitud cancelada' });

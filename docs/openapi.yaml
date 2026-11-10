@@ -1138,6 +1138,38 @@ paths:
         '200': { $ref: '#/components/responses/Mensaje' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /notificaciones/stream:
+    get:
+      tags: [Notificaciones]
+      summary: Avisos en vivo (Server-Sent Events)
+      description: Conexión abierta que envía `event: notificacion` (con `{ id }`) apenas se crea una notificación para el usuario autenticado, más un latido cada 25 s. La web la usa en lugar de consultar cada pocos segundos (queda un respaldo cada 30 s). Va por `fetch` con cabecera `Authorization`, no por `EventSource`. Las conexiones viven en la memoria de la instancia del backend.
+      x-roles: [cliente, proveedor, admin]
+      responses:
+        '200': { description: 'Flujo text/event-stream' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /calificaciones/cliente:
+    post:
+      tags: [Calificaciones]
+      summary: El profesional califica al cliente de una solicitud completada
+      description: Solo el profesional de esa solicitud, una vez por solicitud (la segunda responde 409). El cliente no ve estas calificaciones; las ven los profesionales en sus solicitudes (`cliente_promedio`, `cliente_total_calificaciones`, `cliente_calificado`).
+      x-roles: [proveedor]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [solicitud_id, puntuacion]
+              properties:
+                solicitud_id: { type: integer }
+                puntuacion: { type: integer, minimum: 1, maximum: 5 }
+                comentario: { type: string, maxLength: 500 }
+      responses:
+        '201': { description: Calificación registrada }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /reportes:
     post:
       tags: [Solicitudes]

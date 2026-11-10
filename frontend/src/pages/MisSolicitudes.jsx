@@ -113,6 +113,7 @@ export default function MisSolicitudes() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const chatSolicitado = searchParams.get('chat');
+  const solicitudPedida = searchParams.get('solicitud');
   const [aviso, setAviso] = useState(null); // { texto, tipo: 'ok' | 'error' | 'info' }
   const temporizadorAviso = useRef(null);
 
@@ -142,19 +143,28 @@ export default function MisSolicitudes() {
 
   // Las notificaciones de chat llegan con ?chat=<id de la solicitud>: se abre el panel de esa solicitud directamente en el
   // chat, solo si es una solicitud propia y no está cancelada. Después se quita el parámetro para no reabrirlo por error.
+  // ?solicitud=<id> abre el detalle de esa solicitud (avisos de aceptada, completada, cambio de fecha...).
   useEffect(() => {
-    if (estado !== 'listo' || !chatSolicitado) return;
-    const id = Number(chatSolicitado);
+    if (estado !== 'listo' || (!chatSolicitado && !solicitudPedida)) return;
+    const id = Number(chatSolicitado || solicitudPedida);
     const sol = Number.isInteger(id) && id > 0 ? solicitudes.find((s) => s.id === id) : null;
-    if (sol && sol.estado !== 'cancelada') {
+    if (sol && (!chatSolicitado || sol.estado !== 'cancelada')) {
       setAbiertaId(sol.id);
-      setAbrirEnChat(true);
+      setAbrirEnChat(Boolean(chatSolicitado));
     }
-    const sinChat = new URLSearchParams(searchParams);
-    sinChat.delete('chat');
-    const resto = sinChat.toString();
+    const sinParametros = new URLSearchParams(searchParams);
+    sinParametros.delete('chat');
+    sinParametros.delete('solicitud');
+    const resto = sinParametros.toString();
     navigate({ pathname: '/mis-solicitudes', search: resto ? `?${resto}` : '' }, { replace: true });
-  }, [estado, chatSolicitado, solicitudes, searchParams, navigate]);
+  }, [estado, chatSolicitado, solicitudPedida, solicitudes, searchParams, navigate]);
+
+  // Un aviso en vivo puede traer una solicitud nueva o un cambio de estado: se vuelve a pedir la lista.
+  useEffect(() => {
+    const refrescar = () => cargar();
+    window.addEventListener('notificacion_nueva', refrescar);
+    return () => window.removeEventListener('notificacion_nueva', refrescar);
+  }, [cargar]);
 
   // Cambia el estado de una solicitud (el proveedor acepta, rechaza, inicia o completa; el cliente cancela
   // una pendiente). El servidor valida quién puede hacer cada cambio; si falla se muestra su mensaje.
@@ -324,6 +334,7 @@ export default function MisSolicitudes() {
           onCambiarEstado={cambiarEstado}
           onCalificar={(s) => abrirCalificar(s.id)}
           onResponderCambio={responderCambio}
+          onClienteCalificado={(yaExistia) => { mostrarAviso(yaExistia ? 'Ya habías calificado a este cliente.' : 'Gracias, tu calificación quedó registrada.', yaExistia ? 'info' : 'ok'); cargar(); }}
           onReporteEnviado={(yaExistia) => { mostrarAviso(yaExistia ? 'Esta solicitud ya estaba reportada.' : 'Reporte enviado. La administración lo revisará.', yaExistia ? 'info' : 'ok'); cargar(); }}
           onCambioPedido={() => { mostrarAviso('Pedido enviado. Esperando la respuesta del profesional.'); cargar(); }}
         />
