@@ -1,0 +1,113 @@
+/* Barra superior pública. Prefijo "nb-". */
+.nb {
+  --nb-p: oklch(0.40 0.18 255);
+  --nb-ink: oklch(0.25 0.06 240);
+  --nb-soft: oklch(0.40 0.04 240);
+  --nb-line: oklch(0.40 0.18 255 / 0.12);
+
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  height: 72px;
+  padding: 0 clamp(20px, 4vw, 52px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: oklch(0.995 0.004 80 / 0.94);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--nb-line);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.nb-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+
+.nb-logo span:first-child { color: oklch(0.20 0.08 240); }
+.nb-logo span:last-child { color: var(--nb-p); }
+
+.nb-links {
+  display: flex;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nb-links a,
+.nb-links button {
+  display: inline-block;
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 99px;
+  background: none;
+  font: 600 0.92rem 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+  text-decoration: none;
+  color: var(--nb-soft);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.nb-links a:hover,
+.nb-links button:hover {
+  background: oklch(0.40 0.18 255 / 0.07);
+  color: var(--nb-p);
+}
+
+.nb-ctas {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nb-btn {
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--nb-line);
+  background: #fff;
+  color: var(--nb-p);
+  font: 700 0.9rem 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.nb-btn:hover { border-color: var(--nb-p); }
+
+.nb-btn--principal {
+  background: var(--nb-p);
+  border-color: var(--nb-p);
+  color: #fff;
+}
+
+.nb-btn--principal:hover { background: oklch(0.55 0.16 240); border-color: oklch(0.55 0.16 240); }
+
+.nb-links a:focus-visible,
+.nb-links button:focus-visible,
+.nb-btn:focus-visible,
+.nb-logo:focus-visible { outline: 3px solid oklch(0.72 0.13 200); outline-offset: 2px; }
+
+/* En las pantallas de acceso (fondo oscuro) los enlaces van en claro */
+.nb--oscuro { background: transparent; border-bottom-color: transparent; backdrop-filter: none; }
+.nb--oscuro .nb-logo span:first-child { color: rgba(255, 255, 255, 0.9); }
+.nb--oscuro .nb-logo span:last-child { color: oklch(0.72 0.13 200); }
+.nb--oscuro .nb-links a,
+.nb--oscuro .nb-links button { color: rgba(255, 255, 255, 0.7); }
+.nb--oscuro .nb-links a:hover,
+.nb--oscuro .nb-links button:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+
+@media (max-width: 560px) {
+  .nb-links { display: none; }
+}

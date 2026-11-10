@@ -1,0 +1,148 @@
+/* Menú lateral y encabezado del panel. Prefijo "dl-". */
+.dl-aside {
+  --dl-p: oklch(0.40 0.18 255);
+  --dl-teal: oklch(0.72 0.13 200);
+  --dl-ink: oklch(0.25 0.06 240);
+  --dl-soft: oklch(0.40 0.04 240);
+  --dl-line: oklch(0.40 0.18 255 / 0.12);
+
+  background: oklch(0.995 0.004 80);
+  border-right: 1px solid var(--dl-line);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.dl-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 26px 22px 22px;
+  text-decoration: none;
+}
+
+.dl-logo-marca {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--dl-teal), var(--dl-p));
+  color: #fff;
+  font: 700 1.15rem 'Playfair Display', serif;
+}
+
+.dl-logo-texto {
+  font: 700 1.35rem 'Playfair Display', serif;
+  letter-spacing: -0.01em;
+  color: var(--dl-p);
+}
+
+.dl-nav {
+  flex: 1;
+  padding: 6px 12px;
+  overflow-y: auto;
+}
+
+.dl-nav-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 2px 0;
+  padding: 11px 14px;
+  border-radius: 12px;
+  color: var(--dl-soft);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+}
+
+.dl-nav-link:hover { background: oklch(0.40 0.18 255 / 0.06); color: var(--dl-ink); }
+
+.dl-nav-link.is-on {
+  background: oklch(0.40 0.18 255 / 0.09);
+  color: var(--dl-p);
+}
+
+.dl-nav-link.is-on::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 10px;
+  bottom: 10px;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--dl-p);
+}
+
+.dl-nav-link:focus-visible,
+.dl-nuevo:focus-visible,
+.dl-perfil:focus-visible,
+.dl-logo:focus-visible { outline: 3px solid var(--dl-teal); outline-offset: 2px; }
+
+.dl-pie {
+  padding: 16px 16px 24px;
+  border-top: 1px solid var(--dl-line);
+}
+
+.dl-nuevo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px;
+  border-radius: 12px;
+  background: var(--dl-p);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.dl-nuevo:hover { background: oklch(0.55 0.16 240); }
+
+/* Encabezado */
+.dl-header {
+  background: oklch(0.995 0.004 80 / 0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid oklch(0.40 0.18 255 / 0.12);
+}
+
+.dl-titulo {
+  margin: 0;
+  font: 700 1.25rem 'Playfair Display', serif;
+  color: oklch(0.25 0.06 240);
+}
+
+.dl-subtitulo {
+  margin: 2px 0 0;
+  font: 400 0.78rem 'Plus Jakarta Sans', sans-serif;
+  color: oklch(0.40 0.04 240);
+}
+
+.dl-perfil {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  border: 0;
+  border-radius: 99px;
+  background: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.dl-perfil:hover { background: oklch(0.40 0.18 255 / 0.06); }
+
+.dl-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, oklch(0.72 0.13 200), oklch(0.40 0.18 255));
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+}

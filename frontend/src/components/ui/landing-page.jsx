@@ -23,6 +23,7 @@ export function ScrollGlobe({ sections, globeConfig = defaultGlobeConfig, classN
   const [activeSection, setActiveSection] = useState(0);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [globeTransform, setGlobeTransform] = useState("");
+  const [globeVisible, setGlobeVisible] = useState(true);
   const containerRef = useRef(null);
   const sectionRefs = useRef([]);
   const animationFrameId = useRef(null);
@@ -42,6 +43,12 @@ export function ScrollGlobe({ sections, globeConfig = defaultGlobeConfig, classN
     const docHeight = document.documentElement.scrollHeight - window.innerHeight;
     const progress = Math.min(Math.max(scrollTop / docHeight, 0), 1);
     setScrollProgress(progress);
+
+    // El globo acompaña solo a las secciones animadas: al llegar a las secciones de abajo se desvanece para no
+    // quedar encima de las tarjetas y categorías.
+    if (containerRef.current) {
+      setGlobeVisible(containerRef.current.getBoundingClientRect().bottom > window.innerHeight * 0.55);
+    }
 
     const viewportCenter = window.innerHeight / 2;
     var newActiveSection = 0;
@@ -160,8 +167,8 @@ export function ScrollGlobe({ sections, globeConfig = defaultGlobeConfig, classN
         className="fixed z-10 pointer-events-none will-change-transform"
         style={{
           transform: globeTransform,
-          transition: "all 1400ms cubic-bezier(0.23,1,0.32,1)",
-          opacity: 0.45,
+          transition: "transform 1400ms cubic-bezier(0.23,1,0.32,1), opacity 500ms ease",
+          opacity: globeVisible ? 0.45 : 0,
           filter: "drop-shadow(0 0 50px oklch(0.40 0.18 255 / 0.15))",
         }}
       >

@@ -75,8 +75,8 @@ export default function Home() {
       description: "La plataforma que conecta a profesionales verificados con clientes que necesitan servicios para el hogar. Electricistas, plomeros, mecánicos y más, cerca de ti.",
       align: "left",
       actions: [
-        { label: "Buscar Servicios", variant: "primary", onClick: () => navigate(usuario ? '/buscar' : '/login') },
-        { label: "Ver Mapa en Vivo", variant: "secondary", onClick: () => navigate(usuario ? '/mapa' : '/login') },
+        { label: "Buscar Servicios", variant: "primary", onClick: () => navigate('/buscar') },
+        { label: "Ver profesionales cerca", variant: "secondary", onClick: () => navigate('/buscar') },
       ]
     },
     {
@@ -151,7 +151,7 @@ export default function Home() {
           <div className="uy-cats">
             {CATS.map((c) => (
               <button key={c.name} className="uy-cat"
-                onClick={() => navigate(`/buscar?cat=${c.name}`)} aria-label={c.name}>
+                onClick={() => navigate(`/buscar?q=${encodeURIComponent(c.name)}`)} aria-label={c.name}>
                 <span className="uy-cat-ic">{ICONS[c.icon]}</span>
                 <span className="uy-cat-name">{c.name}</span>
               </button>
@@ -192,6 +192,8 @@ export default function Home() {
                 'Carpintería': '/images/bg_carpinteria_1780487001930.png',
                 'Pintura': '/images/bg_pintura_1780487014409.png',
                 'Jardinería': '/images/bg_jardineria_1780487034986.png',
+                'Cerrajería': '/images/bg_cerrajeria.svg',
+                'Limpieza': '/images/bg_limpieza.svg',
               };
               const catImage = bgImageMap[svc.categoria_nombre] || null;
               return (
@@ -201,7 +203,7 @@ export default function Home() {
                     <div className={'fc-back ' + p.back}>
                       <div
                         className="fc-back-content fc-svc-body"
-                        style={catImage ? { backgroundImage: `linear-gradient(to bottom, oklch(0.18 0.04 240 / 0.3), oklch(0.18 0.04 240 / 0.9)), url(${catImage})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: 'transparent' } : undefined}
+                        style={catImage ? { backgroundImage: `linear-gradient(to bottom, oklch(0.18 0.04 240 / 0.12) 25%, oklch(0.18 0.04 240 / 0.88)), url(${catImage})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: 'transparent' } : undefined}
                       >
                         <div className="fc-svc-info">
                           <h4 className="fc-svc-title">{svc.titulo}</h4>
@@ -249,8 +251,8 @@ export default function Home() {
               <div className="sec-tag">Cobertura en Vivo</div>
               <h3>Profesionales cerca<br />de ti, ahora mismo.</h3>
               <p>Visualiza en el mapa interactivo dónde están los proveedores disponibles en tu zona. Filtra por categoría, calificación y disponibilidad.</p>
-              <Link to={usuario ? "/mapa" : "/login"}>
-                <button className="hbtn-primary">Abrir Mapa →</button>
+              <Link to="/buscar">
+                <button className="hbtn-primary">Buscar cerca de mí →</button>
               </Link>
             </div>
             {/* Mapa ilustrativo: puntos animados con etiquetas y líneas punteadas SVG */}

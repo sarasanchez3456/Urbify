@@ -8,14 +8,12 @@ import { setOnUnauthorized } from './api/axios';
 import Home from './pages/Home';
 import Auth from './pages/Auth';
 import Buscar from './pages/Buscar';
-import Mapa from './pages/Mapa';
 import ServicioDetalle from './pages/ServicioDetalle';
 import Perfil from './pages/Perfil';
 import MisServicios from './pages/MisServicios';
 import MisSolicitudes from './pages/MisSolicitudes';
 import MiAgenda from './pages/MiAgenda';
 import Verificacion from './pages/Verificacion';
-import Calificar from './pages/Calificar';
 import Dashboard from './pages/Dashboard';
 import AdminPanel from './pages/AdminPanel';
 
@@ -59,7 +57,8 @@ export default function App() {
           <Route path="/login" element={<Auth />} />
           <Route path="/registro" element={<Auth />} />
           <Route path="/buscar" element={<Buscar />} />
-          <Route path="/mapa" element={<Mapa />} />
+          {/* El mapa ahora vive dentro de Buscar */}
+          <Route path="/mapa" element={<Navigate to="/buscar" replace />} />
           <Route path="/servicio/:id" element={<ServicioDetalle />} />
           {/* Solicitar y ver el servicio son un solo flujo: el formulario vive en la página del servicio */}
           <Route path="/solicitar/:id" element={<RedirigirASolicitud />} />
@@ -119,14 +118,8 @@ export default function App() {
               </RutaProtegida>
             }
           />
-          <Route
-            path="/calificar/:id"
-            element={
-              <RutaProtegida rol="cliente">
-                <Calificar />
-              </RutaProtegida>
-            }
-          />
+          {/* Calificar ahora se hace desde el panel de Mis Solicitudes; los enlaces viejos llevan allí */}
+          <Route path="/calificar/:id" element={<Navigate to="/mis-solicitudes" replace />} />
         </Routes>
       </main>
     </div>
