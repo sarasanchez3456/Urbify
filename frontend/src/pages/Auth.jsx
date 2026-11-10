@@ -129,14 +129,14 @@ export default function Auth() {
               <p className="auth-panel-desc">
                 {isRegister
                   ? 'Miles de profesionales y clientes ya confían en Urbify para conectar servicios urbanos.'
-                  : 'Tu hogar merece lo mejor. Accede y encuentra profesionales verificados cerca de ti.'}
+                  : 'Tu hogar merece lo mejor. Accede y encuentra profesionales calificados cerca de ti.'}
               </p>
               <div className="auth-features">
                 <div className="auth-feature">
                   <div className="auth-feature-icon"><Shield size={18} /></div>
                   <div>
-                    <span className="auth-feature-title">Profesionales verificados</span>
-                    <span className="auth-feature-desc">Identidad y experiencia comprobada</span>
+                    <span className="auth-feature-title">Profesionales calificados</span>
+                    <span className="auth-feature-desc">Calificaciones reales de otros clientes</span>
                   </div>
                 </div>
                 <div className="auth-feature">
