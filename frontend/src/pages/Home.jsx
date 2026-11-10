@@ -192,8 +192,8 @@ export default function Home() {
                 'Carpintería': '/images/bg_carpinteria_1780487001930.png',
                 'Pintura': '/images/bg_pintura_1780487014409.png',
                 'Jardinería': '/images/bg_jardineria_1780487034986.png',
-                'Cerrajería': '/images/bg_cerrajeria.svg',
-                'Limpieza': '/images/bg_limpieza.svg',
+                'Cerrajería': '/images/bg_cerrajeria.jpg',
+                'Limpieza': '/images/bg_limpieza.jpg',
               };
               const catImage = bgImageMap[svc.categoria_nombre] || null;
               return (
