@@ -1222,120 +1222,13 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
-  /verificaciones/mia:
-    get:
-      tags: [Proveedores]
-      summary: Estado de mi verificación
-      x-roles: [proveedor]
-      responses:
-        '200': { description: 'verificado, estado (null, borrador, pendiente, aprobada o rechazada), motivo_rechazo y los documentos ya subidos (sin su contenido)' }
-    post:
-      tags: [Proveedores]
-      summary: Empezar una solicitud de verificación (borrador)
-      description: Si ya hay una en curso devuelve esa. Responde 409 si la cuenta ya está verificada.
-      x-roles: [proveedor]
-      responses:
-        '201': { description: Estado actual }
-        '409': { $ref: '#/components/responses/Conflict' }
-  /verificaciones/mia/documentos/{tipo}:
-    put:
-      tags: [Proveedores]
-      summary: Subir o reemplazar un documento (cedula, certificado o foto)
-      description: El cuerpo es el archivo tal cual, con `Content-Type` image/jpeg, image/png o application/pdf (la foto no admite PDF). Máximo 4 MB. El tipo real se comprueba por el contenido del archivo. Solo mientras la solicitud está en borrador.
-      x-roles: [proveedor]
-      parameters:
-        - { name: tipo, in: path, required: true, schema: { type: string, enum: [cedula, certificado, foto] } }
-      requestBody:
-        required: true
-        content:
-          image/jpeg: { schema: { type: string, format: binary } }
-          image/png: { schema: { type: string, format: binary } }
-          application/pdf: { schema: { type: string, format: binary } }
-      responses:
-        '200': { description: Estado actual }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '413': { description: El archivo pesa más de 4 MB }
-  /verificaciones/mia/enviar:
-    post:
-      tags: [Proveedores]
-      summary: Enviar la verificación a revisión
-      description: Exige los tres documentos (400 con la lista de los que faltan).
-      x-roles: [proveedor]
-      responses:
-        '200': { description: Estado actual (pendiente) }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '409': { $ref: '#/components/responses/Conflict' }
-  /admin/usuarios/{id}/verificacion:
-    parameters:
-      - $ref: '#/components/parameters/Id'
-    delete:
-      tags: [Administración]
-      summary: Quitar la verificación a un profesional
-      description: Exige `motivo` (10 a 300 caracteres) en el cuerpo. Su última verificación pasa a rechazada con ese motivo y puede volver a pedirla. Se notifica y queda en la auditoría.
-      x-roles: [admin]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [motivo]
-              properties:
-                motivo: { type: string, minLength: 10, maxLength: 300 }
-      responses:
-        '200': { $ref: '#/components/responses/Mensaje' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-  /admin/verificaciones:
-    get:
-      tags: [Administración]
-      summary: Verificaciones enviadas y respondidas (sin borradores)
-      x-roles: [admin]
-      responses:
-        '200': { description: Pendientes primero, con la lista de sus documentos }
-  /admin/verificaciones/documentos/{id}:
-    parameters:
-      - $ref: '#/components/parameters/Id'
-    get:
-      tags: [Administración]
-      summary: Ver un documento de verificación
-      description: Solo administradores. Se entrega sin caché (`no-store`), con `nosniff` y una política que impide ejecutar contenido.
-      x-roles: [admin]
-      responses:
-        '200': { description: El archivo (JPG, PNG o PDF) }
-        '404': { $ref: '#/components/responses/NotFound' }
-  /admin/verificaciones/{id}:
-    parameters:
-      - $ref: '#/components/parameters/Id'
-    put:
-      tags: [Administración]
-      summary: Aprobar o rechazar una verificación pendiente
-      description: Rechazar exige `motivo` (10 a 300 caracteres) que ve el profesional. Aprobar marca `verificado` en el perfil público. Se notifica al profesional y queda en la auditoría.
-      x-roles: [admin]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [accion]
-              properties:
-                accion: { type: string, enum: [aprobar, rechazar] }
-                motivo: { type: string, minLength: 10, maxLength: 300 }
-      responses:
-        '200': { $ref: '#/components/responses/Mensaje' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
   /admin/auditoria:
     get:
       tags: [Administración]
       summary: Registro de acciones de los administradores (últimas 500)
       x-roles: [admin]
       parameters:
-        - { name: tipo, in: query, schema: { type: string, enum: [usuario, servicio, solicitud, resena, categoria, reporte, verificacion] } }
+        - { name: tipo, in: query, schema: { type: string, enum: [usuario, servicio, solicitud, resena, categoria, reporte] } }
       responses:
         '200': { description: 'Lista con fecha, tipo, acción, objeto, motivo y administrador' }
         '400': { $ref: '#/components/responses/BadRequest' }

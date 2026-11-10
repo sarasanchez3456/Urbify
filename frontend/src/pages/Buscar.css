@@ -320,17 +320,6 @@
   color: var(--bs-soft);
 }
 
-.bs-verificado {
-  margin-left: 8px;
-  padding: 2px 8px;
-  border-radius: 99px;
-  background: oklch(0.93 0.06 155);
-  color: oklch(0.33 0.09 155);
-  font-size: 0.72rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
 .bs-meta {
   margin: 6px 0 0;
   display: flex;

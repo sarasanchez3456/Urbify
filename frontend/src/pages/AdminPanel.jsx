@@ -9,7 +9,7 @@ import './AdminPanel.css';
 
 const SECCIONES = [
   ['resumen', 'Resumen'], ['usuarios', 'Usuarios'], ['servicios', 'Servicios'], ['solicitudes', 'Solicitudes'],
-  ['categorias', 'Categorías'], ['verificaciones', 'Verificaciones'], ['resenas', 'Reseñas'], ['reportes', 'Reportes'], ['auditoria', 'Auditoría'],
+  ['categorias', 'Categorías'], ['resenas', 'Reseñas'], ['reportes', 'Reportes'], ['auditoria', 'Auditoría'],
 ];
 const POR_PAGINA = 10;
 const ROLES = { cliente: 'Cliente', proveedor: 'Proveedor', admin: 'Administrador' };
@@ -137,7 +137,6 @@ function Resumen({ ir }) {
           [a.solicitudes_pendientes, 'solicitud pendiente de respuesta', 'solicitudes pendientes de respuesta', 'solicitudes', 'pendiente'],
           [a.resenas_bajas, 'reseña con 2 estrellas o menos', 'reseñas con 2 estrellas o menos', 'resenas', 'bajas'],
           [a.servicios_no_disponibles, 'servicio no disponible', 'servicios no disponibles', 'servicios', 'oculto'],
-          [a.verificaciones_pendientes, 'profesional por verificar', 'profesionales por verificar', 'verificaciones', ''],
           [a.reportes_nuevos, 'reporte nuevo', 'reportes nuevos', 'reportes', 'nuevo'],
           [a.usuarios_suspendidos, 'usuario suspendido', 'usuarios suspendidos', 'usuarios', 'sus'],
         ].filter((x) => x[0] > 0);
@@ -205,20 +204,6 @@ function Resumen({ ir }) {
 function DetalleUsuario({ id, onCerrar, onCambio }) {
   const { datos, error, cargar } = useDatos(`/admin/usuarios/${id}`);
   const [confirmando, setConfirmando] = useState(false);
-  const [quitando, setQuitando] = useState(false);
-
-  const quitarVerificacion = async (motivo) => {
-    try {
-      await api.delete(`/admin/usuarios/${id}/verificacion`, { data: { motivo } });
-      setQuitando(false);
-      await cargar();
-      onCambio();
-      return null;
-    } catch (err) {
-      return err.response?.data?.error || 'No se pudo quitar la verificación.';
-    }
-  };
-
   const cambiar = async (motivo) => {
     try {
       await api.put(`/admin/usuarios/${id}/estado`, { activo: !datos.activo, motivo });
@@ -252,7 +237,6 @@ function DetalleUsuario({ id, onCerrar, onCambio }) {
                 {datos.direccion && <div><dt>Dirección</dt><dd>{datos.direccion}</dd></div>}
                 {datos.oficio && <div><dt>Oficio</dt><dd>{datos.oficio}</dd></div>}
                 <div><dt>Estado</dt><dd><span className={`ad-est${datos.activo ? '' : ' is-no'}`}><i />{datos.activo ? 'Activo' : 'Suspendido'}</span></dd></div>
-                {datos.rol === 'proveedor' && <div><dt>Verificación</dt><dd>{datos.verificado ? '✓ Verificado' : 'Sin verificar'}</dd></div>}
                 <div><dt>Registro</dt><dd>{fechaHoraCorta(datos.fecha_creacion)}</dd></div>
               </dl>
             </div>
@@ -286,19 +270,7 @@ function DetalleUsuario({ id, onCerrar, onCambio }) {
           <button type="button" className={`pl-boton ${datos.activo ? 'pl-boton--peligro' : 'pl-boton--principal'}`} onClick={() => setConfirmando(true)}>
             {datos.activo ? 'Suspender cuenta' : 'Reactivar cuenta'}
           </button>
-          {Boolean(datos.verificado) && <button type="button" className="pl-boton" onClick={() => setQuitando(true)}>Quitar verificación</button>}
         </div>
-      )}
-      {quitando && datos && (
-        <Confirmar
-          titulo={`Quitar la verificación a ${datos.nombre}`}
-          texto="Dejará de mostrar la insignia “Verificado”. Verá tu motivo y podrá volver a pedirla."
-          confirmar="Quitar verificación"
-          peligro
-          conMotivo
-          onCancelar={() => setQuitando(false)}
-          onConfirmar={quitarVerificacion}
-        />
       )}
       {confirmando && datos && (
         <Confirmar
@@ -621,123 +593,6 @@ function Resenas({ filtroInicial }) {
   );
 }
 
-// ── Verificaciones ──
-const NOMBRE_DOCUMENTO = { cedula: 'Cédula de ciudadanía', certificado: 'Certificado de oficio', foto: 'Foto de perfil' };
-
-// Muestra un documento: se pide con la sesión del administrador y se ve aquí mismo, sin dejar un enlace público.
-function VisorDocumento({ doc, onCerrar }) {
-  const [url, setUrl] = useState('');
-  const [error, setError] = useState('');
-  useEffect(() => {
-    let objeto = '';
-    let cancelado = false;
-    api.get(`/admin/verificaciones/documentos/${doc.id}`, { responseType: 'blob' })
-      .then((res) => { if (!cancelado) { objeto = URL.createObjectURL(res.data); setUrl(objeto); } })
-      .catch((err) => { logError(err); if (!cancelado) setError('No se pudo abrir el documento.'); });
-    const tecla = (e) => { if (e.key === 'Escape') onCerrar(); };
-    document.addEventListener('keydown', tecla);
-    return () => { cancelado = true; if (objeto) URL.revokeObjectURL(objeto); document.removeEventListener('keydown', tecla); };
-  }, [doc.id, onCerrar]);
-
-  return createPortal(
-    <div className="ad-velo" onClick={(e) => { if (e.target === e.currentTarget) onCerrar(); }}>
-      <div className="ad-modal ad-modal--ancho" role="dialog" aria-modal="true" aria-label={NOMBRE_DOCUMENTO[doc.tipo]}>
-        <div className="ad-titulo-fila"><h3>{NOMBRE_DOCUMENTO[doc.tipo]}</h3><button type="button" className="ad-btn" onClick={onCerrar} autoFocus>Cerrar</button></div>
-        {error && <div className="ad-error" role="alert">{error}</div>}
-        {!url && !error && <p>Cargando...</p>}
-        {url && (doc.mime === 'application/pdf'
-          ? <iframe className="ad-visor" title={NOMBRE_DOCUMENTO[doc.tipo]} src={url} sandbox="" />
-          : <img className="ad-visor ad-visor--img" alt={NOMBRE_DOCUMENTO[doc.tipo]} src={url} />)}
-      </div>
-    </div>,
-    document.body
-  );
-}
-
-function Verificaciones() {
-  const { datos, error, cargar } = useDatos('/admin/verificaciones');
-  const [visor, setVisor] = useState(null);
-  const [accion, setAccion] = useState(null); // { tipo: 'aprobar' | 'rechazar', verificacion }
-  const cerrarVisor = useCallback(() => setVisor(null), []);
-
-  const responder = async (motivo) => {
-    try {
-      await api.put(`/admin/verificaciones/${accion.verificacion.id}`, { accion: accion.tipo, motivo });
-      setAccion(null);
-      await cargar();
-      return null;
-    } catch (err) {
-      return err.response?.data?.error || 'No se pudo responder la verificación.';
-    }
-  };
-
-  const pendientes = (datos || []).filter((v) => v.estado === 'pendiente');
-  const respondidas = (datos || []).filter((v) => v.estado !== 'pendiente');
-
-  return (
-    <Cargando datos={datos} error={error} cargar={cargar}>
-      <div className="ad-pila">
-        <p className="ad-suave">Revisa que la cédula, el certificado y la foto sean legibles y de la misma persona. Los documentos solo se ven aquí.</p>
-        {pendientes.length === 0 ? <div className="ad-tarjeta ad-vacio">No hay profesionales por verificar.</div> : (
-          <div className="ad-tarjetas">
-            {pendientes.map((v) => (
-              <div className="ad-tarjeta" key={v.id}>
-                <div className="ad-usuario-cabecera">
-                  <span className="ad-avatar" aria-hidden="true">{iniciales(v.nombre, v.apellido)}</span>
-                  <div><b>{nombre(v.nombre, v.apellido)}</b><small>{[v.oficio, v.direccion].filter(Boolean).join(' · ') || 'Profesional'} · pidió {fechaRelativa(v.fecha_envio)}</small></div>
-                </div>
-                <div className="ad-docs-lista">
-                  {v.documentos.map((d) => (
-                    <div key={d.id}><span>{NOMBRE_DOCUMENTO[d.tipo]}</span><button type="button" className="ad-enlace" onClick={() => setVisor(d)}>Ver</button></div>
-                  ))}
-                </div>
-                <div className="ad-modal-acciones">
-                  <button type="button" className="ad-btn" onClick={() => setAccion({ tipo: 'rechazar', verificacion: v })}>Rechazar</button>
-                  <button type="button" className="ad-btn ad-btn--principal" onClick={() => setAccion({ tipo: 'aprobar', verificacion: v })}>Aprobar</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {respondidas.length > 0 && (
-          <div className="ad-tarjeta">
-            <h2>Respondidas</h2>
-            <div className="ad-tabla-caja">
-              <table>
-                <thead><tr><th>Profesional</th><th>Resultado</th><th>Motivo</th><th>Fecha</th></tr></thead>
-                <tbody>
-                  {respondidas.map((v) => (
-                    <tr key={v.id}>
-                      <td>{nombre(v.nombre, v.apellido)}</td>
-                      <td><span className={`ad-tag ${v.estado === 'aprobada' ? 'ad-tag--completada' : 'ad-tag--cancelada'}`}>{v.estado === 'aprobada' ? 'Aprobada' : 'Rechazada'}</span></td>
-                      <td className="ad-suave">{v.motivo_rechazo || '—'}</td>
-                      <td className="ad-suave">{fechaRelativa(v.fecha_respuesta)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div>
-      {visor && <VisorDocumento doc={visor} onCerrar={cerrarVisor} />}
-      {accion && (
-        <Confirmar
-          titulo={accion.tipo === 'aprobar' ? `Verificar a ${accion.verificacion.nombre}` : `Rechazar a ${accion.verificacion.nombre}`}
-          texto={accion.tipo === 'aprobar' ? 'Su perfil mostrará la insignia “Verificado” y recibirá una notificación.' : 'Recibirá una notificación con tu explicación y podrá volver a intentarlo.'}
-          confirmar={accion.tipo === 'aprobar' ? 'Aprobar' : 'Rechazar'}
-          peligro={accion.tipo === 'rechazar'}
-          conMotivo={accion.tipo === 'rechazar'}
-          etiquetaMotivo="Qué debe corregir"
-          onCancelar={() => setAccion(null)}
-          onConfirmar={responder}
-        />
-      )}
-    </Cargando>
-  );
-}
-
 // ── Reportes ──
 const ESTADOS_REPORTE = { nuevo: 'Nuevo', revision: 'En revisión', resuelto: 'Resuelto' };
 function Reportes({ filtroInicial }) {
@@ -808,7 +663,7 @@ function Reportes({ filtroInicial }) {
 }
 
 // ── Auditoría ──
-const TIPOS_AUDITORIA = [['', 'Todo'], ['usuario', 'Usuarios'], ['servicio', 'Servicios'], ['solicitud', 'Solicitudes'], ['resena', 'Reseñas'], ['categoria', 'Categorías'], ['reporte', 'Reportes'], ['verificacion', 'Verificaciones']];
+const TIPOS_AUDITORIA = [['', 'Todo'], ['usuario', 'Usuarios'], ['servicio', 'Servicios'], ['solicitud', 'Solicitudes'], ['resena', 'Reseñas'], ['categoria', 'Categorías'], ['reporte', 'Reportes']];
 function Auditoria() {
   const [tipo, setTipo] = useState('');
   const [pagina, setPagina] = useState(0);
@@ -869,7 +724,6 @@ export default function AdminPanel() {
           {seccion === 'solicitudes' && <Solicitudes filtroInicial={filtro} />}
           {seccion === 'categorias' && <Categorias />}
           {seccion === 'resenas' && <Resenas filtroInicial={filtro} />}
-          {seccion === 'verificaciones' && <Verificaciones />}
           {seccion === 'reportes' && <Reportes filtroInicial={filtro} />}
           {seccion === 'auditoria' && <Auditoria />}
         </div>

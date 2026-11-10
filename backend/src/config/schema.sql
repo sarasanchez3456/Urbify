@@ -41,7 +41,6 @@ CREATE TABLE IF NOT EXISTS usuarios (
   oficio        VARCHAR(100),
   direccion     VARCHAR(255),
   activo        BOOLEAN DEFAULT 1,
-  verificado    BOOLEAN NOT NULL DEFAULT 0,
   intentos_fallidos INT DEFAULT 0,
   bloqueado_hasta   DATETIME NULL,
   fecha_creacion     DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -130,35 +129,6 @@ CREATE TABLE IF NOT EXISTS calificaciones_cliente (
   FOREIGN KEY (proveedor_id) REFERENCES usuarios(id),
   FOREIGN KEY (cliente_id)   REFERENCES usuarios(id),
   INDEX idx_calificaciones_cliente (cliente_id)
-);
-
--- Verificación de profesionales: el profesional sube sus documentos y un administrador los revisa.
--- estado: borrador (aún subiendo documentos) -> pendiente (enviada a revisión) -> aprobada o rechazada.
-CREATE TABLE IF NOT EXISTS verificaciones (
-  id               INT AUTO_INCREMENT PRIMARY KEY,
-  proveedor_id     INT NOT NULL,
-  estado           VARCHAR(20) NOT NULL DEFAULT 'borrador' CHECK (estado IN ('borrador', 'pendiente', 'aprobada', 'rechazada')),
-  motivo_rechazo   VARCHAR(300) NULL,
-  revisado_por     INT NULL,
-  fecha_creacion   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  fecha_envio      DATETIME NULL,
-  fecha_respuesta  DATETIME NULL,
-  FOREIGN KEY (proveedor_id) REFERENCES usuarios(id) ON DELETE CASCADE,
-  FOREIGN KEY (revisado_por) REFERENCES usuarios(id) ON DELETE SET NULL,
-  INDEX idx_verificaciones_estado (estado, fecha_envio),
-  INDEX idx_verificaciones_proveedor (proveedor_id, estado)
-);
-
--- Los documentos (cédula, certificado, foto) se guardan en la base, nunca en una carpeta pública, y solo los ve un administrador.
-CREATE TABLE IF NOT EXISTS verificacion_documentos (
-  id               INT AUTO_INCREMENT PRIMARY KEY,
-  verificacion_id  INT NOT NULL,
-  tipo             VARCHAR(20) NOT NULL CHECK (tipo IN ('cedula', 'certificado', 'foto')),
-  mime             VARCHAR(40) NOT NULL,
-  contenido        MEDIUMBLOB NOT NULL,
-  fecha            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (verificacion_id) REFERENCES verificaciones(id) ON DELETE CASCADE,
-  UNIQUE KEY uq_documento_tipo (verificacion_id, tipo)
 );
 
 -- Reportes de un cliente contra el profesional de una solicitud. Un cliente reporta una solicitud una sola vez.

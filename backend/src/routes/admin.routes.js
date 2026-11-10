@@ -19,10 +19,6 @@ router.get('/resenas', admin.listarResenas);
 router.put('/resenas/:id/oculta', admin.cambiarVisibilidadResena);
 router.get('/reportes', admin.listarReportes);
 router.put('/reportes/:id', admin.actualizarReporte);
-router.get('/verificaciones', admin.listarVerificaciones);
-router.get('/verificaciones/documentos/:id', admin.documentoVerificacion);
-router.put('/verificaciones/:id', admin.responderVerificacion);
-router.delete('/usuarios/:id/verificacion', admin.quitarVerificacion);
 router.get('/auditoria', admin.listarAuditoria);
 
 module.exports = router;

@@ -16,7 +16,6 @@ import {
   Plus,
   Home,
   CalendarDays,
-  ShieldCheck,
   Wallet,
 } from 'lucide-react';
 
@@ -40,7 +39,6 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
     { path: '/mis-servicios', label: 'Mis Servicios', icon: Wrench, roles: ['proveedor'] },
     { path: '/mi-agenda', label: 'Mi agenda', icon: CalendarDays, roles: ['proveedor'] },
     { path: '/ingresos', label: 'Billetera', icon: Wallet, roles: ['proveedor'] },
-    { path: '/verificacion', label: 'Verificación', icon: ShieldCheck, roles: ['proveedor'] },
     { path: '/buscar', label: 'Buscar Servicios', icon: Search, roles: ['cliente'] },
   ].filter((item) => item.roles.includes(usuario?.rol));
 

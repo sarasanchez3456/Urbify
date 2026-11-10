@@ -90,7 +90,7 @@ exports.buscarServicios = async (req, res, next) => {
     const { q, categoria_id, disponible } = req.query;
 
     let sql = `SELECT s.*, c.nombre AS categoria_nombre,
-               u.id AS proveedor_id, u.nombre, u.apellido, u.foto_url, u.direccion, u.latitud, u.longitud, u.verificado,
+               u.id AS proveedor_id, u.nombre, u.apellido, u.foto_url, u.direccion, u.latitud, u.longitud,
                COALESCE(cal_stats.promedio, 0) AS calificacion_promedio,
                COALESCE(cal_stats.total, 0) AS total_calificaciones
                FROM servicios s
@@ -250,7 +250,7 @@ exports.detalleServicio = async (req, res, next) => {
 
     const [servicios] = await query(
       `SELECT s.*, c.nombre AS categoria_nombre,
-       u.id AS proveedor_id, u.nombre, u.apellido, u.foto_url, u.direccion, u.telefono, u.latitud, u.longitud, u.verificado,
+       u.id AS proveedor_id, u.nombre, u.apellido, u.foto_url, u.direccion, u.telefono, u.latitud, u.longitud,
        COALESCE(cal_stats.promedio, 0) AS calificacion_promedio,
        COALESCE(cal_stats.total, 0) AS total_calificaciones
        FROM servicios s

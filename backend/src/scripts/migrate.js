@@ -21,7 +21,6 @@ const COLUMNAS = [
   { tabla: 'solicitudes', nombre: 'tipo_tarifa_acordada', ddl: 'tipo_tarifa_acordada VARCHAR(20) NULL' },
   { tabla: 'calificaciones', nombre: 'motivos', ddl: 'motivos VARCHAR(120) NULL' },
   { tabla: 'calificaciones', nombre: 'oculta', ddl: 'oculta BOOLEAN NOT NULL DEFAULT 0' },
-  { tabla: 'usuarios', nombre: 'verificado', ddl: 'verificado BOOLEAN NOT NULL DEFAULT 0' },
   // Las notificaciones existentes se mantienen y reciben el tipo por defecto "general".
   { tabla: 'notificaciones', nombre: 'tipo', ddl: "tipo VARCHAR(50) NOT NULL DEFAULT 'general'" },
   { tabla: 'notificaciones', nombre: 'solicitud_id', ddl: 'solicitud_id INT NULL' },
