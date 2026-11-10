@@ -1234,6 +1234,28 @@ paths:
         '200': { description: Estado actual (pendiente) }
         '400': { $ref: '#/components/responses/BadRequest' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /admin/usuarios/{id}/verificacion:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    delete:
+      tags: [Administración]
+      summary: Quitar la verificación a un profesional
+      description: Exige `motivo` (10 a 300 caracteres) en el cuerpo. Su última verificación pasa a rechazada con ese motivo y puede volver a pedirla. Se notifica y queda en la auditoría.
+      x-roles: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [motivo]
+              properties:
+                motivo: { type: string, minLength: 10, maxLength: 300 }
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /admin/verificaciones:
     get:
       tags: [Administración]

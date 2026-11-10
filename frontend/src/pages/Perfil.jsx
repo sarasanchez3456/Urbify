@@ -47,7 +47,7 @@ function formatearMiembroDesde(fecha) {
 }
 
 export default function Perfil() {
-  const { usuario } = useAuth();
+  const { usuario, actualizarUsuario } = useAuth();
   const rol = usuario?.rol;
 
   const [form, setForm] = useState(VACIO);
@@ -180,6 +180,7 @@ export default function Perfil() {
           };
       setForm(nuevo);
       setGuardado(nuevo);
+      actualizarUsuario({ nombre: nuevo.nombre, apellido: nuevo.apellido });
       mostrarAviso('Perfil actualizado');
     } catch (err) {
       logError('Error al actualizar perfil:', err);

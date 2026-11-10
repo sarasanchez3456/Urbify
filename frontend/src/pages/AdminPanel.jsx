@@ -205,6 +205,19 @@ function Resumen({ ir }) {
 function DetalleUsuario({ id, onCerrar, onCambio }) {
   const { datos, error, cargar } = useDatos(`/admin/usuarios/${id}`);
   const [confirmando, setConfirmando] = useState(false);
+  const [quitando, setQuitando] = useState(false);
+
+  const quitarVerificacion = async (motivo) => {
+    try {
+      await api.delete(`/admin/usuarios/${id}/verificacion`, { data: { motivo } });
+      setQuitando(false);
+      await cargar();
+      onCambio();
+      return null;
+    } catch (err) {
+      return err.response?.data?.error || 'No se pudo quitar la verificación.';
+    }
+  };
 
   const cambiar = async (motivo) => {
     try {
@@ -239,6 +252,7 @@ function DetalleUsuario({ id, onCerrar, onCambio }) {
                 {datos.direccion && <div><dt>Dirección</dt><dd>{datos.direccion}</dd></div>}
                 {datos.oficio && <div><dt>Oficio</dt><dd>{datos.oficio}</dd></div>}
                 <div><dt>Estado</dt><dd><span className={`ad-est${datos.activo ? '' : ' is-no'}`}><i />{datos.activo ? 'Activo' : 'Suspendido'}</span></dd></div>
+                {datos.rol === 'proveedor' && <div><dt>Verificación</dt><dd>{datos.verificado ? '✓ Verificado' : 'Sin verificar'}</dd></div>}
                 <div><dt>Registro</dt><dd>{fechaHoraCorta(datos.fecha_creacion)}</dd></div>
               </dl>
             </div>
@@ -272,7 +286,19 @@ function DetalleUsuario({ id, onCerrar, onCambio }) {
           <button type="button" className={`pl-boton ${datos.activo ? 'pl-boton--peligro' : 'pl-boton--principal'}`} onClick={() => setConfirmando(true)}>
             {datos.activo ? 'Suspender cuenta' : 'Reactivar cuenta'}
           </button>
+          {Boolean(datos.verificado) && <button type="button" className="pl-boton" onClick={() => setQuitando(true)}>Quitar verificación</button>}
         </div>
+      )}
+      {quitando && datos && (
+        <Confirmar
+          titulo={`Quitar la verificación a ${datos.nombre}`}
+          texto="Dejará de mostrar la insignia “Verificado”. Verá tu motivo y podrá volver a pedirla."
+          confirmar="Quitar verificación"
+          peligro
+          conMotivo
+          onCancelar={() => setQuitando(false)}
+          onConfirmar={quitarVerificacion}
+        />
       )}
       {confirmando && datos && (
         <Confirmar

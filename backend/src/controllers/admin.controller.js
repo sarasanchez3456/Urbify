@@ -66,7 +66,7 @@ exports.detalleUsuario = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
     const [usuarios] = await query(
-      'SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, oficio, activo, fecha_creacion FROM usuarios WHERE id = ?',
+      'SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, oficio, activo, verificado, fecha_creacion FROM usuarios WHERE id = ?',
       [id]
     );
     if (usuarios.length === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -371,6 +371,32 @@ exports.responderVerificacion = async (req, res, next) => {
     ]).catch(() => {});
     await registrarAuditoria(req.usuarioId, 'verificacion', aprobar ? 'Aprobó la verificación de' : 'Rechazó la verificación de', nombreDe(v), motivo);
     res.json({ mensaje: aprobar ? 'Profesional verificado' : 'Verificación rechazada', estado: aprobar ? 'aprobada' : 'rechazada' });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+// Quita la insignia a un profesional ya verificado. Su última verificación aprobada pasa a rechazada con el motivo,
+// así él ve por qué y puede volver a pedirla.
+exports.quitarVerificacion = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const motivo = motivoValido(req.body?.motivo);
+    if (!motivo) return res.status(400).json(ERROR_MOTIVO);
+
+    const [filas] = await query("SELECT id, nombre, apellido, rol, verificado FROM usuarios WHERE id = ?", [id]);
+    if (filas.length === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+    const u = filas[0];
+    if (u.rol !== 'proveedor' || !u.verificado) return res.status(409).json({ error: 'Este profesional no está verificado' });
+
+    await query('UPDATE usuarios SET verificado = 0 WHERE id = ?', [id]);
+    await query(
+      "UPDATE verificaciones SET estado = 'rechazada', motivo_rechazo = ?, revisado_por = ?, fecha_respuesta = NOW() WHERE proveedor_id = ? AND estado = 'aprobada'",
+      [motivo, req.usuarioId, id]
+    );
+    await query('INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)', [id, `Se retiró la insignia de verificado de tu cuenta. Motivo: ${motivo} Puedes volver a pedir la verificación.`]).catch(() => {});
+    await registrarAuditoria(req.usuarioId, 'verificacion', 'Quitó la verificación de', nombreDe(u), motivo);
+    res.json({ mensaje: 'Verificación retirada' });
   } catch (err) {
     return next(err);
   }

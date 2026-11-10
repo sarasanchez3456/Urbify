@@ -2,6 +2,7 @@ const { query } = require('../config/db');
 const resend = require('../config/resend');
 const { escapeHtml } = require('../utils/html');
 const { motivosDeColumna } = require('../utils/motivosCalificacion');
+const { errorDeDireccion } = require('../utils/direccion');
 const { conReservaDeProveedor, motivoNoDisponible, parsearFecha, aFechaMysqlUtc } = require('../utils/agenda');
 
 
@@ -34,12 +35,8 @@ exports.crearSolicitud = async (req, res, next) => {
     }
 
     // Dirección del servicio: si viene, debe ser un texto razonable (no solo espacios, no símbolos raros).
-    if (direccion !== undefined && direccion !== null && direccion !== '') {
-      const texto = typeof direccion === 'string' ? direccion.trim() : '';
-      if (texto.length < 5 || texto.length > 255 || !/^[\p{L}\p{N}\s#\-.,°ºª/()']+$/u.test(texto)) {
-        return res.status(400).json({ error: "La dirección debe tener entre 5 y 255 caracteres y solo letras, números y # - . , / ( ) '" });
-      }
-    }
+    const errorDir = errorDeDireccion(direccion);
+    if (errorDir) return res.status(400).json({ error: errorDir });
 
     const [servicio] = await query('SELECT * FROM servicios WHERE id = ?', [servicio_id]);
     if (servicio.length === 0) {
