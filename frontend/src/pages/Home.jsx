@@ -1,3 +1,4 @@
+import { formatoPesos } from '../utils/moneda';
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ScrollGlobe } from '../components/ui/landing-page';
@@ -229,7 +230,7 @@ export default function Home() {
                           </div>
                           <div className="fc-prov-divider" />
                           <div className="fc-prov-stat">
-                            <span className="fc-prov-val" style={{ color: p.accent }}>${Number(svc.tarifa || 0).toLocaleString()}</span>
+                            <span className="fc-prov-val" style={{ color: p.accent }}>{formatoPesos(svc.tarifa)}</span>
                             <span className="fc-prov-lbl">por {svc.tipo_tarifa || 'hora'}</span>
                           </div>
                         </div>

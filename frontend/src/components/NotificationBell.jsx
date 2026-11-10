@@ -13,6 +13,7 @@ import {
   Trash2,
   X,
   Inbox,
+  MessageCircle,
 } from 'lucide-react';
 import { logError } from '../utils/log';
 
@@ -36,6 +37,10 @@ function formatearTiempo(fechaStr) {
 
 function getNotificationIcon(mensaje = '') {
   const m = mensaje.toLowerCase();
+  // Primero los mensajes del chat: su vista previa puede contener palabras como "aceptada".
+  if (m.includes('te envió un mensaje')) {
+    return { Icon: MessageCircle, bg: 'rgba(14, 165, 233, 0.15)', color: '#0284c7' };
+  }
   if (m.includes('aceptó') || m.includes('aceptada')) {
     return { Icon: CheckCircle2, bg: 'rgba(34, 197, 94, 0.15)', color: '#16a34a' };
   }

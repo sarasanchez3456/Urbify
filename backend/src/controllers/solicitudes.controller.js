@@ -406,6 +406,30 @@ exports.enviarMensaje = async (req, res, next) => {
       'INSERT INTO mensajes_solicitud (solicitud_id, remitente_id, contenido) VALUES (?, ?, ?)',
       [solicitud.id, req.usuarioId, contenido]
     );
+
+    // Aviso a la otra parte: aparece en su campana de notificaciones. Si falla, el mensaje ya quedó guardado.
+    try {
+      const destinatarioId = solicitud.cliente_id === req.usuarioId ? solicitud.proveedor_id : solicitud.cliente_id;
+      const [datos] = await query(
+        `SELECT u.nombre, u.apellido, u.rol, s.titulo
+           FROM usuarios u
+           JOIN solicitudes sol ON sol.id = ?
+           JOIN servicios s ON s.id = sol.servicio_id
+          WHERE u.id = ?`,
+        [solicitud.id, req.usuarioId]
+      );
+      if (datos.length > 0) {
+        const { nombre, apellido, rol, titulo } = datos[0];
+        const vistaPrevia = contenido.length > 80 ? `${contenido.slice(0, 80).trimEnd()}…` : contenido;
+        await query('INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)', [
+          destinatarioId,
+          `${rol === 'proveedor' ? 'El proveedor' : 'El cliente'} ${nombre} ${apellido} te envió un mensaje sobre "${titulo}": "${vistaPrevia}"`,
+        ]);
+      }
+    } catch (notifErr) {
+      console.error('Error al guardar la notificación del mensaje:', notifErr);
+    }
+
     res.status(201).json({ id: result.insertId, mensaje: 'Mensaje enviado' });
   } catch (err) {
     return next(err);
