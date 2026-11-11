@@ -40,6 +40,24 @@ export async function geocodificarDireccion(texto) {
   }));
 }
 
+// De unas coordenadas a una dirección corta legible ("Cra. 70 #45-12, Laureles, Medellín"). Devuelve '' si no se pudo.
+export async function coordenadasADireccion(lat, lng) {
+  try {
+    const params = new URLSearchParams({ lat: String(lat), lon: String(lng), format: 'json', addressdetails: '1', zoom: '18' });
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?${params}`, { headers: { 'Accept-Language': 'es' } });
+    if (!res.ok) return '';
+    const data = await res.json();
+    const a = data.address || {};
+    const calle = [a.road, a.house_number].filter(Boolean).join(' ');
+    const barrio = a.neighbourhood || a.suburb || a.quarter || '';
+    const ciudad = a.city || a.town || a.village || a.municipality || '';
+    const partes = [calle, barrio, ciudad].filter(Boolean);
+    return (partes.length > 0 ? partes.join(', ') : (data.display_name || '').split(',').slice(0, 3).join(',')).trim();
+  } catch {
+    return '';
+  }
+}
+
 export function estaDentroDeColombia(lat, lng) {
   return lat >= -4.23 && lat <= 13.39 && lng >= -81.73 && lng <= -66.85;
 }

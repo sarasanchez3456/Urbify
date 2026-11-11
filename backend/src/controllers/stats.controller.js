@@ -13,7 +13,7 @@ exports.getStatsAdmin = async (req, res, next) => {
       'SELECT estado, COUNT(*) AS total FROM solicitudes GROUP BY estado'
     );
     const [calificaciones] = await db.query(
-      'SELECT COUNT(*) AS total, AVG(puntuacion) AS media FROM calificaciones'
+      'SELECT COUNT(*) AS total, AVG(puntuacion) AS media FROM calificaciones WHERE oculta = 0'
     );
 
     // Se devuelven todas las claves, también las que tienen 0, para que el cliente no tenga que suponerlas.
@@ -49,7 +49,7 @@ exports.getStats = async (req, res, next) => {
       "SELECT COUNT(*) AS total FROM solicitudes WHERE estado = 'completada'"
     );
     const [calificacion] = await db.query(
-      'SELECT AVG(CAST(puntuacion AS DECIMAL(3,2))) AS media FROM calificaciones'
+      'SELECT AVG(CAST(puntuacion AS DECIMAL(3,2))) AS media FROM calificaciones WHERE oculta = 0'
     );
 
     res.json({

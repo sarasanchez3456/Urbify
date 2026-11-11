@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
+import { getToken } from '../api/session';
 import { useAuth } from '../context/AuthContext';
 import {
   Bell,
@@ -35,8 +36,11 @@ function formatearTiempo(fechaStr) {
   return fecha.toLocaleDateString();
 }
 
-function getNotificationIcon(mensaje = '') {
+function getNotificationIcon(mensaje = '', tipo = '') {
   const m = mensaje.toLowerCase();
+  if (tipo === 'mensaje') {
+    return { Icon: MessageCircle, bg: 'rgba(14, 165, 233, 0.15)', color: '#0284c7' };
+  }
   // Primero los mensajes del chat: su vista previa puede contener palabras como "aceptada".
   if (m.includes('te envió un mensaje')) {
     return { Icon: MessageCircle, bg: 'rgba(14, 165, 233, 0.15)', color: '#0284c7' };
@@ -75,16 +79,59 @@ export default function NotificationBell() {
   };
 
   useEffect(() => {
+    if (!usuario) return undefined;
     cargarNotificaciones();
 
-    // Sondeo periódico cada 6 segundos para recibir notificaciones en tiempo real
-    const intervalo = setInterval(cargarNotificaciones, 6000);
+    // Avisos en vivo: el servidor manda un evento apenas se crea una notificación para este usuario. Se usa fetch con
+    // lectura en streaming (y no EventSource) porque la sesión viaja en la cabecera Authorization.
+    let cerrado = false;
+    let controlador = null;
+    let espera = 1000;
+    const conectar = async () => {
+      controlador = new AbortController();
+      try {
+        const token = getToken();
+        if (!token) return;
+        const res = await fetch(`${api.defaults.baseURL}/notificaciones/stream`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controlador.signal,
+        });
+        if (!res.ok || !res.body) throw new Error(`stream ${res.status}`);
+        espera = 1000;
+        const lector = res.body.getReader();
+        const decodificador = new TextDecoder();
+        let pendiente = '';
+        while (!cerrado) {
+          const { value, done } = await lector.read();
+          if (done) break;
+          pendiente += decodificador.decode(value, { stream: true });
+          const bloques = pendiente.split('\n\n');
+          pendiente = bloques.pop();
+          for (const bloque of bloques) {
+            if (!bloque.includes('event: notificacion')) continue;
+            cargarNotificaciones();
+            // Otras pantallas (lista de solicitudes, chat abierto) se refrescan con este evento.
+            window.dispatchEvent(new Event('notificacion_nueva'));
+          }
+        }
+      } catch (err) {
+        if (cerrado) return;
+        logError('Canal de avisos interrumpido:', err);
+      }
+      if (!cerrado) setTimeout(conectar, espera = Math.min(espera * 2, 30000));
+    };
+    conectar();
+
+    // Respaldo: si el canal en vivo no está disponible, se consulta cada 30 segundos.
+    const intervalo = setInterval(cargarNotificaciones, 30000);
 
     // Escuchar evento personalizado emitido al crear o cambiar estado de solicitudes
     const handleActualizacion = () => cargarNotificaciones();
     window.addEventListener('notificacion_actualizada', handleActualizacion);
 
     return () => {
+      cerrado = true;
+      controlador?.abort();
       clearInterval(intervalo);
       window.removeEventListener('notificacion_actualizada', handleActualizacion);
     };
@@ -146,6 +193,12 @@ export default function NotificationBell() {
       await handleMarcarLeida(item.id);
     }
     setAbierto(false);
+    const solicitudId = Number(item.solicitud_id);
+    if (Number.isInteger(solicitudId) && solicitudId > 0) {
+      // Los mensajes abren el chat; el resto (aceptada, completada, cambio de fecha...) abre el detalle de esa solicitud.
+      navigate(item.tipo === 'mensaje' ? `/mis-solicitudes?chat=${solicitudId}` : `/mis-solicitudes?solicitud=${solicitudId}`);
+      return;
+    }
     navigate('/mis-solicitudes');
   };
 
@@ -254,7 +307,7 @@ export default function NotificationBell() {
               </div>
             ) : (
               notificaciones.map((item) => {
-                const { Icon, bg, color } = getNotificationIcon(item.mensaje);
+                const { Icon, bg, color } = getNotificationIcon(item.mensaje, item.tipo);
                 const esNoLeida = !item.leida;
 
                 return (

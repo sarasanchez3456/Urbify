@@ -15,9 +15,12 @@ import {
   ChevronDown,
   Plus,
   Home,
+  CalendarDays,
+  Wallet,
 } from 'lucide-react';
 
 import NotificationBell from './NotificationBell';
+import './DashboardLayout.css';
 
 export default function DashboardLayout({ children, titulo, subtitulo }) {
   const { usuario, logout } = useAuth();
@@ -31,9 +34,11 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
   const navItems = [
     { path: '/admin', label: 'Panel de administración', icon: LayoutDashboard, roles: ['admin'] },
     { path: '/dashboard', label: 'Inicio', icon: LayoutDashboard, roles: ['cliente', 'proveedor'] },
-    { path: '/perfil', label: 'Mi Perfil', icon: User, roles: ['cliente', 'proveedor'] },
+    { path: '/perfil', label: 'Mi Perfil', icon: User, roles: ['cliente', 'proveedor', 'admin'] },
     { path: '/mis-solicitudes', label: usuario?.rol === 'proveedor' ? 'Notificaciones' : 'Mis Solicitudes', icon: ClipboardList, roles: ['cliente', 'proveedor'] },
     { path: '/mis-servicios', label: 'Mis Servicios', icon: Wrench, roles: ['proveedor'] },
+    { path: '/mi-agenda', label: 'Mi agenda', icon: CalendarDays, roles: ['proveedor'] },
+    { path: '/ingresos', label: 'Billetera', icon: Wallet, roles: ['proveedor'] },
     { path: '/buscar', label: 'Buscar Servicios', icon: Search, roles: ['cliente'] },
   ].filter((item) => item.roles.includes(usuario?.rol));
 
@@ -49,19 +54,16 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
       )}
 
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-64 flex flex-col transition-transform duration-300 ${
+        className={`dl-aside fixed lg:static inset-y-0 left-0 z-50 w-64 flex flex-col transition-transform duration-300 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
-        style={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRight: '1px solid rgba(0, 0, 0, 0.05)', backdropFilter: 'blur(10px)' }}
       >
-        <Link to="/dashboard" className="flex items-center gap-3 px-6 py-6" style={{ borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 0, 0, 0.04)' }}>
-            <span className="text-primary font-bold text-lg" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.40 0.18 255)' }}>U</span>
-          </div>
-          <span className="text-lg font-bold" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.40 0.18 255)' }}>Urbify</span>
+        <Link to="/dashboard" className="dl-logo">
+          <span className="dl-logo-marca" aria-hidden="true">U</span>
+          <span className="dl-logo-texto">Urbify</span>
         </Link>
 
-        <nav className="flex-1 py-4 overflow-y-auto">
+        <nav className="dl-nav" aria-label="Menú principal">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -70,45 +72,19 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
                 key={item.path}
                 to={item.path}
                 onClick={() => setSidebarOpen(false)}
-                className="flex items-center gap-3 mx-2 my-1 px-4 py-3 rounded-lg transition-all duration-200"
-                style={{
-                  backgroundColor: active ? 'rgba(0, 0, 0, 0.05)' : 'transparent',
-                  color: active ? 'oklch(0.40 0.18 255)' : 'oklch(0.45 0.03 240)',
-                }}
-                onMouseEnter={(e) => {
-                  if (!active) {
-                    e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.03)';
-                    e.currentTarget.style.color = 'oklch(0.25 0.06 240)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!active) {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.color = 'oklch(0.45 0.03 240)';
-                  }
-                }}
+                className={`dl-nav-link${active ? ' is-on' : ''}`}
+                aria-current={active ? 'page' : undefined}
               >
                 <Icon size={20} />
-                <span className="text-sm font-medium">{item.label}</span>
+                <span>{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
         {usuario?.rol === 'proveedor' && (
-          <div className="px-4 pb-6 pt-4" style={{ borderTop: '1px solid rgba(0, 0, 0, 0.05)' }}>
-            <Link
-              to="/mis-servicios"
-              onClick={() => setSidebarOpen(false)}
-              className="flex items-center justify-center gap-2 w-full rounded-xl py-3.5 text-sm font-medium transition-all"
-              style={{
-                backgroundColor: 'rgba(0, 0, 0, 0.03)',
-                border: '1px solid rgba(0, 0, 0, 0.05)',
-                color: 'oklch(0.40 0.18 255)',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.06)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.03)'; }}
-            >
+          <div className="dl-pie">
+            <Link to="/mis-servicios" onClick={() => setSidebarOpen(false)} className="dl-nuevo">
               <Plus size={18} />
               Nuevo Servicio
             </Link>
@@ -117,17 +93,12 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
       </aside>
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        <header
-          className="h-16 lg:h-20 flex-shrink-0 flex items-center justify-between px-4 lg:px-6 z-[500] relative"
-          style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.82)',
-            backdropFilter: 'blur(24px)',
-            borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
-          }}
-        >
+        <header className="dl-header h-16 lg:h-20 flex-shrink-0 flex items-center justify-between px-4 lg:px-6 z-[500] relative">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
+              aria-label={sidebarOpen ? 'Cerrar el menú' : 'Abrir el menú'}
+              aria-expanded={sidebarOpen}
               className="lg:hidden p-2 rounded-lg transition-colors"
               style={{ color: 'oklch(0.45 0.03 240)' }}
               onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)'; e.currentTarget.style.color = 'oklch(0.25 0.06 240)'; }}
@@ -136,11 +107,11 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
               {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
             <div>
-              <h1 className="text-lg font-semibold hidden sm:block" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>
+              <h1 className="dl-titulo hidden sm:block">
                 {titulo || `Bienvenido, ${usuario?.nombre || 'Usuario'}`}
               </h1>
               {subtitulo && (
-                <p className="text-xs hidden sm:block mt-0.5" style={{ color: 'oklch(0.45 0.03 240)' }}>{subtitulo}</p>
+                <p className="dl-subtitulo hidden sm:block">{subtitulo}</p>
               )}
             </div>
           </div>
@@ -151,11 +122,11 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
             <div className="relative">
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
-                className="flex items-center gap-2 p-1.5 rounded-lg transition-colors"
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                className="dl-perfil"
+                aria-haspopup="menu"
+                aria-expanded={profileOpen}
               >
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold" style={{ backgroundColor: 'rgba(0, 0, 0, 0.05)', color: 'oklch(0.40 0.18 255)' }}>
+                <div className="dl-avatar">
                   {usuario?.nombre?.charAt(0)?.toUpperCase() || 'U'}
                 </div>
                 <span className="text-sm hidden md:block" style={{ color: 'oklch(0.25 0.06 240)' }}>

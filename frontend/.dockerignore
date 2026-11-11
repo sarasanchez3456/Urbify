@@ -1,0 +1,13 @@
+# Dependencies are installed for Linux inside the builder image.
+node_modules
+
+# Local build output and repository metadata are not needed in the image.
+dist
+.git
+
+# Local logs.
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

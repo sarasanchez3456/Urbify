@@ -1,5 +1,6 @@
 const mysql = require('mysql2/promise');
 const { db: dbConfig } = require('./env');
+const avisos = require('../utils/avisos');
 
 const pool = mysql.createPool({
   host: dbConfig.host,
@@ -50,6 +51,11 @@ async function query(sql, params = []) {
   // sin definir; normalizamos undefined -> null para que se traduzca a SQL NULL.
   const safeParams = params.map((p) => (p === undefined ? null : p));
   const [result] = await pool.execute(sql, safeParams);
+  // Al crear una notificación se avisa en vivo a su destinatario (ver utils/avisos.js).
+  if (/^\s*INSERT\s+INTO\s+notificaciones/i.test(sql)) {
+    const pos = avisos.posicionUsuario(sql);
+    if (pos >= 0) avisos.avisar(safeParams[pos], { id: result.insertId });
+  }
   return [result];
 }
 

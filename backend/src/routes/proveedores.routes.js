@@ -1,7 +1,8 @@
 const router = require('express').Router();
-const { query } = require('../config/db');
+const { query, pool } = require('../config/db');
 const { publicLimiter } = require('../middleware/rateLimit');
-const { authenticateOptional } = require('../middleware/auth');
+const { authenticate, authenticateOptional, authorize } = require('../middleware/auth');
+const { leerDisponibilidad, construirAgenda, fechaLocal, textoAMinutos, DURACION_MIN } = require('../utils/agenda');
 const { veContactoExacto, protegerContacto } = require('../utils/privacidad');
 
 // Número decimal estricto ("6.25", "-75.5"): rechaza Infinity, NaN, notación científica, arrays (lat[]=1) y basura.
@@ -45,7 +46,7 @@ router.get('/cercanos', publicLimiter, authenticateOptional, async (req, res, ne
         FROM usuarios u
         LEFT JOIN (
           SELECT cal.proveedor_id, AVG(cal.puntuacion) AS promedio, COUNT(cal.id) AS total
-          FROM calificaciones cal
+          FROM calificaciones cal WHERE cal.oculta = 0
           GROUP BY cal.proveedor_id
         ) cal_stats ON cal_stats.proveedor_id = u.id
         WHERE u.rol = 'proveedor' AND u.activo = 1
@@ -90,6 +91,108 @@ router.get('/cercanos', publicLimiter, authenticateOptional, async (req, res, ne
             distancia_km: Math.max(0.5, Math.round(Number(p.distancia_km) * 2) / 2),
           }))
     );
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// ── Agenda ──
+// El proveedor ve y edita su horario semanal. Formato: { franjas: [{ dia_semana: 0-6, hora_inicio: "08:00", hora_fin: "12:00" }] }.
+// Una lista vacía borra el horario (se vuelve al horario por defecto).
+const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+router.get('/mi-horario', authenticate, authorize('proveedor'), async (req, res, next) => {
+  try {
+    const franjas = await leerDisponibilidad(pool, req.usuarioId);
+    res.json({ franjas, horario_configurado: franjas.length > 0 });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.put('/mi-horario', authenticate, authorize('proveedor'), async (req, res, next) => {
+  try {
+    const franjas = req.body && req.body.franjas;
+    if (!Array.isArray(franjas) || franjas.length > 28) {
+      return res.status(400).json({ error: 'franjas debe ser una lista (máximo 28)' });
+    }
+    for (const f of franjas) {
+      if (
+        !f || !Number.isInteger(f.dia_semana) || f.dia_semana < 0 || f.dia_semana > 6 ||
+        typeof f.hora_inicio !== 'string' || !HORA.test(f.hora_inicio) ||
+        typeof f.hora_fin !== 'string' || !HORA.test(f.hora_fin)
+      ) {
+        return res.status(400).json({ error: 'Cada franja necesita dia_semana (0-6) y horas con formato HH:MM' });
+      }
+      if (textoAMinutos(f.hora_fin) - textoAMinutos(f.hora_inicio) < DURACION_MIN) {
+        return res.status(400).json({ error: 'Cada franja debe durar al menos una hora y terminar después de su inicio' });
+      }
+    }
+    // Las franjas de un mismo día no pueden solaparse.
+    const ordenadas = [...franjas].sort((a, b) => a.dia_semana - b.dia_semana || textoAMinutos(a.hora_inicio) - textoAMinutos(b.hora_inicio));
+    for (let i = 1; i < ordenadas.length; i += 1) {
+      if (ordenadas[i].dia_semana === ordenadas[i - 1].dia_semana && textoAMinutos(ordenadas[i].hora_inicio) < textoAMinutos(ordenadas[i - 1].hora_fin)) {
+        return res.status(400).json({ error: 'Las franjas de un mismo día no pueden solaparse' });
+      }
+    }
+
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      await conn.execute('DELETE FROM disponibilidad_proveedor WHERE proveedor_id = ?', [req.usuarioId]);
+      for (const f of ordenadas) {
+        await conn.execute(
+          'INSERT INTO disponibilidad_proveedor (proveedor_id, dia_semana, hora_inicio, hora_fin) VALUES (?, ?, ?, ?)',
+          [req.usuarioId, f.dia_semana, f.hora_inicio, f.hora_fin]
+        );
+      }
+      await conn.commit();
+    } catch (err) {
+      await conn.rollback().catch(() => {});
+      throw err;
+    } finally {
+      conn.release();
+    }
+    const guardadas = await leerDisponibilidad(pool, req.usuarioId);
+    res.json({ franjas: guardadas, horario_configurado: guardadas.length > 0 });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// Horas libres y ocupadas de un proveedor para los próximos días (sin revelar nada de las otras citas).
+// ?desde=AAAA-MM-DD (hoy por defecto) &dias=1-14 (7 por defecto) &solicitud_id=N (para reprogramar esa cita).
+router.get('/:id/agenda', authenticate, authorize('cliente', 'proveedor', 'admin'), async (req, res, next) => {
+  try {
+    const proveedorId = Number(req.params.id);
+    if (!Number.isInteger(proveedorId) || proveedorId <= 0) return res.status(400).json({ error: 'id inválido' });
+
+    const dias = req.query.dias === undefined ? 7 : Number(req.query.dias);
+    if (!Number.isInteger(dias) || dias < 1 || dias > 14) return res.status(400).json({ error: 'dias debe estar entre 1 y 14' });
+
+    const hoy = fechaLocal(Date.now());
+    const desde = req.query.desde === undefined ? hoy : String(req.query.desde);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(desde) || Number.isNaN(Date.parse(`${desde}T00:00:00Z`))) {
+      return res.status(400).json({ error: 'desde debe tener formato AAAA-MM-DD' });
+    }
+    if (desde < hoy) return res.status(400).json({ error: 'desde no puede ser una fecha pasada' });
+
+    const [prov] = await query("SELECT id FROM usuarios WHERE id = ? AND rol = 'proveedor' AND activo = 1", [proveedorId]);
+    if (prov.length === 0) return res.status(404).json({ error: 'Proveedor no encontrado' });
+
+    // Para reprogramar, la cita actual no cuenta como ocupada. Solo la puede indicar quien participa en ella.
+    let excluir = 0;
+    if (req.query.solicitud_id !== undefined) {
+      const solId = Number(req.query.solicitud_id);
+      if (!Number.isInteger(solId) || solId <= 0) return res.status(400).json({ error: 'solicitud_id inválido' });
+      const [sol] = await query('SELECT cliente_id, proveedor_id FROM solicitudes WHERE id = ?', [solId]);
+      if (sol.length === 0 || sol[0].proveedor_id !== proveedorId || (sol[0].cliente_id !== req.usuarioId && sol[0].proveedor_id !== req.usuarioId)) {
+        return res.status(404).json({ error: 'Solicitud no encontrada' });
+      }
+      excluir = solId;
+    }
+
+    res.json(await construirAgenda(pool, proveedorId, desde, dias, { excluirSolicitudId: excluir }));
   } catch (err) {
     return next(err);
   }

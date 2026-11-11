@@ -1,0 +1,307 @@
+/* ── Mi agenda (proveedor) ── Prefijo "ag-". Mismos colores de la paleta de Urbify. */
+.ag {
+  --ag-primary: oklch(0.40 0.18 255);
+  --ag-primary-hover: oklch(0.55 0.16 240);
+  --ag-teal: oklch(0.72 0.13 200);
+  --ag-ink: oklch(0.25 0.06 240);
+  --ag-soft: oklch(0.40 0.04 240);
+  --ag-line: oklch(0.40 0.18 255 / 0.14);
+  --ag-bad: oklch(0.50 0.19 25);
+
+  max-width: 760px;
+  display: grid;
+  gap: 18px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--ag-ink);
+}
+
+.ag-tarjeta {
+  background: #fff;
+  border: 1px solid var(--ag-line);
+  border-radius: 18px;
+  padding: 22px 24px;
+}
+
+.ag-estado {
+  text-align: center;
+  color: var(--ag-soft);
+}
+
+.ag-intro h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.15rem;
+  margin: 0 0 8px;
+}
+
+.ag-intro p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--ag-soft);
+}
+
+.ag-intro .ag-nota {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: oklch(0.72 0.13 200 / 0.14);
+  color: var(--ag-ink);
+}
+
+.ag-dias {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ag-dia {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--ag-line);
+}
+
+.ag-dia:first-child {
+  padding-top: 0;
+}
+
+.ag-dia-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ag-dia-libre {
+  font-size: 0.85rem;
+  color: var(--ag-soft);
+}
+
+/* Interruptor accesible: el checkbox real queda dentro del label, solo se oculta visualmente. */
+.ag-interruptor {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  position: relative;
+}
+
+.ag-interruptor input {
+  position: absolute;
+  opacity: 0;
+  width: 44px;
+  height: 24px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.ag-interruptor-pista {
+  width: 44px;
+  height: 24px;
+  border-radius: 99px;
+  background: oklch(0.40 0.18 255 / 0.2);
+  position: relative;
+  transition: background 0.2s;
+  flex: none;
+}
+
+.ag-interruptor-pista::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ag-interruptor input:checked + .ag-interruptor-pista {
+  background: var(--ag-primary);
+}
+
+.ag-interruptor input:checked + .ag-interruptor-pista::after {
+  transform: translateX(20px);
+}
+
+.ag-interruptor input:focus-visible + .ag-interruptor-pista {
+  outline: 3px solid var(--ag-teal);
+  outline-offset: 2px;
+}
+
+.ag-franjas {
+  margin: 12px 0 0 56px;
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.ag-franja {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ag-franja select {
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--ag-line);
+  background: #fff;
+  font: 500 0.92rem 'Plus Jakarta Sans', sans-serif;
+  color: var(--ag-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.ag-franja select:focus-visible {
+  outline: 3px solid var(--ag-teal);
+  outline-offset: 1px;
+  border-color: var(--ag-primary);
+}
+
+.ag-quitar {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-size: 1.3rem;
+  line-height: 1;
+  padding: 4px 10px;
+  border-radius: 8px;
+  color: var(--ag-soft);
+}
+
+.ag-quitar:hover {
+  background: oklch(0.55 0.2 25 / 0.08);
+  color: var(--ag-bad);
+}
+
+.ag-agregar {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  padding: 4px 0;
+  font: 600 0.88rem 'Plus Jakarta Sans', sans-serif;
+  color: var(--ag-primary);
+}
+
+.ag-agregar:hover {
+  text-decoration: underline;
+}
+
+.ag-quitar:focus-visible,
+.ag-agregar:focus-visible,
+.ag-btn:focus-visible {
+  outline: 3px solid var(--ag-teal);
+  outline-offset: 2px;
+}
+
+.ag-error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ag-bad);
+}
+
+.ag-pie {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.ag-btn {
+  padding: 12px 20px;
+  border-radius: 12px;
+  font: 600 0.93rem 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+  border: 1px solid var(--ag-line);
+  background: #fff;
+  color: var(--ag-primary);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.ag-btn:hover:not(:disabled) {
+  border-color: var(--ag-primary);
+}
+
+.ag-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ag-btn--principal {
+  background: var(--ag-primary);
+  border-color: var(--ag-primary);
+  color: #fff;
+}
+
+.ag-btn--principal:hover:not(:disabled) {
+  background: var(--ag-primary-hover);
+  border-color: var(--ag-primary-hover);
+}
+
+.ag-btn--peligro {
+  color: var(--ag-bad);
+}
+
+.ag-aviso {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 950;
+  padding: 12px 20px;
+  border-radius: 12px;
+  background: var(--ag-ink);
+  color: #fff;
+  font-size: 0.92rem;
+  box-shadow: 0 14px 30px -12px oklch(0.2 0.05 240 / 0.5);
+  max-width: calc(100vw - 32px);
+}
+
+.ag-aviso--error {
+  background: var(--ag-bad);
+}
+
+.ag-solo-lectores {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .ag-franjas {
+    margin-left: 0;
+  }
+
+  .ag-tarjeta {
+    padding: 18px 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ag-interruptor-pista,
+  .ag-interruptor-pista::after {
+    transition: none;
+  }
+}
+
+.ag-nota-chica { margin: 0; font-size: 0.86rem; line-height: 1.5; color: var(--ag-soft); }
+.ag-tarjeta h3 { margin: 0; font-family: 'Playfair Display', serif; font-size: 1.1rem; }
+.ag-tarjeta:has(.sh) { display: grid; gap: 12px; }
+
+.ag-visitas { display: grid; gap: 16px; }
+.ag-visitas h4 { margin: 0 0 6px; font-size: 0.86rem; font-weight: 700; color: var(--ag-soft); }
+.ag-visitas h4::first-letter { text-transform: uppercase; }
+.ag-visitas ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ag-visitas li { display: grid; grid-template-columns: 78px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; border: 1px solid var(--ag-line); border-radius: 12px; }
+.ag-hora { font-weight: 700; color: var(--ag-primary); font-variant-numeric: tabular-nums; font-size: 0.9rem; }
+.ag-visitas b { display: block; font-size: 0.92rem; }
+.ag-visitas small { display: block; font-size: 0.8rem; color: var(--ag-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ag-estado { font-style: normal; font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 99px; white-space: nowrap; }
+.ag-estado--pendiente { background: oklch(0.95 0.07 90); color: oklch(0.38 0.09 70); }
+.ag-estado--aceptada { background: oklch(0.93 0.04 250); color: oklch(0.35 0.15 255); }
+.ag-estado--en_proceso { background: oklch(0.93 0.04 300); color: oklch(0.38 0.14 300); }

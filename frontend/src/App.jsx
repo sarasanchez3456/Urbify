@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Background } from './components/Background';
@@ -8,13 +8,13 @@ import { setOnUnauthorized } from './api/axios';
 import Home from './pages/Home';
 import Auth from './pages/Auth';
 import Buscar from './pages/Buscar';
-import Mapa from './pages/Mapa';
 import ServicioDetalle from './pages/ServicioDetalle';
-import SolicitarServicio from './pages/SolicitarServicio';
 import Perfil from './pages/Perfil';
 import MisServicios from './pages/MisServicios';
 import MisSolicitudes from './pages/MisSolicitudes';
-import Calificar from './pages/Calificar';
+import MiAgenda from './pages/MiAgenda';
+import NoEncontrada from './pages/NoEncontrada';
+import Ingresos from './pages/Ingresos';
 import Dashboard from './pages/Dashboard';
 import AdminPanel from './pages/AdminPanel';
 
@@ -28,7 +28,12 @@ function RutaProtegida({ children, rol }) {
   return children;
 }
 
-const rutasDashboard = ['/dashboard', '/admin', '/perfil', '/mis-servicios', '/mis-solicitudes', '/solicitar', '/calificar', '/buscar', '/mapa', '/servicio'];
+function RedirigirASolicitud() {
+  const { id } = useParams();
+  return <Navigate to={`/servicio/${id}`} replace />;
+}
+
+const rutasDashboard = ['/dashboard', '/admin', '/perfil', '/mis-servicios', '/mis-solicitudes', '/mi-agenda', '/ingresos', '/solicitar', '/calificar', '/buscar', '/mapa', '/servicio'];
 
 export default function App() {
   const navigate = useNavigate();
@@ -53,16 +58,11 @@ export default function App() {
           <Route path="/login" element={<Auth />} />
           <Route path="/registro" element={<Auth />} />
           <Route path="/buscar" element={<Buscar />} />
-          <Route path="/mapa" element={<Mapa />} />
+          {/* El mapa ahora vive dentro de Buscar */}
+          <Route path="/mapa" element={<Navigate to="/buscar" replace />} />
           <Route path="/servicio/:id" element={<ServicioDetalle />} />
-          <Route
-            path="/solicitar/:id"
-            element={
-              <RutaProtegida rol="cliente">
-                <SolicitarServicio />
-              </RutaProtegida>
-            }
-          />
+          {/* Solicitar y ver el servicio son un solo flujo: el formulario vive en la página del servicio */}
+          <Route path="/solicitar/:id" element={<RedirigirASolicitud />} />
           <Route
             path="/dashboard"
             element={
@@ -96,6 +96,22 @@ export default function App() {
             }
           />
           <Route
+            path="/ingresos"
+            element={
+              <RutaProtegida rol="proveedor">
+                <Ingresos />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/mi-agenda"
+            element={
+              <RutaProtegida rol="proveedor">
+                <MiAgenda />
+              </RutaProtegida>
+            }
+          />
+          <Route
             path="/mis-solicitudes"
             element={
               <RutaProtegida>
@@ -103,14 +119,9 @@ export default function App() {
               </RutaProtegida>
             }
           />
-          <Route
-            path="/calificar/:id"
-            element={
-              <RutaProtegida rol="cliente">
-                <Calificar />
-              </RutaProtegida>
-            }
-          />
+          {/* Calificar ahora se hace desde el panel de Mis Solicitudes; los enlaces viejos llevan allí */}
+          <Route path="/calificar/:id" element={<Navigate to="/mis-solicitudes" replace />} />
+          <Route path="*" element={<NoEncontrada />} />
         </Routes>
       </main>
     </div>

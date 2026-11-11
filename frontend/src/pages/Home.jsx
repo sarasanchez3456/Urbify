@@ -38,7 +38,7 @@ const CATS = [
 // Pasos del flujo "Cómo funciona" que se muestran en la sección inferior
 const STEPS = [
   { icon: 'search',    title: 'Busca el servicio',  desc: 'Escribe lo que necesitas o explora el mapa: verás quién está disponible cerca de ti.' },
-  { icon: 'user',      title: 'Revisa el perfil',   desc: 'Calificaciones reales, experiencia verificada y tarifas claras antes de decidir.' },
+  { icon: 'user',      title: 'Revisa el perfil',   desc: 'Calificaciones reales, experiencia y tarifas claras antes de decidir.' },
   { icon: 'clipboard', title: 'Solicita y agenda',  desc: 'Describe el trabajo, acuerda la hora y recibe confirmación en minutos.' },
   { icon: 'star',      title: 'Califica al final',  desc: 'Tu reseña mantiene la calidad de la comunidad para el siguiente vecino.' },
 ];
@@ -73,11 +73,11 @@ export default function Home() {
       badge: "Servicios urbanos · Medellín",
       heroTitle: true,
       heroWord: HERO_WORDS[heroWord],
-      description: "La plataforma que conecta a profesionales verificados con clientes que necesitan servicios para el hogar. Electricistas, plomeros, mecánicos y más, cerca de ti.",
+      description: "La plataforma que conecta a profesionales calificados con clientes que necesitan servicios para el hogar. Electricistas, plomeros, mecánicos y más, cerca de ti.",
       align: "left",
       actions: [
-        { label: "Buscar Servicios", variant: "primary", onClick: () => navigate(usuario ? '/buscar' : '/login') },
-        { label: "Ver Mapa en Vivo", variant: "secondary", onClick: () => navigate(usuario ? '/mapa' : '/login') },
+        { label: "Buscar Servicios", variant: "primary", onClick: () => navigate('/buscar') },
+        { label: "Ver profesionales cerca", variant: "secondary", onClick: () => navigate('/buscar') },
       ]
     },
     {
@@ -94,9 +94,9 @@ export default function Home() {
     {
       id: "innovation",
       badge: "Profesionales",
-      title: "Verificados",
+      title: "Calificados",
       subtitle: "y Confiables",
-      description: "Todos nuestros proveedores pasan por un proceso de verificación. Revisa sus calificaciones, experiencia y tarifas antes de contratar con total confianza.",
+      description: "Cada trabajo se califica con reseñas reales de otros clientes. Revisa sus calificaciones, experiencia y tarifas antes de contratar con total confianza.",
       align: "center",
     },
     {
@@ -152,7 +152,7 @@ export default function Home() {
           <div className="uy-cats">
             {CATS.map((c) => (
               <button key={c.name} className="uy-cat"
-                onClick={() => navigate(`/buscar?cat=${c.name}`)} aria-label={c.name}>
+                onClick={() => navigate(`/buscar?q=${encodeURIComponent(c.name)}`)} aria-label={c.name}>
                 <span className="uy-cat-ic">{ICONS[c.icon]}</span>
                 <span className="uy-cat-name">{c.name}</span>
               </button>
@@ -167,7 +167,7 @@ export default function Home() {
           <div className="sec-head">
             <div className="sec-tag">Profesionales</div>
             <h2 className="sec-title">Servicios Destacados</h2>
-            <p className="sec-subtitle">Profesionales verificados con las mejores calificaciones</p>
+            <p className="sec-subtitle">Profesionales con las mejores calificaciones</p>
           </div>
           <div className="services-grid">
             {destacados.map((svc, i) => {
@@ -193,6 +193,8 @@ export default function Home() {
                 'Carpintería': '/images/bg_carpinteria_1780487001930.png',
                 'Pintura': '/images/bg_pintura_1780487014409.png',
                 'Jardinería': '/images/bg_jardineria_1780487034986.png',
+                'Cerrajería': '/images/bg_cerrajeria.jpg',
+                'Limpieza': '/images/bg_limpieza.jpg',
               };
               const catImage = bgImageMap[svc.categoria_nombre] || null;
               return (
@@ -202,7 +204,7 @@ export default function Home() {
                     <div className={'fc-back ' + p.back}>
                       <div
                         className="fc-back-content fc-svc-body"
-                        style={catImage ? { backgroundImage: `linear-gradient(to bottom, oklch(0.18 0.04 240 / 0.3), oklch(0.18 0.04 240 / 0.9)), url(${catImage})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: 'transparent' } : undefined}
+                        style={catImage ? { backgroundImage: `linear-gradient(to bottom, oklch(0.18 0.04 240 / 0.12) 25%, oklch(0.18 0.04 240 / 0.88)), url(${catImage})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: 'transparent' } : undefined}
                       >
                         <div className="fc-svc-info">
                           <h4 className="fc-svc-title">{svc.titulo}</h4>
@@ -250,8 +252,8 @@ export default function Home() {
               <div className="sec-tag">Cobertura en Vivo</div>
               <h3>Profesionales cerca<br />de ti, ahora mismo.</h3>
               <p>Visualiza en el mapa interactivo dónde están los proveedores disponibles en tu zona. Filtra por categoría, calificación y disponibilidad.</p>
-              <Link to={usuario ? "/mapa" : "/login"}>
-                <button className="hbtn-primary">Abrir Mapa →</button>
+              <Link to="/buscar">
+                <button className="hbtn-primary">Buscar cerca de mí →</button>
               </Link>
             </div>
             {/* Mapa ilustrativo: puntos animados con etiquetas y líneas punteadas SVG */}

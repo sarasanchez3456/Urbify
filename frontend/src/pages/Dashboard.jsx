@@ -1,388 +1,259 @@
-import { formatoPesos } from '../utils/moneda';
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import DashboardLayout from '../components/DashboardLayout';
 import {
-  Users,
-  CheckCircle2,
-  Star,
-  ClipboardList,
-  ArrowUpRight,
-  Search,
-  MapPin,
-  Wrench,
-  User,
-  Calendar,
-  DollarSign,
-  CheckCircle,
-} from 'lucide-react';
+  ETIQUETAS_ESTADO, ESTADOS_EN_CURSO, estaSinCalificar, formatearDinero, fechaServicioLarga, fechaServicioCorta, iniciales,
+} from '../utils/solicitudes';
 import { logError } from '../utils/log';
+import './Dashboard.css';
 
-const glassCard = {
-  backgroundColor: 'rgba(255, 255, 255, 0.6)',
-  backdropFilter: 'blur(16px)',
-  border: '1px solid rgba(0, 0, 0, 0.05)',
+const saludo = () => {
+  const h = new Date().getHours();
+  if (h < 12) return 'Buenos días';
+  if (h < 18) return 'Buenas tardes';
+  return 'Buenas noches';
 };
 
-const glassCardHover = {
-  backgroundColor: 'rgba(255, 255, 255, 0.8)',
-  backdropFilter: 'blur(16px)',
-  border: '1px solid rgba(0, 0, 0, 0.1)',
-};
+const fechaDeHoy = () => new Intl.DateTimeFormat('es-CO', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Bogota' }).format(new Date());
 
-const subtleBorder = '1px solid rgba(0, 0, 0, 0.05)';
+const pideCambio = (s) => Boolean(s.reprogramacion_id) && ['pendiente', 'aceptada'].includes(s.estado);
+
+function Contraparte({ sol, esCliente }) {
+  const nombre = esCliente ? `${sol.proveedor_nombre || ''} ${sol.proveedor_apellido || ''}` : `${sol.cliente_nombre || ''} ${sol.cliente_apellido || ''}`;
+  return nombre.trim() || '—';
+}
+
+// Fila compacta de una solicitud: lleva a Mis Solicitudes, donde está el detalle completo.
+function FilaSolicitud({ sol, esCliente, detalle }) {
+  return (
+    <Link to="/mis-solicitudes" className="in-fila">
+      <span className="in-avatar" aria-hidden="true">
+        {esCliente ? iniciales(sol.proveedor_nombre, sol.proveedor_apellido) : iniciales(sol.cliente_nombre, sol.cliente_apellido)}
+      </span>
+      <span className="in-fila-texto">
+        <b>{sol.servicio_titulo}</b>
+        <small><Contraparte sol={sol} esCliente={esCliente} />{detalle ? ` · ${detalle}` : ''}</small>
+      </span>
+      <span className={`in-estado in-estado--${sol.estado}`}>{ETIQUETAS_ESTADO[sol.estado] || sol.estado}</span>
+    </Link>
+  );
+}
 
 export default function Dashboard() {
   const { usuario } = useAuth();
-  const [stats, setStats] = useState(null);
+  const navigate = useNavigate();
+  const esCliente = usuario?.rol === 'cliente';
+
   const [solicitudes, setSolicitudes] = useState([]);
-  const [cargando, setCargando] = useState(true);
+  const [categorias, setCategorias] = useState([]);
+  const [horarioConfigurado, setHorarioConfigurado] = useState(true);
+  const [estado, setEstado] = useState('cargando'); // 'cargando' | 'listo' | 'error'
+  const [busqueda, setBusqueda] = useState('');
 
   useEffect(() => {
-    const fetchData = async () => {
+    let cancelado = false;
+    (async () => {
       try {
-        const [statsRes, solRes] = await Promise.all([
-          api.get('/stats'),
-          api.get(usuario?.rol === 'cliente' ? '/solicitudes/cliente' : '/solicitudes/proveedor'),
+        const [sol, extra] = await Promise.all([
+          api.get(esCliente ? '/solicitudes/cliente' : '/solicitudes/proveedor'),
+          // Cliente: categorías para buscar. Proveedor: si ya configuró su agenda.
+          api.get(esCliente ? '/categorias' : '/proveedores/mi-horario').catch((e) => { logError(e); return null; }),
         ]);
-        const sols = Array.isArray(solRes.data) ? solRes.data : [];
-        setStats(statsRes.data);
-        setSolicitudes(sols);
+        if (cancelado) return;
+        setSolicitudes(Array.isArray(sol.data) ? sol.data : []);
+        if (esCliente) setCategorias(Array.isArray(extra?.data) ? extra.data : []);
+        else if (extra) setHorarioConfigurado(Boolean(extra.data?.horario_configurado));
+        setEstado('listo');
       } catch (err) {
-        logError('Error al cargar dashboard:', err);
-      } finally {
-        setCargando(false);
+        logError('Error al cargar el inicio:', err);
+        if (!cancelado) setEstado('error');
       }
+    })();
+    return () => { cancelado = true; };
+  }, [esCliente]);
+
+  const datos = useMemo(() => {
+    const ahora = Date.now();
+    const proximas = solicitudes
+      .filter((s) => ESTADOS_EN_CURSO.includes(s.estado) && s.fecha_servicio)
+      .sort((a, b) => new Date(a.fecha_servicio) - new Date(b.fecha_servicio))
+      // Se mantienen las de la última hora (el servicio puede estar en curso) y las futuras.
+      .filter((s) => new Date(s.fecha_servicio).getTime() >= ahora - 60 * 60 * 1000);
+    const porResponder = solicitudes.filter((s) => s.estado === 'pendiente' || pideCambio(s));
+    return {
+      proximas,
+      porResponder,
+      sinCalificar: solicitudes.filter(estaSinCalificar),
+      recientes: solicitudes.slice(0, 4),
+      pendientes: solicitudes.filter((s) => s.estado === 'pendiente').length,
+      enCurso: solicitudes.filter((s) => s.estado === 'en_proceso').length,
+      completadas: solicitudes.filter((s) => s.estado === 'completada').length,
     };
-    fetchData();
-  }, [usuario]);
+  }, [solicitudes]);
 
-  if (cargando) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-64">
-          <div style={{ color: 'oklch(0.45 0.03 240)' }}>Cargando...</div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  const greeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Buenos días';
-    if (hour < 18) return 'Buenas tardes';
-    return 'Buenas noches';
+  const buscar = (e) => {
+    e.preventDefault();
+    navigate(busqueda.trim() ? `/buscar?q=${encodeURIComponent(busqueda.trim())}` : '/buscar');
   };
 
-  const statCards = [
-    {
-      label: 'Proveedores Activos',
-      value: stats?.proveedores_activos || 0,
-      icon: Users,
-    },
-    {
-      label: 'Servicios Realizados',
-      value: stats?.servicios_realizados || 0,
-      icon: CheckCircle2,
-    },
-    {
-      label: 'Calificación Media',
-      value: stats?.calificacion_media || '0.0',
-      icon: Star,
-    },
-    {
-      label: usuario?.rol === 'proveedor' ? 'Solicitudes' : 'Mis Solicitudes',
-      value: solicitudes.length,
-      icon: ClipboardList,
-    },
-  ];
-
-  const getStatusColor = (estado) => {
-    const map = {
-      pendiente: { bg: 'rgba(234, 179, 8, 0.1)', text: '#facc15', border: 'rgba(234, 179, 8, 0.2)' },
-      aceptada: { bg: 'rgba(59, 130, 246, 0.1)', text: '#60a5fa', border: 'rgba(59, 130, 246, 0.2)' },
-      en_proceso: { bg: 'rgba(168, 85, 247, 0.1)', text: '#c084fc', border: 'rgba(168, 85, 247, 0.2)' },
-      completada: { bg: 'rgba(34, 197, 94, 0.1)', text: '#4ade80', border: 'rgba(34, 197, 94, 0.2)' },
-      cancelada: { bg: 'rgba(239, 68, 68, 0.1)', text: '#f87171', border: 'rgba(239, 68, 68, 0.2)' },
-    };
-    return map[estado] || { bg: 'rgba(255, 255, 255, 0.6)', text: 'oklch(0.45 0.03 240)', border: 'rgba(0, 0, 0, 0.05)' };
-  };
-
-  const quickActions = usuario?.rol === 'proveedor'
-    ? [
-        { label: 'Publicar Servicio', icon: Wrench, path: '/mis-servicios', color: 'oklch(0.40 0.18 255)' },
-        { label: 'Notificaciones', icon: ClipboardList, path: '/mis-solicitudes', color: 'oklch(0.72 0.13 200)' },
-        { label: 'Mi Perfil', icon: User, path: '/perfil', color: '#60a5fa' },
-      ]
-    : [
-        { label: 'Buscar Servicios', icon: Search, path: '/buscar', color: 'oklch(0.40 0.18 255)' },
-        { label: 'Mis Solicitudes', icon: ClipboardList, path: '/mis-solicitudes', color: 'oklch(0.72 0.13 200)' },
-        { label: 'Mi Perfil', icon: User, path: '/perfil', color: '#60a5fa' },
-        { label: 'Buscar en Mapa', icon: MapPin, path: '/buscar', color: '#ff6b35' },
-      ];
-
-  const activityItems = [
-    { icon: CheckCircle, color: 'oklch(0.40 0.18 255)', label: 'Plataforma operando al 100%', time: 'En línea' },
-    { icon: Users, color: 'oklch(0.72 0.13 200)', label: `${stats?.proveedores_activos || 0} proveedores activos`, time: 'Tiempo real' },
-    { icon: CheckCircle2, color: '#4ade80', label: `${stats?.servicios_realizados || 0} servicios completados`, time: 'Total' },
-    { icon: Star, color: '#ff6b35', label: `Calificación: ${stats?.calificacion_media || '0.0'} / 5.0`, time: 'General' },
-  ];
+  const primerNombre = (usuario?.nombre || '').split(' ')[0];
+  const proxima = datos.proximas[0];
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="grid grid-cols-12 gap-4 lg:gap-6">
-          {/* Hero Banner */}
-          <div
-            className="col-span-12 xl:col-span-8 rounded-xl relative overflow-hidden p-6 lg:p-8 flex flex-col justify-center min-h-[220px]"
-            style={{
-              ...glassCard,
-              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.9)), radial-gradient(circle at 20% 30%, rgba(0, 0, 0, 0.05) 0%, transparent 60%)',
-              backdropFilter: 'blur(16px)',
-              border: '1px solid rgba(0, 0, 0, 0.05)',
-            }}
-          >
-            <div className="relative z-10">
-              <span className="text-xs font-semibold px-3 py-1 rounded-full tracking-wider uppercase inline-block" style={{
-                color: 'oklch(0.40 0.18 255)',
-                backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                border: '1px solid rgba(0, 0, 0, 0.05)',
-              }}>
-                Plataforma Inteligente
-              </span>
-              <h2 className="text-2xl lg:text-3xl font-bold mt-4 leading-tight" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>
-                Conectamos <span style={{ color: 'oklch(0.45 0.03 240)' }}>personas,</span><br />
-                <span style={{ color: 'oklch(0.40 0.18 255)' }}>proyectos y servicios.</span>
-              </h2>
-              <p className="text-sm mt-3 max-w-md" style={{ color: 'oklch(0.45 0.03 240)' }}>
-                Urbify centraliza todo lo que necesitas para encontrar profesionales y gestionar solicitudes de servicio de forma inteligente.
-              </p>
-              <div className="flex items-center gap-4 mt-5">
-                <div className="flex -space-x-2">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="w-7 h-7 rounded-full flex items-center justify-center text-[8px] font-bold" style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.6)',
-                      border: '2px solid white',
-                      color: 'oklch(0.45 0.03 240)',
-                    }}>
-                      {String.fromCharCode(64 + i)}
-                    </div>
-                  ))}
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-[8px] font-bold" style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-                    border: '2px solid white',
-                    color: 'oklch(0.45 0.03 240)',
-                  }}>
-                    +{stats?.proveedores_activos || 0}
+      <div className="in">
+        <header className="in-cabecera">
+          <p>{fechaDeHoy()}</p>
+          <h2>{saludo()}{primerNombre ? `, ${primerNombre}` : ''}</h2>
+        </header>
+
+        {estado === 'cargando' && <div className="in-tarjeta in-vacio">Cargando...</div>}
+        {estado === 'error' && <div className="in-tarjeta in-vacio" role="alert">No se pudo cargar tu inicio. Recarga la página.</div>}
+
+        {estado === 'listo' && esCliente && (
+          <div className="in-grid">
+            <div className="in-columna">
+              <section className="in-tarjeta in-buscar" aria-label="Buscar un servicio">
+                <h2>¿Qué necesitas hoy?</h2>
+                <form onSubmit={buscar}>
+                  <label className="in-solo-lectores" htmlFor="in-q">Buscar un servicio</label>
+                  <input id="in-q" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Ej: fuga en el baño, instalar un tomacorriente" />
+                  <button type="submit" className="in-btn in-btn--principal">Buscar</button>
+                </form>
+                {categorias.length > 0 && (
+                  <div className="in-chips">
+                    {categorias.map((c) => <Link key={c.id} to={`/buscar?categoria_id=${c.id}`} className="in-chip">{c.nombre}</Link>)}
                   </div>
-                </div>
-                <Link
-                  to={usuario?.rol === 'proveedor' ? '/mis-servicios' : '/buscar'}
-                  className="px-5 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 text-white"
-                  style={{
-                    background: 'linear-gradient(135deg, oklch(0.40 0.18 255), oklch(0.72 0.13 200))',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.45 0.18 255), oklch(0.77 0.13 200))';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, oklch(0.40 0.18 255), oklch(0.72 0.13 200))';
-                  }}
-                >
-                  {usuario?.rol === 'proveedor' ? 'Gestionar servicios' : 'Explorar servicios'}
-                  <ArrowUpRight size={16} />
-                </Link>
-              </div>
+                )}
+              </section>
+
+              <section className="in-tarjeta" aria-label="Tu próxima cita">
+                <h2>Tu próxima cita</h2>
+                {proxima ? (
+                  <div className="in-proxima">
+                    <div className="in-proxima-fecha">{fechaServicioLarga(proxima.fecha_servicio)}</div>
+                    <p><b>{proxima.servicio_titulo}</b> con <Contraparte sol={proxima} esCliente /></p>
+                    <p className="in-suave">
+                      {proxima.estado === 'pendiente' ? 'Esperando que el profesional la acepte.' : proxima.estado === 'en_proceso' ? 'El trabajo está en curso.' : 'Confirmada por el profesional.'}
+                      {pideCambio(proxima) && ' Pediste cambiar la fecha y esperas respuesta.'}
+                    </p>
+                    <Link to="/mis-solicitudes" className="in-btn">Ver detalle</Link>
+                  </div>
+                ) : (
+                  <div className="in-vacio-interno">
+                    <p>No tienes citas próximas.</p>
+                    <Link to="/buscar" className="in-btn in-btn--principal">Buscar un profesional</Link>
+                  </div>
+                )}
+              </section>
             </div>
-          </div>
 
-          {/* Stats Grid */}
-          <div className="col-span-12 xl:col-span-4 grid grid-cols-2 gap-4">
-            {statCards.map((card, i) => {
-              const Icon = card.icon;
-              return (
-                <div
-                  key={i}
-                  className="rounded-xl p-4 lg:p-5 flex flex-col justify-between"
-                  style={glassCard}
-                >
-                  <div className="flex justify-between items-start">
-                    <span className="text-xs" style={{ color: 'oklch(0.45 0.03 240)' }}>{card.label}</span>
-                    <div className="w-7 h-7 rounded flex items-center justify-center" style={{
-                      backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                      color: 'oklch(0.40 0.18 255)',
-                      border: '1px solid rgba(0, 0, 0, 0.05)',
-                    }}>
-                      <Icon size={14} />
-                    </div>
-                  </div>
-                  <div className="flex items-end gap-2 mt-3">
-                    <span className="text-xl lg:text-2xl font-bold" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>
-                      {card.value}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Main Content: 2 Columns */}
-        <div className="grid grid-cols-12 gap-4 lg:gap-6 pb-8">
-          {/* Left Column */}
-          <div className="col-span-12 xl:col-span-8 flex flex-col gap-6">
-            {/* Solicitudes Recientes */}
-            <div className="rounded-xl p-5 lg:p-6" style={glassCard}>
-              <div className="flex justify-between items-center mb-5">
-                <h3 className="text-base lg:text-lg font-semibold" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>
-                  Solicitudes Recientes
-                </h3>
-                <Link to="/mis-solicitudes" className="text-sm transition-colors" style={{ color: 'oklch(0.40 0.18 255)' }}>
-                  Ver todas
-                </Link>
-              </div>
-
-              {solicitudes.length === 0 ? (
-                <div className="text-center py-12" style={{ color: 'oklch(0.45 0.03 240)' }}>
-                  <ClipboardList size={40} className="mx-auto mb-3" style={{ opacity: 0.3 }} />
-                  <p className="text-sm">No hay solicitudes aún</p>
-                  {usuario?.rol === 'cliente' && (
-                    <Link to="/buscar" className="inline-block mt-3 text-sm" style={{ color: 'oklch(0.40 0.18 255)' }}>
-                      Buscar servicios disponibles
-                    </Link>
-                  )}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {solicitudes.slice(0, 4).map((sol) => {
-                    const status = getStatusColor(sol.estado);
-                    return (
-                      <div
-                        key={sol.id}
-                        className="rounded-xl p-4 transition-all"
-                        style={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.6)',
-                          backdropFilter: 'blur(12px)',
-                          border: '1px solid rgba(0, 0, 0, 0.05)',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.1)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.05)';
-                        }}
-                      >
-                        <div className="flex items-start justify-between mb-3">
-                          <h4 className="text-sm font-semibold truncate" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>
-                            {sol.servicio_titulo}
-                          </h4>
-                          <span
-                            className="text-[10px] font-medium px-2 py-0.5 rounded-full capitalize whitespace-nowrap ml-2"
-                            style={{
-                              backgroundColor: status.bg,
-                              color: status.text,
-                              border: `1px solid ${status.border}`,
-                            }}
-                          >
-                            {sol.estado.replace('_', ' ')}
-                          </span>
-                        </div>
-                        <p className="text-xs line-clamp-2 mb-3" style={{ color: 'oklch(0.45 0.03 240)' }}>
-                          {sol.descripcion || 'Sin descripción'}
-                        </p>
-                        <div className="flex items-center justify-between text-xs pt-2" style={{
-                          color: 'oklch(0.45 0.03 240)',
-                          borderTop: subtleBorder,
-                        }}>
-                          <span className="flex items-center gap-1">
-                            <Calendar size={12} />
-                            {sol.fecha_solicitud ? new Date(sol.fecha_solicitud).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : ''}
-                          </span>
-                          <span className="flex items-center gap-1 font-medium" style={{ color: 'oklch(0.40 0.18 255)' }}>
-                            <DollarSign size={12} />
-                            {formatoPesos(sol.tarifa)}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+            <div className="in-columna">
+              {datos.sinCalificar.length > 0 && (
+                <section className="in-tarjeta in-atencion" aria-label="Pendiente por calificar">
+                  <h2>Cuéntanos cómo te fue</h2>
+                  <ul>
+                    {datos.sinCalificar.slice(0, 3).map((s) => (
+                      <li key={s.id}><FilaSolicitud sol={s} esCliente detalle="sin calificar" /></li>
+                    ))}
+                  </ul>
+                </section>
               )}
+
+              <section className="in-tarjeta" aria-label="Solicitudes recientes">
+                <div className="in-titulo-fila">
+                  <h2>Solicitudes recientes</h2>
+                  <Link to="/mis-solicitudes">Ver todas</Link>
+                </div>
+                {datos.recientes.length === 0 ? (
+                  <p className="in-suave">Aún no has pedido ningún servicio.</p>
+                ) : (
+                  <ul>{datos.recientes.map((s) => <li key={s.id}><FilaSolicitud sol={s} esCliente detalle={fechaServicioCorta(s.fecha_servicio)} /></li>)}</ul>
+                )}
+              </section>
             </div>
           </div>
+        )}
 
-          {/* Right Column */}
-          <div className="col-span-12 xl:col-span-4 flex flex-col gap-6">
-            {/* Accesos Rápidos */}
-            <div className="rounded-xl p-5 lg:p-6" style={glassCard}>
-              <h3 className="text-base font-semibold mb-4" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>
-                Accesos Rápidos
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                {quickActions.map((action, i) => {
-                  const Icon = action.icon;
-                  return (
-                      <Link key={i} to={action.path}
-                      className="flex flex-col items-center justify-center gap-2 p-3 lg:p-4 rounded-xl transition-all group"
-                      style={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.6)',
-                        backdropFilter: 'blur(12px)',
-                        border: '1px solid rgba(0, 0, 0, 0.05)',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.03)';
-                        e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.1)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.6)';
-                        e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.05)';
-                      }}
-                    >
-                      <div className="w-9 h-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110" style={{
-                        backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                        color: action.color,
-                      }}>
-                        <Icon size={18} />
-                      </div>
-                      <span className="text-[11px] text-center leading-tight" style={{ color: 'oklch(0.45 0.03 240)' }}>
-                        {action.label}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
+        {estado === 'listo' && !esCliente && (
+          <div className="in-grid">
+            <div className="in-columna">
+              <section className={`in-tarjeta${datos.porResponder.length > 0 ? ' in-atencion' : ''}`} aria-label="Por responder">
+                <h2>{datos.porResponder.length > 0 ? 'Esperan tu respuesta' : 'Todo al día'}</h2>
+                {datos.porResponder.length === 0 ? (
+                  <p className="in-suave">No tienes solicitudes ni cambios de fecha por responder.</p>
+                ) : (
+                  <>
+                    <ul>
+                      {datos.porResponder.slice(0, 4).map((s) => (
+                        <li key={s.id}><FilaSolicitud sol={s} esCliente={false} detalle={pideCambio(s) ? 'pide cambiar la fecha' : fechaServicioCorta(s.fecha_servicio)} /></li>
+                      ))}
+                    </ul>
+                    <Link to="/mis-solicitudes" className="in-btn in-btn--principal">Responder ahora</Link>
+                  </>
+                )}
+              </section>
+
+              <section className="in-tarjeta" aria-label="Próximas visitas">
+                <div className="in-titulo-fila">
+                  <h2>Próximas visitas</h2>
+                  <Link to="/mis-solicitudes">Ver todas</Link>
+                </div>
+                {datos.proximas.length === 0 ? (
+                  <p className="in-suave">No tienes visitas programadas.</p>
+                ) : (
+                  <ul>
+                    {datos.proximas.slice(0, 5).map((s) => (
+                      <li key={s.id}>
+                        <Link to="/mis-solicitudes" className="in-visita">
+                          <span className="in-visita-hora">{fechaServicioCorta(s.fecha_servicio)}</span>
+                          <span className="in-fila-texto"><b>{s.servicio_titulo}</b><small><Contraparte sol={s} esCliente={false} />{s.direccion ? ` · ${s.direccion}` : ''}</small></span>
+                          <span className={`in-estado in-estado--${s.estado}`}>{ETIQUETAS_ESTADO[s.estado]}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
             </div>
 
-            {/* Resumen */}
-            <div className="rounded-xl p-5 lg:p-6 flex-1" style={glassCard}>
-              <h3 className="text-base font-semibold mb-5" style={{ fontFamily: "'Playfair Display', serif", color: 'oklch(0.25 0.06 240)' }}>
-                Resumen
-              </h3>
-              <div className="space-y-4">
-                {activityItems.map((item, i) => {
-                  const Icon = item.icon;
-                  return (
-                    <div key={i} className="flex items-start gap-3">
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{
-                        backgroundColor: `${item.color}15`,
-                        color: item.color,
-                      }}>
-                        <Icon size={14} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm truncate" style={{ color: 'oklch(0.25 0.06 240)' }}>{item.label}</p>
-                        <p className="text-[11px]" style={{ color: 'oklch(0.45 0.03 240)' }}>{item.time}</p>
-                      </div>
-                      <div className="w-1.5 h-1.5 rounded-full shrink-0 mt-2" style={{ backgroundColor: 'oklch(0.40 0.18 255)' }} />
-                    </div>
-                  );
-                })}
-              </div>
+            <div className="in-columna">
+              {!horarioConfigurado && (
+                <section className="in-tarjeta in-aviso-agenda" aria-label="Agenda">
+                  <h2>Configura tu agenda</h2>
+                  <p>Aún no definiste tus horas de atención, así que se ofrece de 8:00 a. m. a 6:00 p. m. todos los días.</p>
+                  <Link to="/mi-agenda" className="in-btn in-btn--principal">Definir mi horario</Link>
+                </section>
+              )}
+
+              <section className="in-tarjeta" aria-label="Resumen">
+                <h2>Tu resumen</h2>
+                <dl className="in-cifras">
+                  <div><dd>{datos.pendientes}</dd><dt>Por aceptar</dt></div>
+                  <div><dd>{datos.enCurso}</dd><dt>En curso</dt></div>
+                  <div><dd>{datos.completadas}</dd><dt>Completadas</dt></div>
+                </dl>
+                {solicitudes.length > 0 && (
+                  <p className="in-suave">Ingresos estimados de lo completado: <b>{formatearDinero(solicitudes.filter((s) => s.estado === 'completada').reduce((t, s) => t + Number(s.tarifa || 0), 0))}</b>{' '}
+                    <span title="Suma de las tarifas acordadas; las tarifas por hora dependen de las horas trabajadas">(tarifas base)</span>
+                  </p>
+                )}
+              </section>
+
+              <section className="in-tarjeta" aria-label="Accesos">
+                <h2>Accesos</h2>
+                <div className="in-accesos">
+                  <Link to="/mis-servicios" className="in-btn">Mis servicios</Link>
+                  <Link to="/mi-agenda" className="in-btn">Mi agenda</Link>
+                  <Link to="/ingresos" className="in-btn">Billetera</Link>
+                  <Link to="/perfil" className="in-btn">Mi perfil</Link>
+                </div>
+              </section>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </DashboardLayout>
   );

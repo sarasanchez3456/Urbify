@@ -5,6 +5,7 @@ import {
   User, Lock, Mail, Phone, MapPin, Wrench, ArrowRight, LogIn, UserPlus,
   Zap, Shield, Star, ChevronRight,
 } from 'lucide-react';
+import RecuperarContrasena from '../components/RecuperarContrasena';
 import './Auth.css';
 
 export default function Auth() {
@@ -25,6 +26,7 @@ export default function Auth() {
   const [minutosRestantes, setMinutosRestantes] = useState(0);
   // Texto del 429 tal como lo envía la API: distingue "desde esta red" de "esta cuenta".
   const [mensajeBloqueo, setMensajeBloqueo] = useState('');
+  const [recuperando, setRecuperando] = useState(false); // true = se muestra "¿Olvidaste tu contraseña?"
   const bloqueadoRef = useRef();
 
   const [loginCorreo, setLoginCorreo] = useState('');
@@ -45,6 +47,7 @@ export default function Auth() {
     setIsRegister(isRegisterPath);
     setError('');
     setBloqueado(false);
+    setRecuperando(false);
   }, [isRegisterPath]);
 
   useEffect(() => {
@@ -67,6 +70,7 @@ export default function Auth() {
     setIsRegister(next);
     setError('');
     setBloqueado(false);
+    setRecuperando(false);
     navigate(next ? '/registro' : '/login', { replace: true });
   };
 
@@ -125,14 +129,14 @@ export default function Auth() {
               <p className="auth-panel-desc">
                 {isRegister
                   ? 'Miles de profesionales y clientes ya confían en Urbify para conectar servicios urbanos.'
-                  : 'Tu hogar merece lo mejor. Accede y encuentra profesionales verificados cerca de ti.'}
+                  : 'Tu hogar merece lo mejor. Accede y encuentra profesionales calificados cerca de ti.'}
               </p>
               <div className="auth-features">
                 <div className="auth-feature">
                   <div className="auth-feature-icon"><Shield size={18} /></div>
                   <div>
-                    <span className="auth-feature-title">Profesionales verificados</span>
-                    <span className="auth-feature-desc">Identidad y experiencia comprobada</span>
+                    <span className="auth-feature-title">Profesionales calificados</span>
+                    <span className="auth-feature-desc">Calificaciones reales de otros clientes</span>
                   </div>
                 </div>
                 <div className="auth-feature">
@@ -161,6 +165,8 @@ export default function Auth() {
         <div className="auth-panel-right">
           <div className="auth-form-wrapper">
 
+            {!recuperando && (
+            <>
             {/* Tab switch */}
             <div className="auth-tab-bar">
               <button
@@ -203,9 +209,11 @@ export default function Auth() {
                 <span>{error}</span>
               </div>
             ) : null}
+            </>
+            )}
 
             {/* ── LOGIN FORM ── */}
-            {!isRegister && (
+            {!recuperando && !isRegister && (
               <form onSubmit={handleLogin} className="auth-form">
                 <div className="auth-field">
                   <label htmlFor="login_email"><Mail size={14} /> Correo electrónico</label>
@@ -231,6 +239,16 @@ export default function Auth() {
                   />
                 </div>
 
+                <p className="auth-forgot">
+                  <button
+                    type="button"
+                    className="auth-link"
+                    onClick={() => { setError(''); setBloqueado(false); setRecuperando(true); }}
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                </p>
+
                 <button className="auth-submit" type="submit" disabled={cargando}>
                   {cargando ? 'Entrando...' : 'Iniciar Sesión'}
                   <ArrowRight size={16} />
@@ -244,7 +262,7 @@ export default function Auth() {
             )}
 
             {/* ── REGISTER FORM ── */}
-            {isRegister && (
+            {!recuperando && isRegister && (
               <form onSubmit={handleRegister} className="auth-form">
                 <div className="auth-row">
                   <div className="auth-field">
@@ -296,7 +314,6 @@ export default function Auth() {
                     value={regForm.contrasena}
                     onChange={handleRegChange}
                     required
-                    minLength={6}
                   />
                 </div>
 
@@ -372,6 +389,20 @@ export default function Auth() {
                   <span onClick={handleToggle}>Inicia Sesión</span>
                 </p>
               </form>
+            )}
+
+            {/* ── RECUPERAR CONTRASEÑA ── */}
+            {recuperando && (
+              <RecuperarContrasena
+                correoInicial={loginCorreo}
+                onVolver={() => setRecuperando(false)}
+                onTerminar={(correo) => {
+                  setLoginCorreo(correo);
+                  setLoginContrasena('');
+                  setError('');
+                  setRecuperando(false);
+                }}
+              />
             )}
           </div>
         </div>

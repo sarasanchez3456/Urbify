@@ -107,11 +107,105 @@ CREATE TABLE IF NOT EXISTS calificaciones (
   proveedor_id     INT NOT NULL,
   puntuacion       TINYINT NOT NULL CHECK (puntuacion BETWEEN 1 AND 5),
   comentario       TEXT,
+  motivos          VARCHAR(120) NULL,
+  oculta           BOOLEAN NOT NULL DEFAULT 0,
   fecha_creacion        DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (solicitud_id)  REFERENCES solicitudes(id),
   FOREIGN KEY (cliente_id)    REFERENCES usuarios(id),
   FOREIGN KEY (proveedor_id)  REFERENCES usuarios(id),
   INDEX idx_calificaciones_proveedor (proveedor_id)
+);
+
+-- El profesional califica al cliente al terminar el servicio (una vez por solicitud). Solo lo ven los profesionales.
+CREATE TABLE IF NOT EXISTS calificaciones_cliente (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  solicitud_id     INT NOT NULL UNIQUE,
+  proveedor_id     INT NOT NULL,
+  cliente_id       INT NOT NULL,
+  puntuacion       TINYINT NOT NULL CHECK (puntuacion BETWEEN 1 AND 5),
+  comentario       VARCHAR(500) NULL,
+  fecha_creacion   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id) ON DELETE CASCADE,
+  FOREIGN KEY (proveedor_id) REFERENCES usuarios(id),
+  FOREIGN KEY (cliente_id)   REFERENCES usuarios(id),
+  INDEX idx_calificaciones_cliente (cliente_id)
+);
+
+-- Reportes de un cliente contra el profesional de una solicitud. Un cliente reporta una solicitud una sola vez.
+CREATE TABLE IF NOT EXISTS reportes (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  reportante_id    INT NOT NULL,
+  reportado_id     INT NOT NULL,
+  solicitud_id     INT NOT NULL,
+  motivo           VARCHAR(30) NOT NULL,
+  detalle          VARCHAR(1000) NOT NULL,
+  estado           VARCHAR(20) NOT NULL DEFAULT 'nuevo' CHECK (estado IN ('nuevo', 'revision', 'resuelto')),
+  nota_admin       VARCHAR(300) NULL,
+  atendido_por     INT NULL,
+  fecha            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  fecha_resolucion DATETIME NULL,
+  FOREIGN KEY (reportante_id) REFERENCES usuarios(id),
+  FOREIGN KEY (reportado_id)  REFERENCES usuarios(id),
+  FOREIGN KEY (solicitud_id)  REFERENCES solicitudes(id),
+  FOREIGN KEY (atendido_por)  REFERENCES usuarios(id) ON DELETE SET NULL,
+  UNIQUE KEY uq_reporte_solicitud (reportante_id, solicitud_id),
+  INDEX idx_reportes_estado (estado, fecha)
+);
+
+-- Registro de lo que hacen los administradores: quién, qué, sobre qué y por qué. Solo se agrega, nunca se edita.
+CREATE TABLE IF NOT EXISTS auditoria (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  admin_id    INT NULL,
+  tipo        VARCHAR(20) NOT NULL,
+  accion      VARCHAR(120) NOT NULL,
+  objeto      VARCHAR(200) NOT NULL DEFAULT '',
+  motivo      VARCHAR(300) NULL,
+  fecha       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (admin_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+  INDEX idx_auditoria_fecha (fecha),
+  INDEX idx_auditoria_tipo (tipo, fecha)
+);
+
+-- Horario semanal en el que cada proveedor atiende (hora de Colombia). dia_semana: 0 = domingo ... 6 = sábado.
+-- Sin filas, el proveedor no ha configurado su horario (se ofrece un horario por defecto, ver utils/agenda.js).
+CREATE TABLE IF NOT EXISTS disponibilidad_proveedor (
+  id             INT AUTO_INCREMENT PRIMARY KEY,
+  proveedor_id   INT NOT NULL,
+  dia_semana     TINYINT NOT NULL CHECK (dia_semana BETWEEN 0 AND 6),
+  hora_inicio    TIME NOT NULL,
+  hora_fin       TIME NOT NULL,
+  FOREIGN KEY (proveedor_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  INDEX idx_disponibilidad_proveedor (proveedor_id, dia_semana)
+);
+
+-- Pedidos de cambio de fecha de una solicitud ya aceptada. El profesional los acepta o rechaza; mientras estén
+-- pendientes, la fecha propuesta queda reservada para que otro cliente no la elija.
+CREATE TABLE IF NOT EXISTS reprogramaciones (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  solicitud_id     INT NOT NULL,
+  solicitado_por   INT NOT NULL,
+  fecha_actual     DATETIME NOT NULL,
+  fecha_propuesta  DATETIME NOT NULL,
+  estado           VARCHAR(20) NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'aceptada', 'rechazada', 'cancelada')),
+  fecha_creacion   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  fecha_respuesta  DATETIME NULL,
+  FOREIGN KEY (solicitud_id)   REFERENCES solicitudes(id) ON DELETE CASCADE,
+  FOREIGN KEY (solicitado_por) REFERENCES usuarios(id),
+  INDEX idx_reprogramaciones_solicitud (solicitud_id, estado),
+  INDEX idx_reprogramaciones_propuesta (estado, fecha_propuesta)
+);
+
+-- Historial de estados de cada solicitud: una fila por cambio (cuándo se creó, se aceptó, se inició...).
+-- estado_anterior es NULL en la fila de creación. Se borra junto con la solicitud.
+CREATE TABLE IF NOT EXISTS solicitud_historial (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  solicitud_id     INT NOT NULL,
+  estado_anterior  VARCHAR(20) NULL,
+  estado_nuevo     VARCHAR(20) NOT NULL,
+  usuario_id       INT NULL,
+  fecha            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id) ON DELETE CASCADE,
+  INDEX idx_historial_solicitud (solicitud_id, fecha)
 );
 
 CREATE TABLE IF NOT EXISTS tokens_sesion (
@@ -140,8 +234,13 @@ CREATE TABLE IF NOT EXISTS recuperaciones_contrasena (
 CREATE TABLE IF NOT EXISTS notificaciones (
   id               INT AUTO_INCREMENT PRIMARY KEY,
   usuario_id       INT NOT NULL,
+  tipo             VARCHAR(50) NOT NULL DEFAULT 'general',
+  solicitud_id     INT NULL,
   mensaje          TEXT NOT NULL,
   leida            BOOLEAN DEFAULT 0,
   fecha_creacion        DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  -- La notificación se conserva como historial aunque la solicitud se elimine.
+  FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id) ON DELETE SET NULL,
+  INDEX idx_notificaciones_solicitud (solicitud_id)
 );

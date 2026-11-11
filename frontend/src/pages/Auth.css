@@ -456,6 +456,82 @@
   color: oklch(0.25 0.18 255);
 }
 
+/* ── Recuperar contraseña ── */
+.auth-forgot {
+  margin: -6px 0 0;
+  text-align: right;
+}
+
+/* Botón con aspecto de enlace (mismo estilo que ".auth-switch span") */
+.auth-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: 'Fira Sans', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: oklch(0.35 0.22 255);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.auth-link:hover:not(:disabled) {
+  color: oklch(0.25 0.18 255);
+}
+
+.auth-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.auth-link:focus-visible {
+  outline: 2px solid oklch(0.72 0.13 200);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.auth-recovery {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.auth-back {
+  align-self: flex-start;
+}
+
+.auth-alert-ok {
+  background: rgba(22, 163, 74, 0.08);
+  border: 1px solid rgba(22, 163, 74, 0.2);
+  color: #15803d;
+}
+
+.auth-hint {
+  font-family: 'Fira Sans', sans-serif;
+  font-size: 0.76rem;
+  color: oklch(0.45 0.04 240);
+  margin: 0;
+}
+
+.auth-field-error {
+  font-family: 'Fira Sans', sans-serif;
+  font-size: 0.76rem;
+  color: #dc2626;
+  margin: 0;
+}
+
+.auth-field input[aria-invalid='true'] {
+  border-color: #dc2626;
+}
+
+.auth-code input {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.5em;
+  text-align: center;
+  padding: 11px 0 11px 0.5em;
+}
+
 /* ── RESPONSIVE ── */
 @media (max-width: 850px) {
   .auth-container {

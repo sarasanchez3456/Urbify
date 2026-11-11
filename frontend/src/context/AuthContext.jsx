@@ -108,7 +108,10 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const value = useMemo(() => ({ usuario, cargando, login, registrar, logout }), [usuario, cargando, login, registrar, logout]);
+  // Actualiza en memoria datos del usuario ya cargado (por ejemplo, el nombre del encabezado tras editar el perfil).
+  const actualizarUsuario = useCallback((cambios) => setUsuario((u) => (u ? { ...u, ...cambios } : u)), []);
+
+  const value = useMemo(() => ({ usuario, cargando, login, registrar, logout, actualizarUsuario }), [usuario, cargando, login, registrar, logout, actualizarUsuario]);
 
   return (
     <AuthContext.Provider value={value}>

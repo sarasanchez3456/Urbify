@@ -7,6 +7,7 @@ const resend = require('../config/resend');
 const { emailFrom } = require('../config/env');
 const { normalizarTelefono, MENSAJE_TELEFONO } = require('../utils/telefono');
 const { escapeHtml } = require('../utils/html');
+const { errorDeDireccion } = require('../utils/direccion');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -25,6 +26,8 @@ exports.registrar = async (req, res, next) => {
     if (!nombre || !apellido || !correo || !contrasena) {
       return res.status(400).json({ error: 'nombre, apellido, correo y contrasena son requeridos' });
     }
+    const errorDir = errorDeDireccion(direccion);
+    if (errorDir) return res.status(400).json({ error: errorDir });
     if (!EMAIL_REGEX.test(correo)) {
       return res.status(400).json({ error: 'El correo electrónico no tiene un formato válido' });
     }
@@ -274,6 +277,9 @@ exports.perfil = async (req, res, next) => {
 exports.actualizarPerfil = async (req, res, next) => {
   try {
     const { nombre, apellido, telefono, direccion, latitud, longitud, foto_url, oficio } = req.body;
+
+    const errorDir = errorDeDireccion(direccion);
+    if (errorDir) return res.status(400).json({ error: errorDir });
 
     // Vacío o ausente = no cambiar el teléfono; si viene un valor, solo números.
     let telefonoLimpio = null;

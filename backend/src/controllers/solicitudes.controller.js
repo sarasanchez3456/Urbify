@@ -1,23 +1,23 @@
 const { query } = require('../config/db');
 const resend = require('../config/resend');
 const { escapeHtml } = require('../utils/html');
+const { motivosDeColumna } = require('../utils/motivosCalificacion');
+const { errorDeDireccion } = require('../utils/direccion');
+const { conReservaDeProveedor, motivoNoDisponible, parsearFecha, aFechaMysqlUtc } = require('../utils/agenda');
 
-// Zona horaria de fecha_servicio. Se guarda en UTC (la conexión usa time_zone +00:00) y se responde
-// en ISO 8601 con "Z". Urbify opera en Colombia (UTC-5, sin horario de verano): un valor SIN zona
-// (p. ej. "2026-12-01 10:00:00" de la app móvil) se interpreta como hora de Colombia, no como la
-// hora del servidor. Un valor con zona ("...Z" o "...-05:00") se respeta tal cual.
-const OFFSET_COLOMBIA = '-05:00';
 
-function parsearFechaServicio(valor) {
-  if (typeof valor !== 'string') return null;
-  let texto = valor.trim().replace(' ', 'T');
-  if (!texto) return null;
-  if (!/(Z|[+-]\d{2}:?\d{2})$/i.test(texto)) texto += OFFSET_COLOMBIA;
-  const ms = Date.parse(texto);
-  return Number.isNaN(ms) ? null : ms;
+// Guarda en el historial un cambio de estado (estadoAnterior es null al crear la solicitud). Es información
+// secundaria: si falla no debe deshacer ni romper la operación principal, solo se registra el error.
+async function registrarHistorial(solicitudId, estadoAnterior, estadoNuevo, usuarioId) {
+  try {
+    await query(
+      'INSERT INTO solicitud_historial (solicitud_id, estado_anterior, estado_nuevo, usuario_id) VALUES (?, ?, ?, ?)',
+      [solicitudId, estadoAnterior, estadoNuevo, usuarioId]
+    );
+  } catch (err) {
+    console.error('Error al registrar el historial de la solicitud:', err.message);
+  }
 }
-
-const aFechaMysqlUtc = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
 
 exports.crearSolicitud = async (req, res, next) => {
   try {
@@ -29,10 +29,14 @@ exports.crearSolicitud = async (req, res, next) => {
       return res.status(400).json({ error: 'servicio_id es requerido' });
     }
 
-    const fechaServicioMillis = parsearFechaServicio(fecha_servicio);
+    const fechaServicioMillis = parsearFecha(fecha_servicio);
     if (fechaServicioMillis === null || fechaServicioMillis <= Date.now()) {
       return res.status(400).json({ error: 'Debes seleccionar una fecha y hora futura para el servicio' });
     }
+
+    // Dirección del servicio: si viene, debe ser un texto razonable (no solo espacios, no símbolos raros).
+    const errorDir = errorDeDireccion(direccion);
+    if (errorDir) return res.status(400).json({ error: errorDir });
 
     const [servicio] = await query('SELECT * FROM servicios WHERE id = ?', [servicio_id]);
     if (servicio.length === 0) {
@@ -61,20 +65,32 @@ exports.crearSolicitud = async (req, res, next) => {
       [req.usuarioId]
     );
 
+    // La reserva se hace en una transacción que bloquea al proveedor: si dos clientes piden la misma hora a la vez,
+    // el segundo ve la hora ocupada y recibe 409 (el proveedor nunca queda con dos citas a la misma hora).
     // Se guarda la tarifa vigente al solicitar: un cambio posterior del servicio no altera el historial.
-    const [result] = await query(
-      `INSERT INTO solicitudes (cliente_id, proveedor_id, servicio_id, tarifa_acordada, tipo_tarifa_acordada, descripcion, fecha_servicio, direccion, latitud, longitud)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [req.usuarioId, proveedor_id, servicio_id, servicio[0].tarifa, servicio[0].tipo_tarifa, descripcion ?? null, aFechaMysqlUtc(fechaServicioMillis), direccion || null, latitud || null, longitud || null]
-    );
+    const reserva = await conReservaDeProveedor(proveedor_id, async (conn) => {
+      const motivo = await motivoNoDisponible(conn, proveedor_id, fechaServicioMillis);
+      if (motivo) return { motivo };
+      const [result] = await conn.execute(
+        `INSERT INTO solicitudes (cliente_id, proveedor_id, servicio_id, tarifa_acordada, tipo_tarifa_acordada, descripcion, fecha_servicio, direccion, latitud, longitud)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [req.usuarioId, proveedor_id, servicio_id, servicio[0].tarifa, servicio[0].tipo_tarifa, descripcion ?? null, aFechaMysqlUtc(fechaServicioMillis), direccion || null, latitud || null, longitud || null]
+      );
+      return { id: result.insertId };
+    });
+    if (reserva.motivo) {
+      return res.status(409).json({ error: reserva.motivo.mensaje, codigo: reserva.motivo.codigo });
+    }
 
-    const solicitudId = result.insertId;
+    const solicitudId = reserva.id;
+
+    await registrarHistorial(solicitudId, null, 'pendiente', req.usuarioId);
 
     // Crear notificación para el proveedor
     try {
       await query(
-        'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
-        [
+        "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)",
+        [solicitudId, 
           proveedor_id,
           `Nueva solicitud de ${cliente[0].nombre} ${cliente[0].apellido} para el servicio "${servicio[0].titulo}"`
         ]
@@ -82,8 +98,8 @@ exports.crearSolicitud = async (req, res, next) => {
 
       // Crear notificación de confirmación para el cliente
       await query(
-        'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
-        [
+        "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)",
+        [solicitudId, 
           req.usuarioId,
           `Enviaste una solicitud a ${proveedor[0].nombre} ${proveedor[0].apellido} para el servicio "${servicio[0].titulo}"`
         ]
@@ -152,7 +168,13 @@ exports.misSolicitudesComoCliente = async (req, res, next) => {
   try {
     const [solicitudes] = await query(
       `SELECT sol.*, s.titulo AS servicio_titulo, COALESCE(sol.tarifa_acordada, s.tarifa) AS tarifa,
-       u.nombre AS proveedor_nombre, u.apellido AS proveedor_apellido, u.foto_url AS proveedor_foto
+       u.nombre AS proveedor_nombre, u.apellido AS proveedor_apellido, u.foto_url AS proveedor_foto,
+       u.telefono AS proveedor_telefono, s.categoria_id AS servicio_categoria_id,
+       (SELECT cal.puntuacion FROM calificaciones cal WHERE cal.solicitud_id = sol.id) AS calificacion_puntuacion,
+       (SELECT cal.motivos FROM calificaciones cal WHERE cal.solicitud_id = sol.id) AS calificacion_motivos,
+       (SELECT r.id FROM reprogramaciones r WHERE r.solicitud_id = sol.id AND r.estado = 'pendiente' LIMIT 1) AS reprogramacion_id,
+       (SELECT r.fecha_propuesta FROM reprogramaciones r WHERE r.solicitud_id = sol.id AND r.estado = 'pendiente' LIMIT 1) AS reprogramacion_fecha,
+       (SELECT rep.id FROM reportes rep WHERE rep.solicitud_id = sol.id AND rep.reportante_id = sol.cliente_id LIMIT 1) AS reporte_id
        FROM solicitudes sol
        JOIN servicios s ON sol.servicio_id = s.id
        JOIN usuarios u ON sol.proveedor_id = u.id
@@ -160,7 +182,7 @@ exports.misSolicitudesComoCliente = async (req, res, next) => {
        ORDER BY sol.fecha_solicitud DESC`,
       [req.usuarioId]
     );
-    res.json(solicitudes);
+    res.json(solicitudes.map((s) => ({ ...s, calificacion_motivos: motivosDeColumna(s.calificacion_motivos) })));
   } catch (err) {
     return next(err);
   }
@@ -171,7 +193,12 @@ exports.misSolicitudesComoProveedor = async (req, res, next) => {
     const [solicitudes] = await query(
       `SELECT sol.*, s.titulo AS servicio_titulo, COALESCE(sol.tarifa_acordada, s.tarifa) AS tarifa,
        u.nombre AS cliente_nombre, u.apellido AS cliente_apellido, u.foto_url AS cliente_foto,
-       u.direccion AS cliente_direccion, u.telefono AS cliente_telefono
+       u.direccion AS cliente_direccion, u.telefono AS cliente_telefono,
+       (SELECT cc.puntuacion FROM calificaciones_cliente cc WHERE cc.solicitud_id = sol.id) AS cliente_calificado,
+       (SELECT AVG(cc.puntuacion) FROM calificaciones_cliente cc WHERE cc.cliente_id = sol.cliente_id) AS cliente_promedio,
+       (SELECT COUNT(*) FROM calificaciones_cliente cc WHERE cc.cliente_id = sol.cliente_id) AS cliente_total_calificaciones,
+       (SELECT r.id FROM reprogramaciones r WHERE r.solicitud_id = sol.id AND r.estado = 'pendiente' LIMIT 1) AS reprogramacion_id,
+       (SELECT r.fecha_propuesta FROM reprogramaciones r WHERE r.solicitud_id = sol.id AND r.estado = 'pendiente' LIMIT 1) AS reprogramacion_fecha
        FROM solicitudes sol
        JOIN servicios s ON sol.servicio_id = s.id
        JOIN usuarios u ON sol.cliente_id = u.id
@@ -253,12 +280,19 @@ exports.actualizarEstadoSolicitud = async (req, res, next) => {
       return res.status(409).json({ error: 'La solicitud cambió de estado, vuelve a consultarla' });
     }
 
+    await registrarHistorial(Number(id), solicitudActual.estado, estado, req.usuarioId);
+
+    // Un pedido de cambio de fecha pendiente deja de tener sentido cuando la solicitud empieza o termina.
+    if (['en_proceso', 'completada', 'cancelada'].includes(estado)) {
+      await query("UPDATE reprogramaciones SET estado = 'cancelada', fecha_respuesta = NOW() WHERE solicitud_id = ? AND estado = 'pendiente'", [id]);
+    }
+
     // Crear notificaciones en BD según el nuevo estado
     try {
       if (estado === 'aceptada') {
         await query(
-          'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
-          [
+          "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)",
+          [solicitudActual.id, 
             solicitudActual.cliente_id,
             `El proveedor ${solicitudActual.prov_nombre} ${solicitudActual.prov_apellido} aceptó tu solicitud para "${solicitudActual.servicio_titulo}"`
           ]
@@ -283,16 +317,16 @@ exports.actualizarEstadoSolicitud = async (req, res, next) => {
         }
       } else if (estado === 'en_proceso') {
         await query(
-          'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
-          [
+          "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)",
+          [solicitudActual.id, 
             solicitudActual.cliente_id,
             `El proveedor ${solicitudActual.prov_nombre} inició el trabajo para "${solicitudActual.servicio_titulo}"`
           ]
         );
       } else if (estado === 'completada') {
         await query(
-          'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
-          [
+          "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)",
+          [solicitudActual.id, 
             solicitudActual.cliente_id,
             `El servicio "${solicitudActual.servicio_titulo}" fue completado por ${solicitudActual.prov_nombre}. ¡Ya puedes calificar su trabajo!`
           ]
@@ -300,16 +334,16 @@ exports.actualizarEstadoSolicitud = async (req, res, next) => {
       } else if (estado === 'cancelada') {
         if (esProveedor) {
           await query(
-            'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
-            [
+            "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)",
+            [solicitudActual.id, 
               solicitudActual.cliente_id,
               `El proveedor ${solicitudActual.prov_nombre} canceló la solicitud para "${solicitudActual.servicio_titulo}"`
             ]
           );
         } else {
           await query(
-            'INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)',
-            [
+            "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)",
+            [solicitudActual.id, 
               solicitudActual.proveedor_id,
               `El cliente ${solicitudActual.cli_nombre} canceló su solicitud para "${solicitudActual.servicio_titulo}"`
             ]
@@ -390,8 +424,10 @@ exports.enviarMensaje = async (req, res, next) => {
       if (datos.length > 0) {
         const { nombre, apellido, rol, titulo } = datos[0];
         const vistaPrevia = contenido.length > 80 ? `${contenido.slice(0, 80).trimEnd()}…` : contenido;
-        await query('INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)', [
+        await query('INSERT INTO notificaciones (usuario_id, tipo, solicitud_id, mensaje) VALUES (?, ?, ?, ?)', [
           destinatarioId,
+          'mensaje',
+          solicitud.id,
           `${rol === 'proveedor' ? 'El proveedor' : 'El cliente'} ${nombre} ${apellido} te envió un mensaje sobre "${titulo}": "${vistaPrevia}"`,
         ]);
       }
@@ -400,6 +436,25 @@ exports.enviarMensaje = async (req, res, next) => {
     }
 
     res.status(201).json({ id: result.insertId, mensaje: 'Mensaje enviado' });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+// Historial de estados de la solicitud (cuándo se creó, aceptó, inició...). Solo lo ven el cliente y el proveedor.
+exports.listarHistorial = async (req, res, next) => {
+  try {
+    const solicitud = await solicitudDelParticipante(req.params.id, req.usuarioId, res);
+    if (!solicitud) return;
+
+    const [historial] = await query(
+      `SELECT estado_anterior, estado_nuevo, fecha
+         FROM solicitud_historial
+        WHERE solicitud_id = ?
+        ORDER BY fecha ASC, id ASC`,
+      [solicitud.id]
+    );
+    res.json(historial);
   } catch (err) {
     return next(err);
   }

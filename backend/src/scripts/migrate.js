@@ -19,6 +19,11 @@ const COLUMNAS = [
   { tabla: 'usuarios', nombre: 'categoria_id', ddl: 'categoria_id INT NULL' },
   { tabla: 'solicitudes', nombre: 'tarifa_acordada', ddl: 'tarifa_acordada DECIMAL(10,2) NULL' },
   { tabla: 'solicitudes', nombre: 'tipo_tarifa_acordada', ddl: 'tipo_tarifa_acordada VARCHAR(20) NULL' },
+  { tabla: 'calificaciones', nombre: 'motivos', ddl: 'motivos VARCHAR(120) NULL' },
+  { tabla: 'calificaciones', nombre: 'oculta', ddl: 'oculta BOOLEAN NOT NULL DEFAULT 0' },
+  // Las notificaciones existentes se mantienen y reciben el tipo por defecto "general".
+  { tabla: 'notificaciones', nombre: 'tipo', ddl: "tipo VARCHAR(50) NOT NULL DEFAULT 'general'" },
+  { tabla: 'notificaciones', nombre: 'solicitud_id', ddl: 'solicitud_id INT NULL' },
 ];
 
 // Mismos índices que declara schema.sql.
@@ -31,7 +36,36 @@ const INDICES = [
   { tabla: 'solicitudes', nombre: 'idx_solicitudes_proveedor', columnas: 'proveedor_id' },
   { tabla: 'calificaciones', nombre: 'idx_calificaciones_proveedor', columnas: 'proveedor_id' },
   { tabla: 'tokens_sesion', nombre: 'idx_tokens_sesion_token', columnas: 'usuario_id, expira_en' },
+  { tabla: 'notificaciones', nombre: 'idx_notificaciones_solicitud', columnas: 'solicitud_id' },
 ];
+
+// El schema crea esta FK en instalaciones nuevas. Esta comprobación la agrega en bases existentes y
+// corrige una FK previa que no preserve el historial con ON DELETE SET NULL.
+async function asegurarFkNotificacionesSolicitud(conn) {
+  const [claves] = await conn.query(
+    `SELECT kcu.CONSTRAINT_NAME AS nombre, rc.DELETE_RULE AS regla_borrado
+       FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+       LEFT JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc
+         ON rc.CONSTRAINT_SCHEMA = kcu.CONSTRAINT_SCHEMA
+        AND rc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+      WHERE kcu.TABLE_SCHEMA = ? AND kcu.TABLE_NAME = 'notificaciones'
+        AND kcu.COLUMN_NAME = 'solicitud_id' AND kcu.REFERENCED_TABLE_NAME = 'solicitudes'`,
+    [DB_NAME]
+  );
+
+  if (claves.some((clave) => clave.regla_borrado === 'SET NULL')) return;
+
+  for (const { nombre } of claves) {
+    await conn.query(`ALTER TABLE notificaciones DROP FOREIGN KEY \`${nombre}\``);
+    console.log(`Migración: FK ${nombre} de notificaciones.solicitud_id reemplazada`);
+  }
+  await conn.query(
+    `ALTER TABLE notificaciones
+       ADD CONSTRAINT fk_notificaciones_solicitud
+       FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id) ON DELETE SET NULL`
+  );
+  console.log('Migración: FK notificaciones.solicitud_id creada con ON DELETE SET NULL');
+}
 
 // Las bases creadas antes solo aceptaban 'cliente' y 'proveedor' en usuarios.rol
 // (CHECK con nombre automático). Se reemplaza por chk_usuarios_rol, que incluye 'admin'.
@@ -106,7 +140,38 @@ async function migrate() {
       }
     }
 
+    await asegurarFkNotificacionesSolicitud(conn);
     await asegurarRolAdmin(conn);
+
+    // Historial de estados: las solicitudes anteriores a esta tabla reciben su fila de creación (con la fecha en que
+    // se hicieron). Los cambios de estado anteriores no se pueden reconstruir: no hay de dónde sacar su fecha.
+    // Idempotente: solo toca las solicitudes que aún no tienen ninguna fila.
+    const [relleno] = await conn.query(
+      `INSERT INTO solicitud_historial (solicitud_id, estado_anterior, estado_nuevo, usuario_id, fecha)
+       SELECT s.id, NULL, 'pendiente', s.cliente_id, s.fecha_solicitud
+         FROM solicitudes s
+        WHERE NOT EXISTS (SELECT 1 FROM solicitud_historial h WHERE h.solicitud_id = s.id)`
+    );
+    if (relleno.affectedRows > 0) console.log(`Migración: historial de ${relleno.affectedRows} solicitudes inicializado`);
+
+    // Avisos de mensajes anteriores al enlace con la solicitud: el texto trae el título del servicio
+    // ('... te envió un mensaje sobre "Título": "..."'). Solo se enlazan los que coinciden con UNA sola solicitud del
+    // destinatario; los ambiguos se dejan como estaban (abren Mis Solicitudes). Idempotente: solo toca tipo 'general'.
+    const [enlazados] = await conn.query(
+      `UPDATE notificaciones n
+         JOIN (
+           SELECT n2.id AS nid, MIN(sol.id) AS sid, COUNT(*) AS c
+             FROM notificaciones n2
+             JOIN solicitudes sol ON (sol.cliente_id = n2.usuario_id OR sol.proveedor_id = n2.usuario_id)
+             JOIN servicios sv ON sv.id = sol.servicio_id
+            WHERE n2.tipo = 'general' AND n2.solicitud_id IS NULL
+              AND n2.mensaje LIKE '%te envió un mensaje sobre "%'
+              AND sv.titulo = SUBSTRING_INDEX(SUBSTRING(n2.mensaje, LOCATE('sobre "', n2.mensaje) + 7), '": "', 1)
+            GROUP BY n2.id
+         ) x ON x.nid = n.id AND x.c = 1
+          SET n.tipo = 'mensaje', n.solicitud_id = x.sid`
+    );
+    if (enlazados.affectedRows > 0) console.log(`Migración: ${enlazados.affectedRows} avisos de mensajes enlazados a su solicitud`);
 
     console.log('Migración completada exitosamente');
   } catch (err) {
