@@ -21,6 +21,20 @@ jobs:
     name: "🔍 Backend – Lint & Build Check"
     runs-on: ubuntu-latest
 
+    # MySQL real para las pruebas de integración (no se simula nada: reservas, transacciones, claves foráneas...).
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -ptest_password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
     steps:
       - name: "📥 Clonar el repositorio"
         uses: actions/checkout@v4
@@ -51,6 +65,21 @@ jobs:
           node --check src/index.js
           echo "✅ Sintaxis del backend válida"
         working-directory: ./backend
+
+      - name: "🧪 Pruebas unitarias del backend"
+        run: npm test
+        working-directory: ./backend
+
+      - name: "🧪 Pruebas de integración del backend (MySQL real)"
+        # Un fallo de autorización, privacidad, reservas, historial, auditoría o migraciones hace fallar el CI.
+        # La base de pruebas (urbify_test) se crea desde cero con config/schema.sql en cada ejecución.
+        run: npm run test:integration
+        working-directory: ./backend
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USER: root
+          DB_PASSWORD: test_password
 
   # ─────────────────────────────────────────────────────────────
   # JOB 2: Validación del Frontend (React + Vite)

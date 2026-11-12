@@ -8,7 +8,9 @@
     "dev": "nodemon src/index.js",
     "migrate": "node src/scripts/migrate.js",
     "create-admin": "node src/scripts/create-admin.js",
-    "test": "node --test test/"
+    "test": "node --test test/unit/",
+    "test:integration": "node --test --test-concurrency=1 test/integration/",
+    "test:todo": "npm test && npm run test:integration"
   },
   "dependencies": {
     "ajv": "^8.20.0",
