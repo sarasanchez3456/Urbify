@@ -1142,7 +1142,7 @@ paths:
     get:
       tags: [Notificaciones]
       summary: Avisos en vivo (Server-Sent Events)
-      description: Conexión abierta que envía `event: notificacion` (con `{ id }`) apenas se crea una notificación para el usuario autenticado, más un latido cada 25 s. La web la usa en lugar de consultar cada pocos segundos (queda un respaldo cada 30 s). Va por `fetch` con cabecera `Authorization`, no por `EventSource`. Las conexiones viven en la memoria de la instancia del backend.
+      description: 'Conexión abierta que envía `event: notificacion` (con `{ id }`) apenas se crea una notificación para el usuario autenticado, más un latido cada 25 s. La web la usa en lugar de consultar cada pocos segundos (queda un respaldo cada 30 s). Va por `fetch` con cabecera `Authorization`, no por `EventSource`. Las conexiones viven en la memoria de la instancia del backend.'
       x-roles: [cliente, proveedor, admin]
       responses:
         '200': { description: 'Flujo text/event-stream' }
@@ -1639,7 +1639,7 @@ components:
             proveedor_nombre: { type: string }
             proveedor_apellido: { type: string }
             proveedor_foto: { type: string, nullable: true }
-            proveedor_telefono: { type: string, nullable: true, description: Teléfono del proveedor de esta solicitud (el cliente ya lo ve en las búsquedas) }
+            proveedor_telefono: { type: string, nullable: true, description: 'Teléfono del proveedor. El servidor solo lo entrega cuando la solicitud está aceptada, en_proceso o completada; en pendiente y cancelada llega null' }
             servicio_categoria_id: { type: integer, description: Categoría del servicio solicitado }
             calificacion_puntuacion: { type: integer, minimum: 1, maximum: 5, nullable: true, description: Puntuación que el cliente dio a esta solicitud; null si aún no la ha calificado }
             calificacion_motivos: { type: array, items: { type: string }, description: Motivos rápidos que marcó al calificar (vacío si no marcó ninguno o no ha calificado) }
@@ -1653,8 +1653,8 @@ components:
             cliente_nombre: { type: string }
             cliente_apellido: { type: string }
             cliente_foto: { type: string, nullable: true }
-            cliente_direccion: { type: string, nullable: true }
-            cliente_telefono: { type: string, nullable: true }
+            cliente_direccion: { type: string, nullable: true, description: 'Dirección del perfil del cliente. Solo se entrega con la solicitud aceptada, en_proceso o completada; en pendiente y cancelada llega null (la dirección del servicio escrita en la solicitud viene aparte, en direccion)' }
+            cliente_telefono: { type: string, nullable: true, description: 'Teléfono del cliente. Solo se entrega con la solicitud aceptada, en_proceso o completada; en pendiente y cancelada llega null' }
             reprogramacion_id: { type: integer, nullable: true, description: Pedido de cambio de fecha pendiente de tu respuesta, si lo hay }
             reprogramacion_fecha: { $ref: '#/components/schemas/Fecha' }
     Mensaje:

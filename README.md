@@ -275,6 +275,9 @@ Push a main
      ├──→ [Job 1] 🔍 Backend CI ──────────┐
      │    • npm ci                         │  (en paralelo)
      │    • node --check src/index.js      │
+     │    • npm test (unitarias)           │
+     │    • npm run test:integration       │
+     │      (con un MySQL 8 real)          │
      │                                     │
      ├──→ [Job 2] 🎨 Frontend CI ─────────┤
      │    • npm ci                         │
@@ -288,9 +291,23 @@ Push a main
 
 **¿Qué garantiza este pipeline?**
 - ✅ Que el código del backend tiene **sintaxis JavaScript válida**
+- ✅ Que las **pruebas automáticas** del backend pasan (ver abajo): un fallo de autorización, privacidad, reservas, historial o auditoría rompe el CI
 - ✅ Que el frontend **compila correctamente** en modo producción
 - ✅ Que la **infraestructura Docker** está correctamente definida
 - ❌ Ningún error llega silenciosamente a la rama principal
+
+### 🧪 Pruebas automáticas del backend
+
+| Comando (desde `backend/`) | Qué ejecuta | Necesita MySQL |
+|---|---|---|
+| `npm test` | Pruebas unitarias de funciones puras (`test/unit/`) | No |
+| `npm run test:integration` | Pruebas de integración (`test/integration/`): arrancan el servidor real y lo prueban por HTTP contra una base MySQL de pruebas que se crea sola desde `config/schema.sql` | Sí |
+| `npm run test:todo` | Las dos anteriores | Sí |
+
+Las de integración cubren: reservas simultáneas y fuera de horario, reprogramaciones (pedir, aceptar, rechazar, cancelar y choques), autorización entre usuarios y rutas de administrador, privacidad de teléfono y dirección, notificaciones (`tipo` y `solicitud_id`), historial de estados atómico (rollback real), auditoría administrativa atómica y migraciones sobre una base existente.
+
+Variables opcionales: `DB_HOST` (`127.0.0.1`), `DB_PORT` (`3306`), `DB_USER` (`root`), `DB_PASSWORD`, `TEST_DB_NAME` (`urbify_test`) y `TEST_PORT` (`4100`). **La base `TEST_DB_NAME` se borra y se recrea en cada ejecución: no apuntes a una base con datos.**
+Ejemplo con el MySQL de `docker compose up -d db`: `DB_PASSWORD=<tu clave> npm run test:integration`.
 
 ---
 

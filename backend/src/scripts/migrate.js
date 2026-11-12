@@ -115,7 +115,10 @@ async function migrate() {
       multipleStatements: true,
       charset: 'utf8mb4',
     });
-    await conn.query(fs.readFileSync(SCHEMA_PATH, 'utf8'));
+    // schema.sql trae el nombre "urbify_db" escrito (CREATE DATABASE / USE): se cambia por la base configurada en
+    // DB_NAME, para que la migración nunca toque otra base distinta de la que usa el servidor.
+    const esquema = fs.readFileSync(SCHEMA_PATH, 'utf8').replace(/\burbify_db\b/g, () => DB_NAME);
+    await conn.query(esquema);
     console.log('Migración: schema.sql aplicado');
 
     for (const { tabla, nombre, ddl } of COLUMNAS) {

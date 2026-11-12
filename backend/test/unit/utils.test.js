@@ -2,10 +2,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { errorDeDireccion } = require('../src/utils/direccion');
-const { validarMotivos, motivosAColumna, motivosDeColumna } = require('../src/utils/motivosCalificacion');
-const { posicionUsuario, suscribir, avisar } = require('../src/utils/avisos');
-const { motivoValido } = require('../src/utils/auditoria.pure');
+const { errorDeDireccion } = require('../../src/utils/direccion');
+const { validarMotivos, motivosAColumna, motivosDeColumna } = require('../../src/utils/motivosCalificacion');
+const { posicionUsuario, suscribir, avisar } = require('../../src/utils/avisos');
+const { motivoValido } = require('../../src/utils/auditoria.pure');
 
 test('dirección: vacía o ausente es válida (es opcional)', () => {
   for (const v of [undefined, null, '']) assert.equal(errorDeDireccion(v), null);
