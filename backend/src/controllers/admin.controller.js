@@ -2,6 +2,9 @@
 // Toda acción que cambia algo exige un motivo y queda en la auditoría.
 const { query, pool } = require('../config/db');
 const { registrarAuditoria, motivoValido } = require('../utils/auditoria');
+const { enTransaccion } = require('../utils/transaccion');
+const { conReservaDeProveedor } = require('../utils/agenda');
+const { registrarHistorial } = require('../utils/historial');
 
 const ERROR_MOTIVO = { error: 'Escribe un motivo de entre 10 y 300 caracteres.' };
 const nombreDe = (u) => `${u.nombre} ${u.apellido}`.trim();
@@ -112,9 +115,13 @@ exports.cambiarEstadoUsuario = async (req, res, next) => {
     if (u.rol === 'admin') return res.status(403).json({ error: 'No se puede suspender a un administrador desde la API' });
     if (Boolean(u.activo) === activo) return res.status(409).json({ error: activo ? 'La cuenta ya está activa' : 'La cuenta ya está suspendida' });
 
-    await query('UPDATE usuarios SET activo = ? WHERE id = ?', [activo ? 1 : 0, id]);
-    if (!activo) await query('DELETE FROM tokens_sesion WHERE usuario_id = ?', [id]);
-    await registrarAuditoria(req.usuarioId, 'usuario', activo ? 'Reactivó a' : 'Suspendió a', nombreDe(u), motivo);
+    // Suspender, cerrar sus sesiones y dejar la auditoría es una sola acción: si la auditoría falla, la cuenta
+    // no queda suspendida a medias.
+    await enTransaccion(async (conn) => {
+      await conn.execute('UPDATE usuarios SET activo = ? WHERE id = ?', [activo ? 1 : 0, id]);
+      if (!activo) await conn.execute('DELETE FROM tokens_sesion WHERE usuario_id = ?', [id]);
+      await registrarAuditoria(conn, req.usuarioId, 'usuario', activo ? 'Reactivó a' : 'Suspendió a', nombreDe(u), motivo);
+    });
     res.json({ mensaje: activo ? 'Cuenta reactivada' : 'Cuenta suspendida', activo });
   } catch (err) {
     return next(err);
@@ -148,8 +155,10 @@ exports.cambiarDisponibilidadServicio = async (req, res, next) => {
 
     const [filas] = await query('SELECT id, titulo FROM servicios WHERE id = ?', [id]);
     if (filas.length === 0) return res.status(404).json({ error: 'Servicio no encontrado' });
-    await query('UPDATE servicios SET disponible = ? WHERE id = ?', [disponible ? 1 : 0, id]);
-    await registrarAuditoria(req.usuarioId, 'servicio', disponible ? 'Mostró el servicio' : 'Ocultó el servicio', filas[0].titulo, motivo);
+    await enTransaccion(async (conn) => {
+      await conn.execute('UPDATE servicios SET disponible = ? WHERE id = ?', [disponible ? 1 : 0, id]);
+      await registrarAuditoria(conn, req.usuarioId, 'servicio', disponible ? 'Mostró el servicio' : 'Ocultó el servicio', filas[0].titulo, motivo);
+    });
     res.json({ mensaje: disponible ? 'Servicio visible' : 'Servicio oculto', disponible });
   } catch (err) {
     return next(err);
@@ -193,15 +202,23 @@ exports.cancelarSolicitud = async (req, res, next) => {
       return res.status(409).json({ error: 'Solo se puede cancelar una solicitud que siga abierta' });
     }
 
-    // El estado anterior va en el WHERE: si cambió mientras tanto, no se pisa.
-    const [r] = await query("UPDATE solicitudes SET estado = 'cancelada' WHERE id = ? AND estado = ?", [id, sol.estado]);
-    if (r.affectedRows === 0) return res.status(409).json({ error: 'La solicitud cambió de estado, vuelve a consultarla' });
-    await query('INSERT INTO solicitud_historial (solicitud_id, estado_anterior, estado_nuevo, usuario_id) VALUES (?, ?, ?, ?)', [id, sol.estado, 'cancelada', req.usuarioId]);
-    await query("UPDATE reprogramaciones SET estado = 'cancelada', fecha_respuesta = NOW() WHERE solicitud_id = ? AND estado = 'pendiente'", [id]);
+    // Cambio de estado + historial + cierre del pedido de cambio de fecha + auditoría: una sola transacción (con el
+    // mismo bloqueo por proveedor que usan las reservas). El estado anterior va en el WHERE: si cambió mientras
+    // tanto, no se pisa.
+    const aplicado = await conReservaDeProveedor(sol.proveedor_id, async (conn) => {
+      const [r] = await conn.execute("UPDATE solicitudes SET estado = 'cancelada' WHERE id = ? AND estado = ?", [id, sol.estado]);
+      if (r.affectedRows === 0) return false;
+      await registrarHistorial(conn, id, sol.estado, 'cancelada', req.usuarioId);
+      await conn.execute("UPDATE reprogramaciones SET estado = 'cancelada', fecha_respuesta = NOW() WHERE solicitud_id = ? AND estado = 'pendiente'", [id]);
+      await registrarAuditoria(conn, req.usuarioId, 'solicitud', 'Canceló la solicitud', `N.º ${id} · ${sol.titulo}`, motivo);
+      return true;
+    });
+    if (!aplicado) return res.status(409).json({ error: 'La solicitud cambió de estado, vuelve a consultarla' });
+
+    // Los avisos a las dos partes se envían después de confirmar: son informativos y no deben deshacer la cancelación.
     for (const destino of [sol.cliente_id, sol.proveedor_id]) {
       await query("INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)", [id, destino, `Un administrador canceló la solicitud de "${sol.titulo}". Motivo: ${motivo}`]).catch(() => {});
     }
-    await registrarAuditoria(req.usuarioId, 'solicitud', 'Canceló la solicitud', `N.º ${id} · ${sol.titulo}`, motivo);
     res.json({ mensaje: 'Solicitud cancelada' });
   } catch (err) {
     return next(err);
@@ -240,8 +257,10 @@ exports.cambiarVisibilidadResena = async (req, res, next) => {
       [id]
     );
     if (filas.length === 0) return res.status(404).json({ error: 'Reseña no encontrada' });
-    await query('UPDATE calificaciones SET oculta = ? WHERE id = ?', [oculta ? 1 : 0, id]);
-    await registrarAuditoria(req.usuarioId, 'resena', oculta ? 'Ocultó una reseña de' : 'Restauró una reseña de', nombreDe(filas[0]), motivo);
+    await enTransaccion(async (conn) => {
+      await conn.execute('UPDATE calificaciones SET oculta = ? WHERE id = ?', [oculta ? 1 : 0, id]);
+      await registrarAuditoria(conn, req.usuarioId, 'resena', oculta ? 'Ocultó una reseña de' : 'Restauró una reseña de', nombreDe(filas[0]), motivo);
+    });
     res.json({ mensaje: oculta ? 'Reseña oculta' : 'Reseña restaurada', oculta });
   } catch (err) {
     return next(err);
@@ -284,12 +303,14 @@ exports.actualizarReporte = async (req, res, next) => {
     if (filas[0].estado === 'resuelto') return res.status(409).json({ error: 'Este reporte ya está resuelto' });
     if (filas[0].estado === estado) return res.status(409).json({ error: 'El reporte ya está en ese estado' });
 
-    await query(
-      `UPDATE reportes SET estado = ?, atendido_por = ?, nota_admin = COALESCE(?, nota_admin),
-              fecha_resolucion = ${estado === 'resuelto' ? 'NOW()' : 'NULL'} WHERE id = ?`,
-      [estado, req.usuarioId, nota, id]
-    );
-    await registrarAuditoria(req.usuarioId, 'reporte', estado === 'resuelto' ? 'Resolvió un reporte contra' : 'Puso en revisión un reporte contra', nombreDe(filas[0]), nota);
+    await enTransaccion(async (conn) => {
+      await conn.execute(
+        `UPDATE reportes SET estado = ?, atendido_por = ?, nota_admin = COALESCE(?, nota_admin),
+                fecha_resolucion = ${estado === 'resuelto' ? 'NOW()' : 'NULL'} WHERE id = ?`,
+        [estado, req.usuarioId, nota, id]
+      );
+      await registrarAuditoria(conn, req.usuarioId, 'reporte', estado === 'resuelto' ? 'Resolvió un reporte contra' : 'Puso en revisión un reporte contra', nombreDe(filas[0]), nota);
+    });
     res.json({ mensaje: estado === 'resuelto' ? 'Reporte resuelto' : 'Reporte en revisión', estado });
   } catch (err) {
     return next(err);

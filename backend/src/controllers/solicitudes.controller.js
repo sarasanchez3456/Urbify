@@ -4,20 +4,8 @@ const { escapeHtml } = require('../utils/html');
 const { motivosDeColumna } = require('../utils/motivosCalificacion');
 const { errorDeDireccion } = require('../utils/direccion');
 const { conReservaDeProveedor, motivoNoDisponible, parsearFecha, aFechaMysqlUtc } = require('../utils/agenda');
-
-
-// Guarda en el historial un cambio de estado (estadoAnterior es null al crear la solicitud). Es información
-// secundaria: si falla no debe deshacer ni romper la operación principal, solo se registra el error.
-async function registrarHistorial(solicitudId, estadoAnterior, estadoNuevo, usuarioId) {
-  try {
-    await query(
-      'INSERT INTO solicitud_historial (solicitud_id, estado_anterior, estado_nuevo, usuario_id) VALUES (?, ?, ?, ?)',
-      [solicitudId, estadoAnterior, estadoNuevo, usuarioId]
-    );
-  } catch (err) {
-    console.error('Error al registrar el historial de la solicitud:', err.message);
-  }
-}
+const { registrarHistorial } = require('../utils/historial');
+const { sqlSoloConContacto } = require('../utils/privacidad');
 
 exports.crearSolicitud = async (req, res, next) => {
   try {
@@ -76,6 +64,9 @@ exports.crearSolicitud = async (req, res, next) => {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [req.usuarioId, proveedor_id, servicio_id, servicio[0].tarifa, servicio[0].tipo_tarifa, descripcion ?? null, aFechaMysqlUtc(fechaServicioMillis), direccion || null, latitud || null, longitud || null]
       );
+      // El primer registro del historial (null -> pendiente) va en la misma transacción que la solicitud:
+      // si falla, la solicitud tampoco se crea.
+      await registrarHistorial(conn, result.insertId, null, 'pendiente', req.usuarioId);
       return { id: result.insertId };
     });
     if (reserva.motivo) {
@@ -83,8 +74,6 @@ exports.crearSolicitud = async (req, res, next) => {
     }
 
     const solicitudId = reserva.id;
-
-    await registrarHistorial(solicitudId, null, 'pendiente', req.usuarioId);
 
     // Crear notificación para el proveedor
     try {
@@ -169,7 +158,7 @@ exports.misSolicitudesComoCliente = async (req, res, next) => {
     const [solicitudes] = await query(
       `SELECT sol.*, s.titulo AS servicio_titulo, COALESCE(sol.tarifa_acordada, s.tarifa) AS tarifa,
        u.nombre AS proveedor_nombre, u.apellido AS proveedor_apellido, u.foto_url AS proveedor_foto,
-       u.telefono AS proveedor_telefono, s.categoria_id AS servicio_categoria_id,
+       ${sqlSoloConContacto('u.telefono')} AS proveedor_telefono, s.categoria_id AS servicio_categoria_id,
        (SELECT cal.puntuacion FROM calificaciones cal WHERE cal.solicitud_id = sol.id) AS calificacion_puntuacion,
        (SELECT cal.motivos FROM calificaciones cal WHERE cal.solicitud_id = sol.id) AS calificacion_motivos,
        (SELECT r.id FROM reprogramaciones r WHERE r.solicitud_id = sol.id AND r.estado = 'pendiente' LIMIT 1) AS reprogramacion_id,
@@ -193,7 +182,7 @@ exports.misSolicitudesComoProveedor = async (req, res, next) => {
     const [solicitudes] = await query(
       `SELECT sol.*, s.titulo AS servicio_titulo, COALESCE(sol.tarifa_acordada, s.tarifa) AS tarifa,
        u.nombre AS cliente_nombre, u.apellido AS cliente_apellido, u.foto_url AS cliente_foto,
-       u.direccion AS cliente_direccion, u.telefono AS cliente_telefono,
+       ${sqlSoloConContacto('u.direccion')} AS cliente_direccion, ${sqlSoloConContacto('u.telefono')} AS cliente_telefono,
        (SELECT cc.puntuacion FROM calificaciones_cliente cc WHERE cc.solicitud_id = sol.id) AS cliente_calificado,
        (SELECT AVG(cc.puntuacion) FROM calificaciones_cliente cc WHERE cc.cliente_id = sol.cliente_id) AS cliente_promedio,
        (SELECT COUNT(*) FROM calificaciones_cliente cc WHERE cc.cliente_id = sol.cliente_id) AS cliente_total_calificaciones,
@@ -270,21 +259,29 @@ exports.actualizarEstadoSolicitud = async (req, res, next) => {
       });
     }
 
-    // El estado anterior va en el WHERE: si otra petición cambió la solicitud entre la
-    // lectura y la escritura, la transición ya no es válida y no se aplica.
-    const [actualizada] = await query(
-      'UPDATE solicitudes SET estado = ? WHERE id = ? AND estado = ?',
-      [estado, id, solicitudActual.estado]
-    );
-    if (actualizada.affectedRows === 0) {
+    // El cambio de estado, su registro en el historial y la cancelación de un pedido de cambio de fecha pendiente
+    // forman un solo cambio: van en una transacción (si algo falla, la solicitud conserva su estado anterior).
+    // Se usa el mismo bloqueo por proveedor que las reservas y reprogramaciones, así un cambio de estado y la
+    // respuesta a un cambio de fecha de la misma solicitud se atienden uno detrás de otro (sin bloqueos cruzados).
+    // El estado anterior va en el WHERE: si otra petición cambió la solicitud entre la lectura y la escritura, la
+    // transición ya no es válida y no se aplica.
+    const aplicado = await conReservaDeProveedor(solicitudActual.proveedor_id, async (conn) => {
+      const [actualizada] = await conn.execute(
+        'UPDATE solicitudes SET estado = ? WHERE id = ? AND estado = ?',
+        [estado, id, solicitudActual.estado]
+      );
+      if (actualizada.affectedRows === 0) return false;
+
+      await registrarHistorial(conn, Number(id), solicitudActual.estado, estado, req.usuarioId);
+
+      // Un pedido de cambio de fecha pendiente deja de tener sentido cuando la solicitud empieza o termina.
+      if (['en_proceso', 'completada', 'cancelada'].includes(estado)) {
+        await conn.execute("UPDATE reprogramaciones SET estado = 'cancelada', fecha_respuesta = NOW() WHERE solicitud_id = ? AND estado = 'pendiente'", [id]);
+      }
+      return true;
+    });
+    if (!aplicado) {
       return res.status(409).json({ error: 'La solicitud cambió de estado, vuelve a consultarla' });
-    }
-
-    await registrarHistorial(Number(id), solicitudActual.estado, estado, req.usuarioId);
-
-    // Un pedido de cambio de fecha pendiente deja de tener sentido cuando la solicitud empieza o termina.
-    if (['en_proceso', 'completada', 'cancelada'].includes(estado)) {
-      await query("UPDATE reprogramaciones SET estado = 'cancelada', fecha_respuesta = NOW() WHERE solicitud_id = ? AND estado = 'pendiente'", [id]);
     }
 
     // Crear notificaciones en BD según el nuevo estado
