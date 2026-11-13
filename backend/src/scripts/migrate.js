@@ -128,6 +128,7 @@ async function migrate() {
       password: dbConfig.password,
       multipleStatements: true,
       charset: 'utf8mb4',
+      ...(dbConfig.ssl ? { ssl: { minVersion: 'TLSv1.2', rejectUnauthorized: true } } : {}),
     });
     // schema.sql trae el nombre "urbify_db" escrito (CREATE DATABASE / USE): se cambia por la base configurada en
     // DB_NAME, para que la migración nunca toque otra base distinta de la que usa el servidor.

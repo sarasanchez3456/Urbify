@@ -122,6 +122,8 @@ Antes de comenzar, asegúrate de tener instalados:
 
 ## 🚀 Despliegue Local (Paso a Paso)
 
+> ¿Quieres publicar Urbify en internet (Vercel + backend + MySQL + correo)? Mira la [guía de despliegue](docs/DESPLIEGUE.md).
+
 ### Paso 1 — Clonar el repositorio
 
 ```bash

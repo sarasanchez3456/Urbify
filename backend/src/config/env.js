@@ -141,6 +141,9 @@ const db = {
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   name: process.env.DB_NAME || 'urbify_db',
+  // Casi todas las bases MySQL gestionadas (Railway, Aiven, TiDB, PlanetScale...) exigen TLS. Con DB_SSL=true la
+  // conexión se cifra y el certificado del servidor se VERIFICA siempre (nunca se desactiva la verificación).
+  ssl: booleano('DB_SSL', false),
 };
 if (ESTRICTO) {
   requerida('DB_HOST');

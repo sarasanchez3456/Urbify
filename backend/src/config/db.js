@@ -12,6 +12,7 @@ const pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0,
   charset: 'utf8mb4',
+  ...(dbConfig.ssl ? { ssl: { minVersion: 'TLSv1.2', rejectUnauthorized: true } } : {}),
   // Las fechas (DATETIME) se leen y escriben en UTC y se serializan como ISO 8601 con "Z".
   timezone: 'Z',
 });
