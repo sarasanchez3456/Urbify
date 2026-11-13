@@ -1,12 +1,16 @@
 const router = require('express').Router();
 const authController = require('../controllers/auth.controller');
 const { authenticate, authorize } = require('../middleware/auth');
-const { registroLimiter, loginLimiters, olvidoLimiters, restablecerLimiters } = require('../middleware/rateLimit');
+const {
+  registroLimiter, loginLimiters, olvidoLimiters, restablecerLimiters, limitadoresVerificacion, limitadoresEnvioCodigo,
+} = require('../middleware/rateLimit');
 const { validarBody, idParams } = require('../middleware/validate');
 
 idParams(router, 'id');
 
-router.post('/registro', registroLimiter, validarBody('registro'), authController.registrar);
+router.post('/registro', registroLimiter, ...limitadoresEnvioCodigo, validarBody('registro'), authController.registrar);
+router.post('/verificar-correo', ...limitadoresVerificacion, validarBody('verificarCorreo'), authController.verificarCorreo);
+router.post('/reenviar-codigo', ...limitadoresEnvioCodigo, validarBody('reenviarCodigo'), authController.reenviarCodigo);
 router.post('/login', ...loginLimiters, validarBody('login'), authController.login);
 router.post('/logout', authenticate, authController.logout);
 router.post('/olvido-contrasena', ...olvidoLimiters, validarBody('olvidoContrasena'), authController.olvidoContrasena);

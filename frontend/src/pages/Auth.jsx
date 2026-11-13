@@ -6,6 +6,7 @@ import {
   Zap, Shield, Star, ChevronRight,
 } from 'lucide-react';
 import RecuperarContrasena from '../components/RecuperarContrasena';
+import VerificarCorreo from '../components/VerificarCorreo';
 import './Auth.css';
 
 export default function Auth() {
@@ -27,6 +28,9 @@ export default function Auth() {
   // Texto del 429 tal como lo envía la API: distingue "desde esta red" de "esta cuenta".
   const [mensajeBloqueo, setMensajeBloqueo] = useState('');
   const [recuperando, setRecuperando] = useState(false); // true = se muestra "¿Olvidaste tu contraseña?"
+  // { correo, desdeLogin }: se muestra la pantalla del código de verificación. `desdeLogin` = la cuenta ya existía sin
+  // verificar (se pide un código nuevo al abrir); si no, el código ya se envió al registrarse.
+  const [verificacion, setVerificacion] = useState(null);
   const bloqueadoRef = useRef();
 
   const [loginCorreo, setLoginCorreo] = useState('');
@@ -48,6 +52,7 @@ export default function Auth() {
     setError('');
     setBloqueado(false);
     setRecuperando(false);
+    setVerificacion(null);
   }, [isRegisterPath]);
 
   useEffect(() => {
@@ -84,6 +89,11 @@ export default function Auth() {
       navigate(user.rol === 'admin' ? '/admin' : '/dashboard');
     } catch (err) {
       const data = err.response?.data;
+      // Contraseña correcta pero el correo nunca se verificó: se pasa a la pantalla del código.
+      if (err.response?.status === 403 && data?.codigo === 'correo_no_verificado') {
+        setVerificacion({ correo: data.correo || loginCorreo.trim(), desdeLogin: true });
+        return;
+      }
       if (data?.bloqueado) {
         setBloqueado(true);
         setMensajeBloqueo(data.error || '');
@@ -100,8 +110,9 @@ export default function Auth() {
     setError('');
     setCargando(true);
     try {
-      await registrar(regForm);
-      navigate('/dashboard');
+      const datos = await registrar(regForm);
+      // No hay sesión todavía: se pide el código que llegó al correo.
+      setVerificacion({ correo: datos.correo || regForm.correo.trim().toLowerCase(), desdeLogin: false });
     } catch (err) {
       setError(err.response?.data?.error || 'Error al registrarse');
     } finally {
@@ -165,7 +176,7 @@ export default function Auth() {
         <div className="auth-panel-right">
           <div className="auth-form-wrapper">
 
-            {!recuperando && (
+            {!recuperando && !verificacion && (
             <>
             {/* Tab switch */}
             <div className="auth-tab-bar">
@@ -213,7 +224,7 @@ export default function Auth() {
             )}
 
             {/* ── LOGIN FORM ── */}
-            {!recuperando && !isRegister && (
+            {!recuperando && !verificacion && !isRegister && (
               <form onSubmit={handleLogin} className="auth-form">
                 <div className="auth-field">
                   <label htmlFor="login_email"><Mail size={14} /> Correo electrónico</label>
@@ -262,7 +273,7 @@ export default function Auth() {
             )}
 
             {/* ── REGISTER FORM ── */}
-            {!recuperando && isRegister && (
+            {!recuperando && !verificacion && isRegister && (
               <form onSubmit={handleRegister} className="auth-form">
                 <div className="auth-row">
                   <div className="auth-field">
@@ -391,8 +402,18 @@ export default function Auth() {
               </form>
             )}
 
+            {/* ── VERIFICAR CORREO (código) ── */}
+            {verificacion && (
+              <VerificarCorreo
+                correo={verificacion.correo}
+                enviarAlAbrir={verificacion.desdeLogin}
+                onVolver={() => setVerificacion(null)}
+                onVerificado={(user) => navigate(user.rol === 'admin' ? '/admin' : '/dashboard')}
+              />
+            )}
+
             {/* ── RECUPERAR CONTRASEÑA ── */}
-            {recuperando && (
+            {recuperando && !verificacion && (
               <RecuperarContrasena
                 correoInicial={loginCorreo}
                 onVolver={() => setRecuperando(false)}

@@ -304,7 +304,7 @@ Push a main
 | `npm run test:integration` | Pruebas de integración (`test/integration/`): arrancan el servidor real y lo prueban por HTTP contra una base MySQL de pruebas que se crea sola desde `config/schema.sql` | Sí |
 | `npm run test:todo` | Las dos anteriores | Sí |
 
-Las de integración cubren: reservas simultáneas y fuera de horario, reprogramaciones (pedir, aceptar, rechazar, cancelar y choques), autorización entre usuarios y rutas de administrador, privacidad de teléfono y dirección, notificaciones (`tipo` y `solicitud_id`), historial de estados atómico (rollback real), auditoría administrativa atómica y migraciones sobre una base existente.
+Las de integración cubren: reservas simultáneas y fuera de horario, reprogramaciones (pedir, aceptar, rechazar, cancelar y choques), autorización entre usuarios y rutas de administrador, privacidad de teléfono y dirección, notificaciones (`tipo` y `solicitud_id`), historial de estados atómico (rollback real), auditoría administrativa atómica, verificación de correo (códigos, fuerza bruta, un solo uso, enumeración, registro con el correo de otra persona) y migraciones sobre una base existente.
 
 Variables opcionales: `DB_HOST` (`127.0.0.1`), `DB_PORT` (`3306`), `DB_USER` (`root`), `DB_PASSWORD`, `TEST_DB_NAME` (`urbify_test`) y `TEST_PORT` (`4100`). **La base `TEST_DB_NAME` se borra y se recrea en cada ejecución: no apuntes a una base con datos.**
 Ejemplo con el MySQL de `docker compose up -d db`: `DB_PASSWORD=<tu clave> npm run test:integration`.
@@ -324,7 +324,8 @@ El backend lee `backend/.env.<NODE_ENV>` (si existe) y luego `backend/.env`; las
 | `DB_HOST`, `DB_USER`, `DB_NAME`, `DB_PASSWORD` | por defecto de MySQL local | **obligatorias**; `DB_PASSWORD` sin valores de ejemplo |
 | `CORS_ORIGIN` | `http://localhost:5173,http://localhost` | **obligatoria**: orígenes separados por comas, sin `*`; `https` en production |
 | `EMAIL_FROM` | opcional | **obligatoria** |
-| `RESEND_API_KEY` | opcional | recomendada (sin ella no se envían correos) |
+| `GMAIL_USER`, `GMAIL_APP_PASSWORD` | opcionales | correo gratis con una cuenta de Gmail y su "contraseña de aplicación"; si están, se usan en lugar de Resend |
+| `RESEND_API_KEY` | opcional | alternativa a Gmail (con dominio propio verificado). Sin Gmail ni Resend no se envían correos (en development el código de verificación se imprime en la consola) |
 | `BODY_LIMIT` | `100kb` | `100kb` (tamaño máximo del JSON) |
 | `TRUST_PROXY` | `0` | nº de proxys delante de la API (Nginx del compose = `1`) |
 | `FORCE_HTTPS` | `false` | `true` redirige a HTTPS y activa HSTS (requiere `TRUST_PROXY>=1`) |
@@ -340,6 +341,8 @@ Cuando se supera un límite la API responde `429` con `{"error", "bloqueado": tr
 | Lecturas públicas (búsqueda, cercanos, destacados, categorías, stats, calificaciones), por IP | `RATE_LIMIT_PUBLIC_PER_MINUTE` | `120` por minuto |
 | Registro, por IP | `RATE_LIMIT_REGISTER_PER_HOUR` | `10` por hora |
 | Recuperación de contraseña: pedir código, por IP y por correo (restablecer admite el triple) | `RATE_LIMIT_RECOVERY_IP_PER_HOUR` / `RATE_LIMIT_RECOVERY_EMAIL_PER_HOUR` | `10` / `3` por hora |
+| Verificación de correo, intentos de código: por IP / por correo | `RATE_LIMIT_VERIFY_IP_PER_HOUR` / `RATE_LIMIT_VERIFY_EMAIL_PER_HOUR` | `30` / `10` por hora |
+| Envío de códigos (registro y reenvío): por IP / por correo | `RATE_LIMIT_SEND_CODE_IP_PER_HOUR` / `RATE_LIMIT_SEND_CODE_EMAIL_PER_HOUR` | `15` / `5` por hora |
 | Login, por IP (cualquier intento) | `RATE_LIMIT_LOGIN_IP` | `30` por ventana |
 | Login, intentos **fallidos** a una misma cuenta desde una misma IP | `RATE_LIMIT_LOGIN_ACCOUNT_IP` | `5` por ventana |
 | Login, intentos **fallidos** a una cuenta desde cualquier IP | `RATE_LIMIT_LOGIN_ACCOUNT` | `20` por ventana |
@@ -377,7 +380,9 @@ Si el correo ya existe, ese usuario se promueve a `admin`. En una base de datos 
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/api/health` | Estado del servidor; con `?deep=1` consulta también la base de datos y responde `503` si no contesta |
-| POST | `/api/auth/registro` | Registro de usuario (`cliente` o `proveedor`) |
+| POST | `/api/auth/registro` | Registro (`cliente` o `proveedor`): crea la cuenta SIN verificar y envía un código al correo (no devuelve token) |
+| POST | `/api/auth/verificar-correo` | Verifica el código de 6 caracteres (MAYÚSCULAS y números) y abre la sesión |
+| POST | `/api/auth/reenviar-codigo` | Pide un código nuevo (espera de 1 minuto entre envíos) |
 | POST | `/api/auth/login` | Inicio de sesión |
 | POST | `/api/auth/logout` | Cierra la sesión: elimina el token enviado en `Authorization: Bearer` de `tokens_sesion`. Responde `200 {"mensaje"}`; después, ese token recibe `401` (web y app móvil deben llamarla antes de borrar el token local) |
 | POST | `/api/auth/olvido-contrasena` | Envía un código de 6 dígitos al correo (respuesta genérica); ver [`docs/RUTAS_MOVIL.md`](docs/RUTAS_MOVIL.md) |

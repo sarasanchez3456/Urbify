@@ -3,10 +3,13 @@ const hasher = require('../utils/passwordHasher');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { query } = require('../config/db');
-const resend = require('../config/resend');
-const { emailFrom } = require('../config/env');
+const { NODE_ENV } = require('../config/env');
+const { enviarCorreo } = require('../utils/correo');
+const { plantillaCorreo } = require('../utils/plantillaCorreo');
+const { enTransaccion } = require('../utils/transaccion');
+const { generarCodigo, normalizarCodigo, hashDeCodigo, codigoCoincide } = require('../utils/codigoVerificacion');
+const { dominioPuedeRecibirCorreo } = require('../utils/dominioCorreo');
 const { normalizarTelefono, MENSAJE_TELEFONO } = require('../utils/telefono');
-const { escapeHtml } = require('../utils/html');
 const { errorDeDireccion } = require('../utils/direccion');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -19,9 +22,80 @@ const PASSWORD_MAX = 72; // bcrypt ignora lo que pase de 72 bytes
 const CODIGO_INVALIDO = 'Código inválido o expirado';
 const HASH_FALSO = bcrypt.hashSync(crypto.randomBytes(8).toString('hex'), 10);
 
+// ── Verificación de correo ──
+// La cuenta nace SIN verificar y sin sesión: solo el código que llega al correo la activa. Así nadie puede registrarse
+// con el correo de otra persona ni dejar cuentas con correos falsos.
+const VERIFICACION_EXPIRA_MIN = 10;
+const VERIFICACION_MAX_INTENTOS = 5;
+const VERIFICACION_ESPERA_SEG = 60; // entre un envío y el siguiente al mismo correo
+const VERIFICACION_PENDIENTE_HORAS = 24; // una cuenta sin verificar se borra pasado este tiempo
+const CODIGO_VERIFICACION_INVALIDO = 'Código inválido o vencido';
+const MENSAJE_CODIGO_ENVIADO = 'Si el correo es válido, te enviamos un código de verificación. Revisa tu bandeja de entrada (y el spam).';
+// En las pruebas los correos son de mentira (@pruebas.test) y no hay DNS: allí no se comprueba el dominio.
+const verificarDominioCorreo = NODE_ENV !== 'test' && process.env.VERIFICAR_DOMINIO_CORREO !== 'false';
+
+const normalizarCorreo = (valor) => String(valor || '').trim().toLowerCase();
+
+// Guarda un código nuevo (reemplaza al anterior: solo hay uno vigente por usuario) y lo envía al correo.
+// Con `respetarEspera`, si ya se envió uno hace menos de un minuto no se envía otro (frena el spam a un correo).
+async function enviarCodigoDeVerificacion(usuarioId, correo, nombre, { respetarEspera = false } = {}) {
+  if (respetarEspera) {
+    const [recientes] = await query(
+      'SELECT 1 FROM verificaciones_correo WHERE usuario_id = ? AND fecha_envio > DATE_SUB(NOW(), INTERVAL ? SECOND)',
+      [usuarioId, VERIFICACION_ESPERA_SEG]
+    );
+    if (recientes.length > 0) return;
+  }
+  const codigo = generarCodigo();
+  await query(
+    `INSERT INTO verificaciones_correo (usuario_id, codigo_hash, expira_en, intentos, fecha_envio)
+     VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE), 0, NOW())
+     ON DUPLICATE KEY UPDATE codigo_hash = VALUES(codigo_hash), expira_en = VALUES(expira_en), intentos = 0, fecha_envio = NOW()`,
+    [usuarioId, hashDeCodigo(codigo, usuarioId), VERIFICACION_EXPIRA_MIN]
+  );
+  const { html, text } = plantillaCorreo({
+    preheader: `Tu código de verificación de Urbify es ${codigo}`,
+    titulo: 'Verifica tu correo',
+    parrafos: [
+      `Hola ${nombre}, ¡gracias por unirte a Urbify!`,
+      'Para activar tu cuenta, escribe este código en la página donde te registraste:',
+    ],
+    codigo,
+    vence: `Vence en ${VERIFICACION_EXPIRA_MIN} minutos y solo sirve una vez.`,
+    aviso: 'no compartas este código con nadie. Urbify nunca te lo pedirá por mensaje, llamada ni correo.',
+    pie: 'Si no creaste una cuenta en Urbify, ignora este mensaje: nadie podrá usar tu correo sin este código.',
+  });
+  await enviarCorreo({
+    to: correo,
+    subject: `${codigo} es tu código de verificación de Urbify`,
+    html,
+    text,
+    textoDev: `código de verificación ${codigo}`,
+  });
+}
+
+// Si el correo ya tiene una cuenta, no se revela en la respuesta (sería una forma de averiguar quién usa Urbify):
+// se le avisa por correo a su dueño.
+async function avisarCorreoYaRegistrado(correo, nombre) {
+  const { html, text } = plantillaCorreo({
+    preheader: 'Ya tienes una cuenta en Urbify con este correo.',
+    titulo: 'Ya tienes una cuenta',
+    parrafos: [
+      `Hola ${nombre},`,
+      'Alguien intentó crear una cuenta en Urbify con este correo, pero ya tienes una.',
+      'Si fuiste tú, inicia sesión (o usa "¿Olvidaste tu contraseña?" si no la recuerdas).',
+    ],
+    pie: 'Si no fuiste tú, ignora este mensaje: tu cuenta sigue segura y no se hizo ningún cambio.',
+  });
+  await enviarCorreo({ to: correo, subject: 'Alguien intentó registrarse con tu correo en Urbify', html, text });
+}
+
+const enSegundoPlano = (promesa, contexto) => promesa.catch((err) => console.error(`${contexto}:`, err.message));
+
 exports.registrar = async (req, res, next) => {
   try {
-    const { nombre, apellido, correo, contrasena, telefono, rol, direccion, latitud, longitud, oficio } = req.body;
+    const { nombre, apellido, contrasena, telefono, rol, direccion, latitud, longitud, oficio } = req.body;
+    const correo = normalizarCorreo(req.body.correo);
 
     if (!nombre || !apellido || !correo || !contrasena) {
       return res.status(400).json({ error: 'nombre, apellido, correo y contrasena son requeridos' });
@@ -43,48 +117,155 @@ exports.registrar = async (req, res, next) => {
       telefonoLimpio = normalizarTelefono(telefono);
       if (!telefonoLimpio) return res.status(400).json({ error: MENSAJE_TELEFONO });
     }
-
-    const [existe] = await query('SELECT id FROM usuarios WHERE correo = ?', [correo]);
-    if (existe.length > 0) {
-      return res.status(400).json({ error: 'El correo ya está registrado' });
+    // Evita errores de tipeo ("gmial.com"): el dominio debe existir. No dice nada de la cuenta, solo del dominio.
+    if (verificarDominioCorreo && !(await dominioPuedeRecibirCorreo(correo))) {
+      return res.status(400).json({ error: 'El dominio del correo no existe. Revisa que esté bien escrito.' });
     }
 
-    const hashedPassword = await hasher.hash(contrasena, 10);
-
-    const [result] = await query(
-      `INSERT INTO usuarios (nombre, apellido, correo, contrasena, telefono, rol, direccion, latitud, longitud, oficio)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [nombre, apellido, correo, hashedPassword, telefonoLimpio, rol, direccion || null, latitud || null, longitud || null, oficio || null]
+    // Las cuentas que nunca se verificaron se borran pasado un día (liberan el correo).
+    await query(
+      'DELETE FROM usuarios WHERE correo_verificado = 0 AND fecha_creacion < DATE_SUB(NOW(), INTERVAL ? HOUR)',
+      [VERIFICACION_PENDIENTE_HORAS]
     );
 
-    const usuarioId = result.insertId;
+    // Se cifra la contraseña SIEMPRE, exista o no el correo: así la respuesta tarda lo mismo en ambos casos.
+    const hashedPassword = await hasher.hash(contrasena, 10);
+    const [existe] = await query('SELECT id, nombre, correo_verificado, activo FROM usuarios WHERE correo = ?', [correo]);
+
+    let pendiente = null; // { id } si hay que enviar un código
+    let yaRegistrado = null; // { nombre } si hay que avisarle a su dueño
+    if (existe.length > 0 && (existe[0].correo_verificado || !existe[0].activo)) {
+      yaRegistrado = { nombre: existe[0].nombre };
+    } else if (existe.length > 0) {
+      // Cuenta sin verificar: el ÚLTIMO registro gana. Si alguien se registró antes con este correo (con su propia
+      // contraseña), quien de verdad lo posee sustituye todos los datos y la contraseña del primero deja de servir.
+      // Al primero no le sirve el código: llega al correo de la víctima, no al suyo.
+      await query(
+        `UPDATE usuarios SET nombre = ?, apellido = ?, contrasena = ?, telefono = ?, rol = ?, direccion = ?, latitud = ?,
+                longitud = ?, oficio = ?, fecha_creacion = NOW()
+          WHERE id = ? AND correo_verificado = 0`,
+        [nombre, apellido, hashedPassword, telefonoLimpio, rol, direccion || null, latitud || null, longitud || null, oficio || null, existe[0].id]
+      );
+      pendiente = { id: existe[0].id };
+    } else {
+      try {
+        const [result] = await query(
+          `INSERT INTO usuarios (nombre, apellido, correo, contrasena, telefono, rol, direccion, latitud, longitud, oficio)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [nombre, apellido, correo, hashedPassword, telefonoLimpio, rol, direccion || null, latitud || null, longitud || null, oficio || null]
+        );
+        pendiente = { id: result.insertId };
+      } catch (err) {
+        // Registros simultáneos con el mismo correo: el SELECT previo no es atómico, pero el UNIQUE sí lo es.
+        if (err.code !== 'ER_DUP_ENTRY') throw err;
+        yaRegistrado = { nombre };
+      }
+    }
+
+    // Misma respuesta en todos los casos y SIN token: la sesión solo se da al verificar el código.
+    res.status(202).json({
+      mensaje: MENSAJE_CODIGO_ENVIADO,
+      requiere_verificacion: true,
+      correo,
+      expira_minutos: VERIFICACION_EXPIRA_MIN,
+    });
+
+    if (pendiente) {
+      enSegundoPlano(
+        enviarCodigoDeVerificacion(pendiente.id, correo, nombre, { respetarEspera: true }),
+        'No se pudo enviar el código de verificación'
+      );
+    } else if (yaRegistrado) {
+      enSegundoPlano(avisarCorreoYaRegistrado(correo, yaRegistrado.nombre), 'No se pudo avisar al dueño del correo');
+    }
+  } catch (err) {
+    return next(err);
+  }
+};
+
+// Valida el código y, si es correcto, activa la cuenta e inicia la sesión.
+// Seguridad: el intento se CUENTA antes de comparar (una sola instrucción atómica), así que 100 peticiones simultáneas
+// no pueden probar más de 5 códigos; los errores son siempre el mismo mensaje; el código se borra al usarse.
+exports.verificarCorreo = async (req, res, next) => {
+  try {
+    const correo = normalizarCorreo(req.body.correo);
+    const codigo = normalizarCodigo(req.body.codigo); // mayúsculas, sin espacios ni guiones; null si no tiene forma de código
+    if (!EMAIL_REGEX.test(correo) || !codigo) return res.status(400).json({ error: CODIGO_VERIFICACION_INVALIDO });
+
+    const [filas] = await query(
+      `SELECT u.id, u.nombre, u.apellido, u.correo, u.telefono, u.rol, u.foto_url, u.direccion, u.latitud, u.longitud, u.oficio,
+              v.codigo_hash
+         FROM usuarios u JOIN verificaciones_correo v ON v.usuario_id = u.id
+        WHERE u.correo = ? AND u.activo = 1 AND u.correo_verificado = 0 AND v.expira_en > NOW()`,
+      [correo]
+    );
+    if (filas.length === 0) return res.status(400).json({ error: CODIGO_VERIFICACION_INVALIDO });
+    const usuario = filas[0];
+
+    const [intento] = await query(
+      'UPDATE verificaciones_correo SET intentos = intentos + 1 WHERE usuario_id = ? AND intentos < ? AND expira_en > NOW()',
+      [usuario.id, VERIFICACION_MAX_INTENTOS]
+    );
+    if (intento.affectedRows === 0) return res.status(400).json({ error: CODIGO_VERIFICACION_INVALIDO });
+
+    if (!codigoCoincide(codigo, usuario.id, usuario.codigo_hash)) {
+      return res.status(400).json({ error: CODIGO_VERIFICACION_INVALIDO });
+    }
+
+    // Borrar el código y activar la cuenta van juntos y solo una vez: dos peticiones con el código correcto a la vez
+    // no pueden activarla dos veces ni abrir dos sesiones.
+    try {
+      await enTransaccion(async (conn) => {
+        const [borrado] = await conn.execute(
+          'DELETE FROM verificaciones_correo WHERE usuario_id = ? AND codigo_hash = ?',
+          [usuario.id, usuario.codigo_hash]
+        );
+        const [activada] = await conn.execute(
+          'UPDATE usuarios SET correo_verificado = 1 WHERE id = ? AND correo_verificado = 0',
+          [usuario.id]
+        );
+        if (borrado.affectedRows !== 1 || activada.affectedRows !== 1) throw new Error('VERIFICACION_YA_USADA');
+      });
+    } catch (err) {
+      if (err.message === 'VERIFICACION_YA_USADA') return res.status(400).json({ error: CODIGO_VERIFICACION_INVALIDO });
+      throw err;
+    }
 
     const token = jwt.sign(
-      { id: usuarioId, rol },
+      { id: usuario.id, rol: usuario.rol },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
-
-    await query(
-      'DELETE FROM tokens_sesion WHERE usuario_id = ? AND expira_en < NOW()',
-      [usuarioId]
-    );
+    await query('DELETE FROM tokens_sesion WHERE usuario_id = ? AND expira_en < NOW()', [usuario.id]);
     await query(
       'INSERT INTO tokens_sesion (usuario_id, token, expira_en) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))',
-      [usuarioId, token]
+      [usuario.id, token]
     );
 
-    res.status(201).json({
-      mensaje: 'Usuario registrado exitosamente',
-      token,
-      usuario: { id: usuarioId, nombre, apellido, correo, rol, oficio },
-    });
+    const { codigo_hash: _omitido, ...publico } = usuario;
+    res.json({ mensaje: 'Correo verificado. ¡Bienvenido a Urbify!', token, usuario: publico });
   } catch (err) {
-    // Registros simultáneos con el mismo correo: el SELECT previo no es atómico, pero el UNIQUE sí lo es.
-    if (err.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json({ error: 'El correo ya está registrado' });
-    }
     return next(err);
+  }
+};
+
+// Pide un código nuevo. Responde siempre igual (exista o no el correo, esté o no pendiente) y antes de trabajar.
+exports.reenviarCodigo = async (req, res, next) => {
+  const correo = normalizarCorreo(req.body?.correo);
+  if (!EMAIL_REGEX.test(correo)) {
+    return res.status(400).json({ error: 'El correo electrónico no tiene un formato válido' });
+  }
+  res.json({ mensaje: MENSAJE_CODIGO_ENVIADO, expira_minutos: VERIFICACION_EXPIRA_MIN });
+
+  try {
+    const [filas] = await query(
+      'SELECT id, nombre FROM usuarios WHERE correo = ? AND activo = 1 AND correo_verificado = 0',
+      [correo]
+    );
+    if (filas.length === 0) return;
+    await enviarCodigoDeVerificacion(filas[0].id, correo, filas[0].nombre, { respetarEspera: true });
+  } catch (err) {
+    console.error('No se pudo reenviar el código de verificación:', err.message);
   }
 };
 
@@ -97,8 +278,8 @@ exports.login = async (req, res, next) => {
     }
 
     const [usuarios] = await query(
-      'SELECT id, nombre, apellido, correo, contrasena, telefono, rol, foto_url, direccion, latitud, longitud FROM usuarios WHERE correo = ? AND activo = 1',
-      [correo]
+      'SELECT id, nombre, apellido, correo, contrasena, telefono, rol, foto_url, direccion, latitud, longitud, correo_verificado FROM usuarios WHERE correo = ? AND activo = 1',
+      [String(correo).trim().toLowerCase()]
     );
     if (usuarios.length === 0) {
       // Misma cantidad de trabajo que con una contraseña incorrecta: si no, responder en ~2 ms delata
@@ -114,6 +295,16 @@ exports.login = async (req, res, next) => {
     const valido = await hasher.compare(contrasena, usuario.contrasena);
     if (!valido) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
+    }
+
+    // La contraseña es correcta pero el correo nunca se verificó: no hay sesión hasta escribir el código.
+    // (Solo se llega aquí con la contraseña correcta, así que esto no revela nada a un tercero.)
+    if (!usuario.correo_verificado) {
+      return res.status(403).json({
+        error: 'Debes verificar tu correo para iniciar sesión',
+        codigo: 'correo_no_verificado',
+        correo: usuario.correo,
+      });
     }
 
     const token = jwt.sign(
@@ -176,16 +367,24 @@ exports.olvidoContrasena = async (req, res, next) => {
       [usuarios[0].id, codigoHash, CODIGO_EXPIRA_MIN]
     );
 
-    await resend.emails.send({
-      from: emailFrom,
+    const { html, text } = plantillaCorreo({
+      preheader: `Tu código para restablecer la contraseña de Urbify es ${codigo}`,
+      titulo: 'Restablece tu contraseña',
+      parrafos: [
+        `Hola ${usuarios[0].nombre},`,
+        'Recibimos una solicitud para restablecer la contraseña de tu cuenta. Escribe este código para continuar:',
+      ],
+      codigo,
+      vence: `Vence en ${CODIGO_EXPIRA_MIN} minutos y solo sirve una vez.`,
+      aviso: 'no compartas este código con nadie. Urbify nunca te lo pedirá por mensaje, llamada ni correo.',
+      pie: 'Si no pediste este cambio, ignora este mensaje: tu contraseña sigue igual.',
+    });
+    await enviarCorreo({
       to: correo,
+      textoDev: `código para restablecer la contraseña ${codigo}`,
       subject: 'Tu código para restablecer la contraseña de Urbify',
-      html: `
-        <h2>Restablecer contraseña</h2>
-        <p>Hola ${escapeHtml(usuarios[0].nombre)},</p>
-        <p>Tu código es: <strong style="font-size:24px;letter-spacing:4px">${codigo}</strong></p>
-        <p>Vence en ${CODIGO_EXPIRA_MIN} minutos y solo sirve una vez. Si no lo pediste, ignora este correo.</p>
-      `,
+      html,
+      text,
     });
   } catch (err) {
     console.error('Error en olvido de contraseña:', err.message);

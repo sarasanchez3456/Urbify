@@ -76,6 +76,18 @@ const limitadoresRecuperacion = (factor) => [
 const olvidoLimiters = limitadoresRecuperacion(1);
 const restablecerLimiters = limitadoresRecuperacion(3);
 
+// Verificación de correo. Se limita por IP y por correo: nadie puede llenar de códigos la bandeja de otra persona
+// (envíos) ni probar códigos en masa (intentos).
+const limitadoresVerificacion = [
+  crearLimitador({ ventanaMs: HORA_MS, max: cfg.verificacionIp, mensaje: 'Demasiados intentos de verificación desde esta red. Intenta de nuevo más tarde.', key: ip }),
+  crearLimitador({ ventanaMs: HORA_MS, max: cfg.verificacionCorreo, mensaje: 'Demasiados intentos para este correo. Intenta de nuevo más tarde.', key: correoDe }),
+];
+// Envío de códigos: el reenvío y también el registro (que envía un código).
+const limitadoresEnvioCodigo = [
+  crearLimitador({ ventanaMs: HORA_MS, max: cfg.envioCodigoIp, mensaje: 'Demasiados códigos pedidos desde esta red. Intenta de nuevo más tarde.', key: ip }),
+  crearLimitador({ ventanaMs: HORA_MS, max: cfg.envioCodigoCorreo, mensaje: 'Ya pediste varios códigos para este correo. Intenta de nuevo más tarde.', key: correoDe }),
+];
+
 // Login: tres límites en cadena. Los dos por cuenta solo cuentan los intentos fallidos,
 // así un inicio de sesión correcto no consume cupo.
 //  1) por IP (cualquier intento): frena el barrido de muchas cuentas desde un origen.
@@ -106,4 +118,7 @@ const loginLimiters = [
   }),
 ];
 
-module.exports = { globalLimiter, publicLimiter, registroLimiter, loginLimiters, olvidoLimiters, restablecerLimiters };
+module.exports = {
+  globalLimiter, publicLimiter, registroLimiter, loginLimiters, olvidoLimiters, restablecerLimiters,
+  limitadoresVerificacion, limitadoresEnvioCodigo,
+};

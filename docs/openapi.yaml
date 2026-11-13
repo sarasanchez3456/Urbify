@@ -9,7 +9,7 @@ info:
 
     ## Convenciones
 
-    **Autenticación.** `POST /auth/login` y `POST /auth/registro` devuelven un JWT. Se envía en
+    **Autenticación.** `POST /auth/login` y `POST /auth/verificar-correo` devuelven un JWT (el registro NO: primero se verifica el correo con un código). Se envía en
     `Authorization: Bearer <token>`. El token dura `JWT_EXPIRES_IN` (7 días) y es revocable: vive en
     `tokens_sesion` y `POST /auth/logout` lo borra. Un token inválido, vencido o cerrado responde `401`.
 
@@ -111,7 +111,15 @@ paths:
     post:
       tags: [Auth]
       summary: Registrar un usuario (cliente o proveedor)
-      description: Límite por IP (ver README). No permite crear administradores.
+      description: |
+        Límite por IP y por correo (ver README). No permite crear administradores.
+
+        **El registro NO inicia sesión.** La cuenta se crea sin verificar y se envía un código de 6 caracteres
+        (MAYÚSCULAS y números) al correo; la sesión se obtiene con `POST /auth/verificar-correo`.
+        La respuesta es **idéntica** exista o no una cuenta con ese correo (no se puede usar para averiguar quién
+        usa Urbify): si ya existe, a su dueño le llega un aviso por correo y no se crea nada. El correo se guarda en
+        minúsculas. Si ya hay un registro sin verificar con ese correo, el último registro lo sustituye.
+        Una cuenta sin verificar se borra pasadas 24 horas.
       security: []
       x-roles: [público]
       requestBody:
@@ -126,15 +134,69 @@ paths:
               contrasena: ClaveSegura123
               rol: cliente
       responses:
-        '201':
-          description: Usuario creado y sesión iniciada
+        '202':
+          description: Cuenta pendiente de verificación; se envió (o se intentó enviar) un código al correo. Sin `token`.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje: { type: string }
+                  requiere_verificacion: { type: boolean, example: true }
+                  correo: { type: string, description: Correo normalizado (minúsculas) }
+                  expira_minutos: { type: integer, example: 10 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/verificar-correo:
+    post:
+      tags: [Auth]
+      summary: Verificar el correo con el código y abrir la sesión
+      description: |
+        El código tiene 6 caracteres (A-Z sin I, L, O; y 2-9), vence a los **10 minutos**, sirve **una sola vez** y se
+        bloquea tras **5 intentos fallidos** (pide otro con `POST /auth/reenviar-codigo`). El backend lo normaliza:
+        acepta minúsculas, espacios y guiones. Cualquier fallo (código incorrecto, vencido, usado, correo inexistente
+        o con formato inválido) responde el mismo `400` "Código inválido o vencido". Límite por IP y por correo.
+      security: []
+      x-roles: [público]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [correo, codigo]
+              properties:
+                correo: { type: string, maxLength: 150 }
+                codigo: { type: string, maxLength: 20, example: VK2EHA }
+      responses:
+        '200':
+          description: Correo verificado y sesión iniciada
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AuthResponse' }
-              example:
-                mensaje: Usuario registrado exitosamente
-                token: eyJhbGciOi...
-                usuario: { id: 12, nombre: Ana, apellido: Pérez, correo: ana@ejemplo.com, rol: cliente }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/reenviar-codigo:
+    post:
+      tags: [Auth]
+      summary: Pedir un código de verificación nuevo
+      description: |
+        Responde siempre `200` con el mismo mensaje, exista o no el correo o esté o no pendiente. Solo envía si la
+        cuenta está pendiente y pasó **1 minuto** desde el último envío. El código nuevo invalida al anterior.
+        Límite por IP y por correo.
+      security: []
+      x-roles: [público]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [correo]
+              properties:
+                correo: { type: string, maxLength: 150 }
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
   /auth/login:
@@ -164,6 +226,19 @@ paths:
               schema: { $ref: '#/components/schemas/AuthResponse' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: |
+            Contraseña correcta pero el correo nunca se verificó. Cuerpo `{error, codigo: "correo_no_verificado", correo}`.
+            Se llega aquí solo con la contraseña correcta, así que no revela nada a terceros. Pide un código con
+            `POST /auth/reenviar-codigo` y verifícalo con `POST /auth/verificar-correo`.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+                  codigo: { type: string, example: correo_no_verificado }
+                  correo: { type: string }
         '429': { $ref: '#/components/responses/TooManyRequests' }
   /auth/logout:
     post:
