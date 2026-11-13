@@ -198,7 +198,7 @@ function BuscarContent() {
         <label className="bs-buscador">
           <span className="bs-solo-lectores">Buscar un servicio</span>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="¿Qué necesitas? Ej: fuga en el baño, instalar un tomacorriente" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="¿Qué necesitas? Ej: fuga en el baño, un profesional por su nombre, o un barrio" />
           {q && <button type="button" onClick={() => setQ('')} aria-label="Borrar búsqueda">×</button>}
         </label>
       </div>

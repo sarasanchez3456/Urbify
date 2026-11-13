@@ -8,29 +8,11 @@ export const COLOMBIA_BOUNDS = [
   [13.39, -66.85], // noreste
 ];
 
-// Viewbox para priorizar ciudades principales en geocodificación (zona continental principal)
-const VIEWBOX = '-79.0,12.5,-66.85,-4.23';
-
-export async function geocodificarDireccion(texto) {
-  if (!texto || texto.trim().length < 3) return [];
-
-  const params = new URLSearchParams({
-    q: texto,
-    format: 'json',
-    addressdetails: '1',
-    limit: '5',
-    countrycodes: 'co',
-    viewbox: VIEWBOX,
-    bounded: '1',
-  });
-
-  const res = await fetch(
-    `https://nominatim.openstreetmap.org/search?${params}`,
-    { headers: { 'Accept-Language': 'es', 'User-Agent': 'Urbify/1.0 (teamlocknetsix@gmail.com)' } }
-  );
-
+// Una sola consulta a Nominatim, limitada a Colombia (countrycodes). No se usa viewbox/bounded: dejaba fuera zonas.
+async function consultarNominatim(texto) {
+  const params = new URLSearchParams({ q: texto, format: 'json', addressdetails: '1', limit: '5', countrycodes: 'co' });
+  const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, { headers: { 'Accept-Language': 'es' } });
   if (!res.ok) return [];
-
   const data = await res.json();
   return data.map((item) => ({
     display_name: item.display_name,
@@ -38,6 +20,34 @@ export async function geocodificarDireccion(texto) {
     lon: parseFloat(item.lon),
     address: item.address,
   }));
+}
+
+// Versiones cada vez más cortas de lo que escribió la persona. Nominatim solo entiende bien direcciones completas
+// y exactas; si "Cra 70 #45-12, Laureles, Medellín" no existe en el mapa, se prueba "Laureles, Medellín", luego
+// "Medellín". Así una dirección larga, mal escrita o inexistente igual ubica el barrio o la ciudad.
+export function variantesDeDireccion(texto) {
+  const limpio = String(texto || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+  if (limpio.length < 3) return [];
+  const partes = limpio.split(',').map((p) => p.trim()).filter(Boolean);
+  // Quita la numeración de la vía: "# 45-12", "No. 45", "45-12 sur", etc.
+  const sinNumero = (p) => p.replace(/\s*(#|no\.?|n°|nº)\s*[\w-]+(\s*-\s*[\w-]+)?/gi, '').replace(/\s+\d+[a-z]?(\s*-\s*\d+)?$/i, '').trim();
+  const candidatas = [
+    limpio,
+    // Si al quitar el número solo queda el tipo de vía ("Cra"), esa parte no sirve y se descarta.
+    partes.length > 1 ? [sinNumero(partes[0]).split(' ').length >= 2 ? sinNumero(partes[0]) : '', ...partes.slice(1)].filter(Boolean).join(', ') : '',
+    partes.length > 2 ? partes.slice(-2).join(', ') : '',
+    partes.length > 1 ? partes[partes.length - 1] : '',
+  ];
+  return [...new Set(candidatas.filter((c) => c.length >= 3))];
+}
+
+// Busca la dirección; si no hay resultados prueba con versiones más cortas hasta encontrar algo.
+export async function geocodificarDireccion(texto) {
+  for (const variante of variantesDeDireccion(texto)) {
+    const resultados = await consultarNominatim(variante);
+    if (resultados.length > 0) return resultados;
+  }
+  return [];
 }
 
 // De unas coordenadas a una dirección corta legible ("Cra. 70 #45-12, Laureles, Medellín"). Devuelve '' si no se pudo.
