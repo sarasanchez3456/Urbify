@@ -23,6 +23,40 @@
   white-space: nowrap;
 }
 
+/* Barra de búsqueda + selector de categoría lado a lado (en pantallas angostas, uno encima del otro). */
+.bs-barra {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bs-barra .bs-buscador { flex: 1 1 320px; }
+
+.bs-filtro-categoria { flex: 0 1 230px; min-width: 180px; display: flex; }
+
+@media (max-width: 640px) {
+  .bs-filtro-categoria { flex: 1 1 100%; }
+}
+
+.bs-filtro-categoria select {
+  width: 100%;
+  border: 1px solid var(--bs-line);
+  border-radius: 16px;
+  padding: 0 14px;
+  min-height: 52px;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--bs-ink);
+  background: #fff;
+  cursor: pointer;
+}
+
+.bs-filtro-categoria select:focus-visible {
+  outline: none;
+  border-color: var(--bs-primary);
+  box-shadow: 0 0 0 3px oklch(0.72 0.13 200 / 0.3);
+}
+
 .bs-buscador {
   display: flex;
   align-items: center;

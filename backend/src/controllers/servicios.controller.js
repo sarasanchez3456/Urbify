@@ -106,7 +106,7 @@ exports.buscarServicios = async (req, res, next) => {
     let ordenParams = []; // parámetros del ORDER BY (van después de los del WHERE)
 
     // La búsqueda funciona por palabras ("fuga en el baño" encuentra "Reparación de fugas y grifería"): un servicio
-    // aparece si alguna palabra significativa está en su título, descripción o categoría, y los que coinciden con
+    // aparece si alguna palabra significativa está en su título, descripción, categoría o nombre del profesional (y en su dirección o barrio, solo para clientes), y los que coinciden con
     // más palabras salen primero. La comparación ignora mayúsculas y tildes (collation de la base).
     let orden = 's.fecha_creacion DESC';
     if (q) {
@@ -118,10 +118,15 @@ exports.buscarServicios = async (req, res, next) => {
       )].slice(0, 6);
       // Si todas eran palabras vacías ("el de la") se busca la frase completa.
       const terminos = palabras.length > 0 ? palabras : [q.trim()];
-      const coincide = terminos.map(() => '(s.titulo LIKE ? OR s.descripcion LIKE ? OR c.nombre LIKE ?)');
+      // También se busca por el nombre del profesional. La dirección/barrio del perfil solo cuenta para clientes y
+      // admin: si no, una búsqueda anónima serviría para descubrir dónde vive alguien (la dirección es dato de contacto).
+      const buscaEnDireccion = veContactoExacto(req);
+      const coincide = terminos.map(() => (
+        `(s.titulo LIKE ? OR s.descripcion LIKE ? OR c.nombre LIKE ? OR u.nombre LIKE ? OR u.apellido LIKE ?${buscaEnDireccion ? ' OR u.direccion LIKE ?' : ''})`
+      ));
       const patrones = terminos.flatMap((t) => {
         const p = `%${t.replace(/[%_\\]/g, '\\$&')}%`;
-        return [p, p, p];
+        return Array(buscaEnDireccion ? 6 : 5).fill(p);
       });
       sql += ` AND (${coincide.join(' OR ')})`;
       params.push(...patrones);
