@@ -22,8 +22,8 @@ function proveedorActivo() {
   return null;
 }
 
-// `textoDev`: texto corto para la consola cuando no hay proveedor (solo desarrollo/pruebas).
-async function enviarCorreo({ to, subject, html, textoDev }) {
+// `text`: versión en texto plano (opcional). `textoDev`: texto corto para la consola cuando no hay proveedor (solo desarrollo/pruebas).
+async function enviarCorreo({ to, subject, html, text, textoDev }) {
   const proveedor = proveedorActivo();
 
   if (proveedor === 'gmail') {
@@ -34,12 +34,12 @@ async function enviarCorreo({ to, subject, html, textoDev }) {
         host: 'smtp.gmail.com', port: 587, secure: false, requireTLS: true, auth: { user: usuario, pass: clave },
       });
     }
-    await transporteGmail.sendMail({ from: `"Urbify" <${usuario}>`, to, subject, html });
+    await transporteGmail.sendMail({ from: `"Urbify" <${usuario}>`, to, subject, html, text });
     return;
   }
 
   if (proveedor === 'resend') {
-    const r = await resend.emails.send({ from: emailFrom || 'Urbify <notificaciones@urbify.app>', to, subject, html });
+    const r = await resend.emails.send({ from: emailFrom || 'Urbify <notificaciones@urbify.app>', to, subject, html, text });
     if (r?.error) throw new Error(r.error.message || 'Resend rechazó el correo');
     return;
   }

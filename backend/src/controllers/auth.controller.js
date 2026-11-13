@@ -5,11 +5,11 @@ const crypto = require('crypto');
 const { query } = require('../config/db');
 const { NODE_ENV } = require('../config/env');
 const { enviarCorreo } = require('../utils/correo');
+const { plantillaCorreo } = require('../utils/plantillaCorreo');
 const { enTransaccion } = require('../utils/transaccion');
 const { generarCodigo, normalizarCodigo, hashDeCodigo, codigoCoincide } = require('../utils/codigoVerificacion');
 const { dominioPuedeRecibirCorreo } = require('../utils/dominioCorreo');
 const { normalizarTelefono, MENSAJE_TELEFONO } = require('../utils/telefono');
-const { escapeHtml } = require('../utils/html');
 const { errorDeDireccion } = require('../utils/direccion');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -53,18 +53,23 @@ async function enviarCodigoDeVerificacion(usuarioId, correo, nombre, { respetarE
      ON DUPLICATE KEY UPDATE codigo_hash = VALUES(codigo_hash), expira_en = VALUES(expira_en), intentos = 0, fecha_envio = NOW()`,
     [usuarioId, hashDeCodigo(codigo, usuarioId), VERIFICACION_EXPIRA_MIN]
   );
+  const { html, text } = plantillaCorreo({
+    preheader: `Tu código de verificación de Urbify es ${codigo}`,
+    titulo: 'Verifica tu correo',
+    parrafos: [
+      `Hola ${nombre}, ¡gracias por unirte a Urbify!`,
+      'Para activar tu cuenta, escribe este código en la página donde te registraste:',
+    ],
+    codigo,
+    vence: `Vence en ${VERIFICACION_EXPIRA_MIN} minutos y solo sirve una vez.`,
+    aviso: 'no compartas este código con nadie. Urbify nunca te lo pedirá por mensaje, llamada ni correo.',
+    pie: 'Si no creaste una cuenta en Urbify, ignora este mensaje: nadie podrá usar tu correo sin este código.',
+  });
   await enviarCorreo({
     to: correo,
-    subject: 'Tu código de verificación de Urbify',
-    html: `
-      <h2>Verifica tu correo</h2>
-      <p>Hola ${escapeHtml(nombre)},</p>
-      <p>Tu código de verificación es:</p>
-      <p><strong style="font-size:28px;letter-spacing:6px">${codigo}</strong></p>
-      <p>Vence en ${VERIFICACION_EXPIRA_MIN} minutos y solo sirve una vez. Escríbelo en Urbify tal como aparece.</p>
-      <p><strong>No compartas este código con nadie:</strong> Urbify nunca te lo pedirá por mensaje, llamada ni correo.
-      Si no creaste una cuenta, ignora este mensaje.</p>
-    `,
+    subject: `${codigo} es tu código de verificación de Urbify`,
+    html,
+    text,
     textoDev: `código de verificación ${codigo}`,
   });
 }
@@ -72,16 +77,17 @@ async function enviarCodigoDeVerificacion(usuarioId, correo, nombre, { respetarE
 // Si el correo ya tiene una cuenta, no se revela en la respuesta (sería una forma de averiguar quién usa Urbify):
 // se le avisa por correo a su dueño.
 async function avisarCorreoYaRegistrado(correo, nombre) {
-  await enviarCorreo({
-    to: correo,
-    subject: 'Alguien intentó registrarse con tu correo en Urbify',
-    html: `
-      <h2>Ya tienes una cuenta</h2>
-      <p>Hola ${escapeHtml(nombre)},</p>
-      <p>Alguien intentó crear una cuenta en Urbify con este correo, pero ya tienes una.</p>
-      <p>Si fuiste tú, inicia sesión (o usa "¿Olvidaste tu contraseña?" si no la recuerdas). Si no fuiste tú, ignora este mensaje: tu cuenta sigue segura.</p>
-    `,
+  const { html, text } = plantillaCorreo({
+    preheader: 'Ya tienes una cuenta en Urbify con este correo.',
+    titulo: 'Ya tienes una cuenta',
+    parrafos: [
+      `Hola ${nombre},`,
+      'Alguien intentó crear una cuenta en Urbify con este correo, pero ya tienes una.',
+      'Si fuiste tú, inicia sesión (o usa "¿Olvidaste tu contraseña?" si no la recuerdas).',
+    ],
+    pie: 'Si no fuiste tú, ignora este mensaje: tu cuenta sigue segura y no se hizo ningún cambio.',
   });
+  await enviarCorreo({ to: correo, subject: 'Alguien intentó registrarse con tu correo en Urbify', html, text });
 }
 
 const enSegundoPlano = (promesa, contexto) => promesa.catch((err) => console.error(`${contexto}:`, err.message));
@@ -361,16 +367,24 @@ exports.olvidoContrasena = async (req, res, next) => {
       [usuarios[0].id, codigoHash, CODIGO_EXPIRA_MIN]
     );
 
+    const { html, text } = plantillaCorreo({
+      preheader: `Tu código para restablecer la contraseña de Urbify es ${codigo}`,
+      titulo: 'Restablece tu contraseña',
+      parrafos: [
+        `Hola ${usuarios[0].nombre},`,
+        'Recibimos una solicitud para restablecer la contraseña de tu cuenta. Escribe este código para continuar:',
+      ],
+      codigo,
+      vence: `Vence en ${CODIGO_EXPIRA_MIN} minutos y solo sirve una vez.`,
+      aviso: 'no compartas este código con nadie. Urbify nunca te lo pedirá por mensaje, llamada ni correo.',
+      pie: 'Si no pediste este cambio, ignora este mensaje: tu contraseña sigue igual.',
+    });
     await enviarCorreo({
       to: correo,
       textoDev: `código para restablecer la contraseña ${codigo}`,
       subject: 'Tu código para restablecer la contraseña de Urbify',
-      html: `
-        <h2>Restablecer contraseña</h2>
-        <p>Hola ${escapeHtml(usuarios[0].nombre)},</p>
-        <p>Tu código es: <strong style="font-size:24px;letter-spacing:4px">${codigo}</strong></p>
-        <p>Vence en ${CODIGO_EXPIRA_MIN} minutos y solo sirve una vez. Si no lo pediste, ignora este correo.</p>
-      `,
+      html,
+      text,
     });
   } catch (err) {
     console.error('Error en olvido de contraseña:', err.message);

@@ -59,3 +59,20 @@ test('dominioPuedeRecibirCorreo: si el DNS falla o tarda, se deja pasar (el cód
   const lento = { resolveMx: () => new Promise(() => {}), resolve4: () => new Promise(() => {}) };
   assert.equal(await dominioPuedeRecibirCorreo('a@gmail.com', lento, 50), true);
 });
+
+test('plantillaCorreo: trae el código destacado, versión en texto plano y escapa lo que viene del usuario', () => {
+  const { plantillaCorreo } = require('../../src/utils/plantillaCorreo');
+  const { html, text } = plantillaCorreo({
+    preheader: 'Tu código',
+    titulo: 'Verifica tu correo',
+    parrafos: ['Hola <script>alert(1)</script> & "amigo"'],
+    codigo: 'ABC234',
+    vence: 'Vence en 10 minutos.',
+    aviso: 'no compartas este código.',
+  });
+  assert.ok(html.includes('ABC234') && text.includes('ABC234'));
+  assert.ok(!html.includes('<script>'), 'el HTML del usuario se escapa');
+  assert.ok(html.includes('&lt;script&gt;'));
+  assert.ok(text.includes('Vence en 10 minutos.') && text.includes('Por tu seguridad'));
+  assert.ok(!/<[a-z]/i.test(text.replace('<script>alert(1)</script>', '')), 'el texto plano no lleva etiquetas HTML');
+});
