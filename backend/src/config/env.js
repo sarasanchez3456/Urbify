@@ -164,7 +164,7 @@ if (ESTRICTO) {
 const emailFrom = (process.env.EMAIL_FROM || '').trim();
 if (ESTRICTO) {
   requerida('EMAIL_FROM');
-  if (!process.env.RESEND_API_KEY) avisos.push('RESEND_API_KEY no configurado: los correos no se enviarán');
+  if (!process.env.RESEND_API_KEY && !(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD)) avisos.push('Sin proveedor de correo (GMAIL_USER/GMAIL_APP_PASSWORD o RESEND_API_KEY): no se enviarán códigos de verificación ni avisos');
 }
 
 // --- Rate limiting ---------------------------------------------------------
@@ -182,6 +182,12 @@ const rateLimit = {
   // Recuperación de contraseña: solicitudes de código por IP y por correo, y envíos de código por IP, por hora.
   recuperacionIp: entero('RATE_LIMIT_RECOVERY_IP_PER_HOUR', 10, { min: 1 }),
   recuperacionCorreo: entero('RATE_LIMIT_RECOVERY_EMAIL_PER_HOUR', 3, { min: 1 }),
+  // Verificación de correo, por hora: intentos de código por IP y por correo, y envíos (registro o reenvío) por IP y
+  // por correo. El código además se invalida tras 5 intentos fallidos (en el controlador).
+  verificacionIp: entero('RATE_LIMIT_VERIFY_IP_PER_HOUR', 30, { min: 1 }),
+  verificacionCorreo: entero('RATE_LIMIT_VERIFY_EMAIL_PER_HOUR', 10, { min: 1 }),
+  envioCodigoIp: entero('RATE_LIMIT_SEND_CODE_IP_PER_HOUR', 15, { min: 1 }),
+  envioCodigoCorreo: entero('RATE_LIMIT_SEND_CODE_EMAIL_PER_HOUR', 5, { min: 1 }),
   // Intentos de login (cualquier resultado) por IP.
   loginIp: entero('RATE_LIMIT_LOGIN_IP', 30, { min: 1 }),
   // Intentos fallidos contra una misma cuenta desde una misma IP.

@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   oficio        VARCHAR(100),
   direccion     VARCHAR(255),
   activo        BOOLEAN DEFAULT 1,
+  correo_verificado BOOLEAN NOT NULL DEFAULT 0,
   intentos_fallidos INT DEFAULT 0,
   bloqueado_hasta   DATETIME NULL,
   fecha_creacion     DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -216,6 +217,18 @@ CREATE TABLE IF NOT EXISTS tokens_sesion (
   fecha_creacion        DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
   INDEX idx_tokens_sesion_token (usuario_id, expira_en)
+);
+
+-- Códigos de verificación de correo: solo se guarda el hash, vencen, tienen intentos limitados y son de un solo uso.
+-- Un solo código vigente por usuario (UNIQUE): pedir otro reemplaza al anterior.
+CREATE TABLE IF NOT EXISTS verificaciones_correo (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  usuario_id       INT NOT NULL UNIQUE,
+  codigo_hash      VARCHAR(64) NOT NULL,
+  expira_en        DATETIME NOT NULL,
+  intentos         INT NOT NULL DEFAULT 0,
+  fecha_envio      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 );
 
 -- Códigos de recuperación de contraseña: solo se guarda el hash, vencen y son de un solo uso.

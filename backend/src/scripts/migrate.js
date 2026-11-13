@@ -102,6 +102,20 @@ async function asegurarRolAdmin(conn) {
   console.log('Migración: rol admin permitido en usuarios.rol');
 }
 
+// Verificación de correo: las bases creadas antes no tienen usuarios.correo_verificado. Al agregar la columna, las
+// cuentas que ya existían se marcan como verificadas (ya iniciaban sesión; si no, nadie podría entrar). Solo ocurre una
+// vez: cuando la columna no existe todavía. Las cuentas nuevas nacen sin verificar (DEFAULT 0 en schema.sql).
+async function asegurarCorreoVerificado(conn) {
+  const [existe] = await conn.query(
+    "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'usuarios' AND COLUMN_NAME = 'correo_verificado'",
+    [DB_NAME]
+  );
+  if (existe.length > 0) return;
+  await conn.query('ALTER TABLE usuarios ADD COLUMN correo_verificado BOOLEAN NOT NULL DEFAULT 0');
+  const [r] = await conn.query('UPDATE usuarios SET correo_verificado = 1');
+  console.log(`Migración: usuarios.correo_verificado agregada; ${r.affectedRows} cuentas existentes marcadas como verificadas`);
+}
+
 async function migrate() {
   // Conexión propia con multipleStatements: schema.sql trae varias sentencias
   // y el pool de db.js usa prepared statements (una sola sentencia).
@@ -143,6 +157,7 @@ async function migrate() {
       }
     }
 
+    await asegurarCorreoVerificado(conn);
     await asegurarFkNotificacionesSolicitud(conn);
     await asegurarRolAdmin(conn);
 

@@ -91,8 +91,15 @@ export function AuthProvider({ children }) {
     return iniciarSesion(res.data.token, res.data.usuario);
   }, [iniciarSesion]);
 
+  // El registro ya NO inicia sesión: crea la cuenta sin verificar y envía un código al correo. Devuelve { correo, ... }.
   const registrar = useCallback(async (datos) => {
     const res = await api.post('/auth/registro', datos);
+    return res.data;
+  }, []);
+
+  // Con el código correcto el servidor activa la cuenta y entrega la sesión.
+  const verificarCorreo = useCallback(async (correo, codigo) => {
+    const res = await api.post('/auth/verificar-correo', { correo, codigo });
     return iniciarSesion(res.data.token, res.data.usuario);
   }, [iniciarSesion]);
 
@@ -111,7 +118,10 @@ export function AuthProvider({ children }) {
   // Actualiza en memoria datos del usuario ya cargado (por ejemplo, el nombre del encabezado tras editar el perfil).
   const actualizarUsuario = useCallback((cambios) => setUsuario((u) => (u ? { ...u, ...cambios } : u)), []);
 
-  const value = useMemo(() => ({ usuario, cargando, login, registrar, logout, actualizarUsuario }), [usuario, cargando, login, registrar, logout, actualizarUsuario]);
+  const value = useMemo(
+    () => ({ usuario, cargando, login, registrar, verificarCorreo, logout, actualizarUsuario }),
+    [usuario, cargando, login, registrar, verificarCorreo, logout, actualizarUsuario]
+  );
 
   return (
     <AuthContext.Provider value={value}>

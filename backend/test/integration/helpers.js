@@ -44,9 +44,13 @@ function abrirPool() {
   });
 }
 
+// Salida del servidor en marcha (la usa codigoEnviadoA para leer los códigos que se "envían" en las pruebas).
+let registroDeLogs = [];
+
 // Arranca el servidor y espera a que responda. Devuelve { detener, logs }.
 async function arrancarServidor() {
   const logs = [];
+  registroDeLogs = logs;
   const proceso = spawn(process.execPath, ['src/index.js'], {
     cwd: RAIZ,
     env: {
@@ -59,7 +63,10 @@ async function arrancarServidor() {
       // Las pruebas crean muchos usuarios y peticiones desde la misma IP: se suben los límites.
       RATE_LIMIT_GLOBAL: '100000', RATE_LIMIT_PUBLIC_PER_MINUTE: '100000', RATE_LIMIT_REGISTER_PER_HOUR: '100000',
       RATE_LIMIT_LOGIN_IP: '100000', RATE_LIMIT_LOGIN_ACCOUNT_IP: '100000', RATE_LIMIT_LOGIN_ACCOUNT: '100000',
-      RESEND_API_KEY: '',
+      RATE_LIMIT_VERIFY_IP_PER_HOUR: '100000', RATE_LIMIT_VERIFY_EMAIL_PER_HOUR: '100000',
+      RATE_LIMIT_SEND_CODE_IP_PER_HOUR: '100000', RATE_LIMIT_SEND_CODE_EMAIL_PER_HOUR: '100000',
+      // Sin proveedor de correo: el servidor imprime los códigos en su consola y las pruebas los leen de ahí.
+      RESEND_API_KEY: '', GMAIL_USER: '', GMAIL_APP_PASSWORD: '',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -103,14 +110,43 @@ async function api(metodo, ruta, { token, body } = {}) {
 let contador = 0;
 const unico = () => `${Date.now().toString(36)}${(contador += 1)}`;
 
-// Registra un usuario por la API. Devuelve { id, token, correo, rol }.
-async function registrar(rol, extra = {}) {
-  const correo = `${rol}.${unico()}@pruebas.test`;
-  const r = await api('POST', '/auth/registro', {
-    body: { nombre: rol === 'cliente' ? 'Carla' : 'Pablo', apellido: 'Prueba', correo, contrasena: 'Clave-de-pruebas-1', rol, telefono: '+573001234567', ...extra },
+// Lee el código que el servidor "envió" a `correo` (sin proveedor de correo lo imprime en su consola). Espera un poco
+// porque el envío ocurre después de responder. `desde` permite ignorar mensajes anteriores (cuenta de líneas ya vistas).
+async function codigoEnviadoA(correo, { desde = 0, tipo = 'código de verificación', espera = 5000 } = {}) {
+  const patron = new RegExp(`\\[correo-dev\\] Para ${correo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}: ${tipo} ([A-Z0-9]+)`);
+  const limite = Date.now() + espera;
+  for (;;) {
+    const lineas = registroDeLogs.join('').split('\n').slice(desde);
+    for (let i = lineas.length - 1; i >= 0; i -= 1) {
+      const m = patron.exec(lineas[i]);
+      if (m) return m[1];
+    }
+    if (Date.now() > limite) return null;
+    await new Promise((r) => setTimeout(r, 50));
+  }
+}
+const lineasDeLogs = () => registroDeLogs.join('').split('\n').length;
+
+// Registra una cuenta SIN verificar (así queda tras el registro). Devuelve { correo, rol, respuesta }.
+async function registrarSinVerificar(rol, extra = {}) {
+  const correo = extra.correo || `${rol}.${unico()}@pruebas.test`;
+  const respuesta = await api('POST', '/auth/registro', {
+    body: { nombre: rol === 'cliente' ? 'Carla' : 'Pablo', apellido: 'Prueba', contrasena: 'Clave-de-pruebas-1', rol, telefono: '+573001234567', ...extra, correo },
   });
-  if (r.status !== 201) throw new Error(`No se pudo registrar ${rol}: ${r.status} ${JSON.stringify(r.body)}`);
-  return { id: r.body.usuario.id, token: r.body.token, correo, rol };
+  return { correo, rol, respuesta };
+}
+
+// Registra un usuario por la API y verifica su correo con el código real (el mismo camino que sigue una persona).
+// Devuelve { id, token, correo, rol }.
+async function registrar(rol, extra = {}) {
+  const desde = lineasDeLogs() - 1;
+  const { correo, respuesta } = await registrarSinVerificar(rol, extra);
+  if (respuesta.status !== 202) throw new Error(`No se pudo registrar ${rol}: ${respuesta.status} ${JSON.stringify(respuesta.body)}`);
+  const codigo = await codigoEnviadoA(correo, { desde });
+  if (!codigo) throw new Error(`El servidor no envió código de verificación a ${correo}`);
+  const v = await api('POST', '/auth/verificar-correo', { body: { correo, codigo } });
+  if (v.status !== 200) throw new Error(`No se pudo verificar ${correo}: ${v.status} ${JSON.stringify(v.body)}`);
+  return { id: v.body.usuario.id, token: v.body.token, correo, rol };
 }
 
 // Convierte un usuario ya registrado en administrador (el rol se lee de la base en cada petición).
@@ -174,6 +210,7 @@ async function hacerFallar(pool, tabla, condicion = '1 = 1') {
 const contar = async (pool, sql, params = []) => Number((await pool.execute(sql, params))[0][0].n);
 
 module.exports = {
-  DB, URL_BASE, prepararBase, abrirPool, arrancarServidor, api, registrar, volverAdmin, crearServicio,
+  DB, URL_BASE, prepararBase, abrirPool, arrancarServidor, api, registrar, registrarSinVerificar, codigoEnviadoA, lineasDeLogs,
+  volverAdmin, crearServicio,
   fechaColombia, diaSemana, solicitar, solicitudEn, iniciarEntorno, hacerFallar, contar,
 };

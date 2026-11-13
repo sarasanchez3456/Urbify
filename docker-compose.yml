@@ -63,6 +63,8 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
       EMAIL_FROM: ${EMAIL_FROM:-Urbify <notificaciones@urbify.app>}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
+      GMAIL_USER: ${GMAIL_USER:-}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
       BODY_LIMIT: ${BODY_LIMIT:-100kb}
       # Nginx (servicio frontend) va delante de la API: 1 proxy de confianza
       TRUST_PROXY: ${TRUST_PROXY:-1}

@@ -1,5 +1,5 @@
 const { query } = require('../config/db');
-const resend = require('../config/resend');
+const { enviarCorreo } = require('../utils/correo');
 const { escapeHtml } = require('../utils/html');
 const { motivosDeColumna } = require('../utils/motivosCalificacion');
 const { errorDeDireccion } = require('../utils/direccion');
@@ -100,8 +100,7 @@ exports.crearSolicitud = async (req, res, next) => {
     let emailOk = true;
 
     try {
-      await resend.emails.send({
-        from: process.env.EMAIL_FROM || 'Urbify <notificaciones@urbify.app>',
+      await enviarCorreo({
         to: proveedor[0].correo,
         subject: 'Tienes una nueva solicitud de servicio',
         html: `
@@ -122,8 +121,7 @@ exports.crearSolicitud = async (req, res, next) => {
     }
 
     try {
-      await resend.emails.send({
-        from: process.env.EMAIL_FROM || 'Urbify <notificaciones@urbify.app>',
+      await enviarCorreo({
         to: cliente[0].correo,
         subject: 'Tu solicitud de servicio fue enviada con éxito',
         html: `
@@ -297,8 +295,7 @@ exports.actualizarEstadoSolicitud = async (req, res, next) => {
 
         // Notificar por correo al cliente si es posible
         try {
-          await resend.emails.send({
-            from: process.env.EMAIL_FROM || 'Urbify <notificaciones@urbify.app>',
+          await enviarCorreo({
             to: solicitudActual.cli_correo,
             subject: '¡Tu solicitud de servicio fue aceptada!',
             html: `

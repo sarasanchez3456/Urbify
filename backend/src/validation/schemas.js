@@ -41,6 +41,18 @@ module.exports = {
     required: ['correo', 'contrasena'],
     properties: { correo: { type: 'string', maxLength: 150 }, contrasena: { type: 'string', maxLength: 200 } },
   },
+  // El código llega en mayúsculas desde el frontend, pero el backend es quien lo normaliza (acepta minúsculas, espacios
+  // y guiones); aquí solo se limita el tamaño del texto.
+  verificarCorreo: {
+    type: 'object',
+    required: ['correo', 'codigo'],
+    properties: { correo: { type: 'string', maxLength: 150 }, codigo: { type: 'string', maxLength: 20 } },
+  },
+  reenviarCodigo: {
+    type: 'object',
+    required: ['correo'],
+    properties: { correo: { type: 'string', maxLength: 150 } },
+  },
   olvidoContrasena: {
     type: 'object',
     required: ['correo'],

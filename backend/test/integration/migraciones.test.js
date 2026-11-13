@@ -31,7 +31,8 @@ test('migraciones sobre una base existente (MySQL real)', async (t) => {
   await conn.query('ALTER TABLE calificaciones DROP COLUMN motivos, DROP COLUMN oculta');
   await conn.query('ALTER TABLE solicitudes DROP COLUMN tarifa_acordada, DROP COLUMN tipo_tarifa_acordada');
   await conn.query('DROP INDEX idx_usuarios_geo ON usuarios');
-  await conn.query('DROP TABLE solicitud_historial, auditoria, reprogramaciones, disponibilidad_proveedor');
+  await conn.query('DROP TABLE solicitud_historial, auditoria, reprogramaciones, disponibilidad_proveedor, verificaciones_correo');
+  await conn.query('ALTER TABLE usuarios DROP COLUMN correo_verificado');
 
   // ── Datos existentes que deben sobrevivir.
   await conn.query(`
@@ -71,6 +72,8 @@ test('migraciones sobre una base existente (MySQL real)', async (t) => {
     assert.deepEqual({ usuarios: await contar('usuarios'), servicios: await contar('servicios'), solicitudes: await contar('solicitudes'), notificaciones: await contar('notificaciones') }, antes);
     const [[u]] = await conn.query('SELECT correo FROM usuarios WHERE id = 1');
     assert.equal(u.correo, 'p@antiguo.test');
+    assert.equal(Number((await conn.query('SELECT correo_verificado AS v FROM usuarios WHERE id = 1'))[0][0].v), 1, 'las cuentas que ya existían quedan con el correo verificado (si no, nadie podría iniciar sesión)');
+    assert.equal(Number((await conn.query("SELECT COUNT(*) AS n FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'verificaciones_correo'", [NOMBRE]))[0][0].n), 1, 'falta la tabla verificaciones_correo');
   });
 
   await t.test('rellena el historial de las solicitudes anteriores y enlaza el aviso de mensaje con su solicitud', async () => {
