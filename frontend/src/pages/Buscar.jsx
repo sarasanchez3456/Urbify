@@ -201,15 +201,14 @@ function BuscarContent() {
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="¿Qué necesitas? Ej: fuga en el baño, un profesional por su nombre, o un barrio" />
           {q && <button type="button" onClick={() => setQ('')} aria-label="Borrar búsqueda">×</button>}
         </label>
-      </div>
-
-      <div className="bs-categorias" role="group" aria-label="Categoría">
-        <button type="button" className={`bs-chip${categoriaId === '' ? ' is-on' : ''}`} aria-pressed={categoriaId === ''} onClick={() => setCategoriaId('')}>Todas</button>
-        {categorias.map((c) => (
-          <button key={c.id} type="button" className={`bs-chip${String(c.id) === String(categoriaId) ? ' is-on' : ''}`} aria-pressed={String(c.id) === String(categoriaId)} onClick={() => setCategoriaId(String(c.id))}>
-            {c.nombre}
-          </button>
-        ))}
+        {/* Filtro de categoría: se combina con el texto (ej. "Belén" + Plomería). */}
+        <label className="bs-filtro-categoria">
+          <span className="bs-solo-lectores">Categoría</span>
+          <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)}>
+            <option value="">Todas las categorías</option>
+            {categorias.map((c) => <option key={c.id} value={String(c.id)}>{c.nombre}</option>)}
+          </select>
+        </label>
       </div>
 
       {/* Dónde está */}
