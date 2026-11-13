@@ -89,16 +89,21 @@ test('historial y cambio de estado atómicos (API real + MySQL)', async (t) => {
     assert.equal(await filasHistorial(id), 1);
   });
 
-  await t.test('dos cambios de estado simultáneos: uno se aplica (200) y el otro recibe 409; una sola fila nueva', async () => {
+  await t.test('el mismo cambio de estado enviado dos veces a la vez: se aplica una sola vez; una sola fila nueva', async () => {
+    // Se envía el MISMO cambio dos veces (pendiente -> aceptada). Aceptar dos veces nunca es válido, así que sea cual sea
+    // el orden en que el servidor las atienda, solo una puede dar 200: la otra recibe 409 (llegó a la vez y perdió la
+    // carrera) o 400 (llegó cuando ya estaba aceptada). Antes la prueba mandaba aceptada + cancelada, y como aceptada ->
+    // cancelada también es válida, a veces las dos daban 200 según el momento exacto y la prueba fallaba sin haber error.
     const id = await solicitudEn('pendiente', { cliente, proveedor, servicioId, fecha: fechaColombia(25, '09:00') });
     const [a, b] = await Promise.all([
       api('PUT', `/solicitudes/${id}/estado`, { token: proveedor.token, body: { estado: 'aceptada' } }),
-      api('PUT', `/solicitudes/${id}/estado`, { token: proveedor.token, body: { estado: 'cancelada' } }),
+      api('PUT', `/solicitudes/${id}/estado`, { token: proveedor.token, body: { estado: 'aceptada' } }),
     ]);
-    assert.deepEqual([a.status, b.status].sort(), [200, 409]);
+    const estados = [a.status, b.status];
+    assert.equal(estados.filter((s) => s === 200).length, 1, `solo una puede aplicarse, pero se obtuvo ${estados}`);
+    assert.ok(estados.filter((s) => s !== 200).every((s) => s === 409 || s === 400), `la otra debe ser 409 o 400, pero se obtuvo ${estados}`);
     assert.equal(await filasHistorial(id), 2, 'debe haber la creación y un único cambio');
-    const final = await estadoEnBase(id);
-    assert.ok(['aceptada', 'cancelada'].includes(final));
+    assert.equal(await estadoEnBase(id), 'aceptada');
   });
 
   await t.test('cancelación del administrador: estado, historial y auditoría juntos; si falla la auditoría, nada cambia', async () => {
