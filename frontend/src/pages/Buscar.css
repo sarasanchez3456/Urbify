@@ -34,6 +34,10 @@
 
 .bs-filtro-categoria { flex: 0 1 230px; min-width: 180px; display: flex; }
 
+@media (max-width: 640px) {
+  .bs-filtro-categoria { flex: 1 1 100%; }
+}
+
 .bs-filtro-categoria select {
   width: 100%;
   border: 1px solid var(--bs-line);
