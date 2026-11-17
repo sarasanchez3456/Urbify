@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   CONSTRAINT chk_usuarios_rol CHECK (rol IN ('cliente', 'proveedor', 'admin')),
   CONSTRAINT chk_usuarios_modo_activo CHECK (
     (rol = 'admin' AND es_proveedor = 0 AND modo_activo IS NULL)
-    OR (rol <> 'admin' AND modo_activo IN ('cliente', 'proveedor')
+    OR (rol <> 'admin' AND modo_activo IS NOT NULL AND modo_activo IN ('cliente', 'proveedor')
         AND (modo_activo <> 'proveedor' OR es_proveedor = 1))
   ),
   FOREIGN KEY (categoria_id) REFERENCES categorias(id),

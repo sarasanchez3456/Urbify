@@ -152,19 +152,30 @@ async function asegurarModeloDobleModo(conn) {
 
 async function asegurarCheckDobleModo(conn) {
   const [checks] = await conn.query(
-    `SELECT 1 FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
-      WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'usuarios' AND CONSTRAINT_NAME = 'chk_usuarios_modo_activo'`,
+    `SELECT cc.CHECK_CLAUSE AS clausula
+       FROM INFORMATION_SCHEMA.CHECK_CONSTRAINTS cc
+       JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+         ON tc.CONSTRAINT_SCHEMA = cc.CONSTRAINT_SCHEMA AND tc.CONSTRAINT_NAME = cc.CONSTRAINT_NAME
+      WHERE tc.TABLE_SCHEMA = ? AND tc.TABLE_NAME = 'usuarios'
+        AND tc.CONSTRAINT_NAME = 'chk_usuarios_modo_activo'`,
     [DB_NAME]
   );
-  if (checks.length > 0) return;
+  // El CHECK inicial no incluía "modo_activo IS NOT NULL": en MySQL una
+  // expresión CHECK que da NULL pasa la validación. Se reconoce la definición
+  // corregida para no recrearla en cada ejecución y se reemplaza la anterior.
+  const definicionActual = String(checks[0]?.clausula || '').replace(/[\s`()]/g, '').toLowerCase();
+  if (checks.length > 0 && definicionActual.includes('modo_activoisnotnull')) return;
+  if (checks.length > 0) {
+    await conn.query('ALTER TABLE usuarios DROP CHECK chk_usuarios_modo_activo');
+  }
   await conn.query(
     `ALTER TABLE usuarios ADD CONSTRAINT chk_usuarios_modo_activo CHECK (
       (rol = 'admin' AND es_proveedor = 0 AND modo_activo IS NULL)
-      OR (rol <> 'admin' AND modo_activo IN ('cliente', 'proveedor')
+      OR (rol <> 'admin' AND modo_activo IS NOT NULL AND modo_activo IN ('cliente', 'proveedor')
           AND (modo_activo <> 'proveedor' OR es_proveedor = 1))
     )`
   );
-  console.log('Migración: restricción de modo activo creada');
+  console.log(`Migración: restricción de modo activo ${checks.length > 0 ? 'actualizada' : 'creada'}`);
 }
 
 async function migrate() {
