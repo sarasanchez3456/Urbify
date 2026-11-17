@@ -243,7 +243,9 @@ exports.verificarCorreo = async (req, res, next) => {
     const token = jwt.sign(
       { id: usuario.id },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      // jwtid único: dos inicios de sesión en el mismo segundo darían un token IGUAL (mismo id y mismo iat) y las dos
+      // sesiones compartirían fila: cerrar una cerraría la otra y el modo de una cambiaría el de la otra.
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d', jwtid: crypto.randomUUID() }
     );
     await query('DELETE FROM tokens_sesion WHERE usuario_id = ? AND expira_en < NOW()', [usuario.id]);
     await query(
@@ -319,7 +321,9 @@ exports.login = async (req, res, next) => {
     const token = jwt.sign(
       { id: usuario.id },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      // jwtid único: dos inicios de sesión en el mismo segundo darían un token IGUAL (mismo id y mismo iat) y las dos
+      // sesiones compartirían fila: cerrar una cerraría la otra y el modo de una cambiaría el de la otra.
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d', jwtid: crypto.randomUUID() }
     );
 
     await query(
