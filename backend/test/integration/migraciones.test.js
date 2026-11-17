@@ -45,6 +45,10 @@ test('migraciones sobre una base existente (MySQL real)', async (t) => {
       (3, 'Ada', 'Admin', 'a@antiguo.test', 'hash', 'admin');
     INSERT INTO servicios (id, proveedor_id, categoria_id, titulo, tarifa) VALUES (1, 1, 1, 'Arreglo de fugas', 50000);
     INSERT INTO solicitudes (id, cliente_id, proveedor_id, servicio_id, estado, fecha_solicitud) VALUES (1, 2, 1, 1, 'aceptada', '2026-01-05 10:00:00');
+    INSERT INTO tokens_sesion (usuario_id, token, expira_en) VALUES
+      (1, 'sesion-proveedor-anterior', DATE_ADD(NOW(), INTERVAL 1 DAY)),
+      (2, 'sesion-cliente-anterior', DATE_ADD(NOW(), INTERVAL 1 DAY)),
+      (3, 'sesion-admin-anterior', DATE_ADD(NOW(), INTERVAL 1 DAY));
     INSERT INTO notificaciones (usuario_id, mensaje) VALUES
       (1, 'Nueva solicitud de Carla Cliente para el servicio "Arreglo de fugas"'),
       (1, 'El cliente Carla Cliente te envió un mensaje sobre "Arreglo de fugas": "Hola"');
@@ -64,6 +68,23 @@ test('migraciones sobre una base existente (MySQL real)', async (t) => {
     assert.ok((await columnas('notificaciones')).includes('tipo') && (await columnas('notificaciones')).includes('solicitud_id'));
     assert.ok((await columnas('calificaciones')).includes('oculta') && (await columnas('calificaciones')).includes('motivos'));
     assert.ok((await columnas('solicitudes')).includes('tarifa_acordada') && (await columnas('solicitudes')).includes('tipo_tarifa_acordada'));
+    assert.deepEqual(
+      (await conn.query(
+        `SELECT TABLE_NAME AS tabla, COLUMN_NAME AS columna
+           FROM INFORMATION_SCHEMA.COLUMNS
+          WHERE TABLE_SCHEMA = ?
+            AND ((TABLE_NAME = 'usuarios' AND COLUMN_NAME IN ('es_proveedor', 'modo_activo'))
+              OR (TABLE_NAME = 'tokens_sesion' AND COLUMN_NAME = 'modo_activo'))
+          ORDER BY TABLE_NAME, COLUMN_NAME`,
+        [NOMBRE]
+      ))[0],
+      [
+        { tabla: 'tokens_sesion', columna: 'modo_activo' },
+        { tabla: 'usuarios', columna: 'es_proveedor' },
+        { tabla: 'usuarios', columna: 'modo_activo' },
+      ],
+      'la migración debe crear las tres columnas de doble modo en una tabla existente'
+    );
 
     const [indice] = await conn.query("SELECT 1 FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = ? AND INDEX_NAME = 'idx_usuarios_geo'", [NOMBRE]);
     assert.ok(indice.length > 0, 'falta el índice idx_usuarios_geo');
@@ -84,6 +105,12 @@ test('migraciones sobre una base existente (MySQL real)', async (t) => {
       { id: 2, rol: 'cliente', es_proveedor: 0, modo_activo: 'cliente' },
       { id: 3, rol: 'admin', es_proveedor: 0, modo_activo: null },
     ], 'cliente, proveedor y administrador conservan su semántica al migrar');
+    const [sesiones] = await conn.query('SELECT usuario_id, modo_activo FROM tokens_sesion ORDER BY usuario_id');
+    assert.deepEqual(sesiones, [
+      { usuario_id: 1, modo_activo: 'proveedor' },
+      { usuario_id: 2, modo_activo: 'cliente' },
+      { usuario_id: 3, modo_activo: null },
+    ], 'las sesiones existentes reciben el modo actual de su cuenta');
     assert.equal(Number((await conn.query("SELECT COUNT(*) AS n FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'verificaciones_correo'", [NOMBRE]))[0][0].n), 1, 'falta la tabla verificaciones_correo');
   });
 
@@ -111,5 +138,11 @@ test('migraciones sobre una base existente (MySQL real)', async (t) => {
     assert.deepEqual(modos.map((u) => ({ ...u, es_proveedor: Number(u.es_proveedor) })), [
       { es_proveedor: 1, modo_activo: 'cliente' }, { es_proveedor: 0, modo_activo: 'cliente' }, { es_proveedor: 0, modo_activo: null },
     ]);
+    const [sesiones] = await conn.query('SELECT usuario_id, modo_activo FROM tokens_sesion ORDER BY usuario_id');
+    assert.deepEqual(sesiones, [
+      { usuario_id: 1, modo_activo: 'proveedor' },
+      { usuario_id: 2, modo_activo: 'cliente' },
+      { usuario_id: 3, modo_activo: null },
+    ], 'la migración no revalida ni altera sesiones emitidas para un modo anterior');
   });
 });

@@ -143,7 +143,7 @@ async function asegurarModeloDobleModo(conn) {
   const [sesiones] = await conn.query(
     `UPDATE tokens_sesion t JOIN usuarios u ON u.id = t.usuario_id
         SET t.modo_activo = u.modo_activo
-      WHERE t.modo_activo IS NULL`
+      WHERE t.modo_activo IS NULL AND u.modo_activo IS NOT NULL`
   );
   if (proveedores.affectedRows || modos.affectedRows || admins.affectedRows || sesiones.affectedRows) {
     console.log(`Migración: modelo de doble modo inicializado (${proveedores.affectedRows} capacidades, ${modos.affectedRows} modos, ${sesiones.affectedRows} sesiones)`);
