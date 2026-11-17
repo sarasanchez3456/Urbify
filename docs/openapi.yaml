@@ -20,7 +20,10 @@ info:
     cada petición. Los administradores no participan de los modos. Detalle y reglas de pertenencia:
     `docs/AUTORIZACION.md`.
 
-    Las notificaciones pertenecen a la cuenta y la bandeja es única: el modo activo no las oculta, elimina ni transfiere.
+    **Notificaciones por modo.** Cada notificación ligada a una solicitud pertenece al modo que su destinatario tiene en
+    ella (`cliente` o `proveedor`); las demás no tienen modo (`modo: null`). Una cuenta con los dos modos solo ve, lista,
+    marca y borra en cada modo las de ese modo más las que no tienen modo, y solo recibe en vivo los avisos de su
+    modo. El administrador no tiene modo y ve todas las suyas.
 
     **Errores.** Siempre `{"error": "mensaje"}`. Todo cuerpo o consulta se valida contra los límites de este documento (tipos, longitudes, rangos): si no cumple, `400` con el campo y el motivo, nunca `500`. Los errores de la base de datos causados por datos del usuario también se traducen: valor demasiado largo, fuera de rango, mal formado o referencia inexistente → `400`; registro duplicado o dato con relaciones → `409`. Los `429` añaden `bloqueado: true` y `minutos_restantes`
     y las cabeceras `Retry-After` y `RateLimit`. Códigos: `400` datos o estado inválido, `401` sin sesión
@@ -1222,7 +1225,7 @@ paths:
     get:
       tags: [Notificaciones]
       summary: Avisos en vivo (Server-Sent Events)
-      description: 'Conexión abierta que envía `event: notificacion` (con `{ id }`) apenas se crea una notificación para el usuario autenticado, más un latido cada 25 s. La web la usa en lugar de consultar cada pocos segundos (queda un respaldo cada 30 s). Va por `fetch` con cabecera `Authorization`, no por `EventSource`. Las conexiones viven en la memoria de la instancia del backend.'
+      description: 'Conexión abierta que envía `event: notificacion` (con `{ id, modo }`) apenas se crea una notificación para el usuario autenticado y de su modo (o sin modo), más un latido cada 25 s. La web la usa en lugar de consultar cada pocos segundos (queda un respaldo cada 30 s). Va por `fetch` con cabecera `Authorization`, no por `EventSource`. Las conexiones viven en la memoria de la instancia del backend.'
       x-roles: [cliente, proveedor, admin]
       responses:
         '200': { description: 'Flujo text/event-stream' }
@@ -1331,6 +1334,7 @@ paths:
     get:
       tags: [Notificaciones]
       summary: Notificaciones del usuario autenticado
+      description: Solo las del modo de la sesión y las que no tienen modo; el administrador recibe todas las suyas.
       x-roles: [cliente, proveedor, admin]
       responses:
         '200':
@@ -1344,7 +1348,7 @@ paths:
     post:
       tags: [Notificaciones]
       summary: Crear una notificación para uno mismo
-      description: '`usuario_id` debe ser el del usuario autenticado (403 en otro caso).'
+      description: '`usuario_id` debe ser el del usuario autenticado (403 en otro caso). Queda en el modo de la sesión.'
       x-roles: [cliente, proveedor, admin]
       requestBody:
         required: true
@@ -1372,6 +1376,7 @@ paths:
     delete:
       tags: [Notificaciones]
       summary: Eliminar todas las notificaciones propias
+      description: Solo las del modo de la sesión y las que no tienen modo; las del otro modo se conservan.
       x-roles: [cliente, proveedor, admin]
       responses:
         '200': { $ref: '#/components/responses/Mensaje' }
@@ -1380,6 +1385,7 @@ paths:
     put:
       tags: [Notificaciones]
       summary: Marcar todas las notificaciones propias como leídas
+      description: Solo las del modo de la sesión y las que no tienen modo; las del otro modo no cambian.
       x-roles: [cliente, proveedor, admin]
       responses:
         '200': { $ref: '#/components/responses/Mensaje' }
@@ -1390,6 +1396,7 @@ paths:
     put:
       tags: [Notificaciones]
       summary: Marcar una notificación propia como leída
+      description: Una notificación propia del otro modo responde `404`, como si no existiera desde este modo.
       x-roles: [cliente, proveedor, admin]
       responses:
         '200': { $ref: '#/components/responses/Mensaje' }
@@ -1402,6 +1409,7 @@ paths:
     delete:
       tags: [Notificaciones]
       summary: Eliminar una notificación propia
+      description: Una notificación propia del otro modo responde `404`, como si no existiera desde este modo.
       x-roles: [cliente, proveedor, admin]
       responses:
         '200': { $ref: '#/components/responses/Mensaje' }
@@ -1850,6 +1858,7 @@ components:
         usuario_id: { type: integer }
         tipo: { type: string, description: 'Structured notification type; `mensaje` identifies a chat notification', example: mensaje }
         solicitud_id: { type: integer, nullable: true, description: 'Related request; null for unrelated notifications or preserved history after deleting a request' }
+        modo: { type: string, nullable: true, enum: [cliente, proveedor], description: 'Modo en el que se ve; null si no tiene modo (se ve en ambos)' }
         mensaje: { type: string }
         leida: { type: integer, enum: [0, 1] }
         fecha_creacion: { $ref: '#/components/schemas/Fecha' }

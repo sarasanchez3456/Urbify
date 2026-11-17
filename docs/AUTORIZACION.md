@@ -41,7 +41,7 @@ Resultado de la auditoría del issue #2. Describe quién puede hacer qué y qué
 | Solicitudes | eliminar | modo correspondiente a la parte | Solo las partes, y solo en estado `pendiente` o `cancelada`. |
 | Calificaciones a proveedor | crear, editar, eliminar | modo `cliente` | Solo el cliente de la solicitud, solicitud `completada`, una sola vez (`UNIQUE(solicitud_id)`), entero 1–5. |
 | Calificaciones a cliente | crear | modo `proveedor` | Se guardan en `calificaciones_cliente`, separadas de la reputación recibida como proveedor. |
-| Notificaciones | listar, leer, eliminar | autenticado | Solo las propias (`403` si es de otro). Son de la cuenta: la bandeja permanece unificada y no cambia al alternar modo. |
+| Notificaciones | listar, leer, eliminar | autenticado | Solo las propias (`403` si es de otro). Cada una tiene un modo (`cliente` o `proveedor`, según el papel del destinatario en la solicitud) o ninguno (general): una cuenta con los dos modos solo ve, marca y borra las de su modo actual y las generales; una del otro modo responde `404`. El administrador, sin modo, ve todas las suyas. |
 
 ### Transiciones de solicitudes
 

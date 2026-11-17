@@ -54,8 +54,10 @@ async function query(sql, params = []) {
   const [result] = await pool.execute(sql, safeParams);
   // Al crear una notificación se avisa en vivo a su destinatario (ver utils/avisos.js).
   if (/^\s*INSERT\s+INTO\s+notificaciones/i.test(sql)) {
-    const pos = avisos.posicionUsuario(sql);
-    if (pos >= 0) avisos.avisar(safeParams[pos], { id: result.insertId });
+    const pos = avisos.posicionesNotificacion(sql);
+    if (pos.usuario >= 0) {
+      avisos.avisar(safeParams[pos.usuario], { id: result.insertId, modo: pos.modo >= 0 ? safeParams[pos.modo] : null });
+    }
   }
   return [result];
 }

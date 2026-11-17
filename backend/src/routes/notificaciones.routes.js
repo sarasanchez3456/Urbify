@@ -11,7 +11,7 @@ router.get('/stream', authenticate, (req, res) => {
   res.set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
   res.flushHeaders();
   res.write('retry: 5000\n\n');
-  avisos.suscribir(req.usuarioId, res);
+  avisos.suscribir(req.usuarioId, res, req.usuarioModo);
   // Latido para que proxies y navegadores no cierren la conexión por inactividad.
   const latido = setInterval(() => { try { res.write(': latido\n\n'); } catch { /* cerrada */ } }, 25000);
   res.on('close', () => clearInterval(latido));

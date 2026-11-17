@@ -27,7 +27,7 @@ test('migraciones sobre una base existente (MySQL real)', async (t) => {
       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'notificaciones' AND COLUMN_NAME = 'solicitud_id' AND REFERENCED_TABLE_NAME = 'solicitudes'`, [NOMBRE]);
   for (const { n } of fks) await conn.query(`ALTER TABLE notificaciones DROP FOREIGN KEY \`${n}\``);
   await conn.query('DROP INDEX idx_notificaciones_solicitud ON notificaciones');
-  await conn.query('ALTER TABLE notificaciones DROP COLUMN tipo, DROP COLUMN solicitud_id');
+  await conn.query('ALTER TABLE notificaciones DROP COLUMN tipo, DROP COLUMN solicitud_id, DROP COLUMN modo');
   await conn.query('ALTER TABLE usuarios DROP CHECK chk_usuarios_modo_activo');
   await conn.query('DROP INDEX idx_usuarios_proveedor_activo ON usuarios');
   await conn.query('ALTER TABLE usuarios DROP COLUMN es_proveedor, DROP COLUMN modo_activo');
@@ -119,9 +119,10 @@ test('migraciones sobre una base existente (MySQL real)', async (t) => {
     assert.equal(h.length, 1);
     assert.equal(h[0].estado_anterior, null);
     assert.equal(h[0].estado_nuevo, 'pendiente');
-    const [avisos] = await conn.query('SELECT tipo, solicitud_id FROM notificaciones ORDER BY id');
+    const [avisos] = await conn.query('SELECT tipo, solicitud_id, modo FROM notificaciones ORDER BY id');
     assert.deepEqual(avisos.map((a) => a.tipo), ['general', 'mensaje']);
     assert.equal(avisos[1].solicitud_id, 1);
+    assert.deepEqual(avisos.map((a) => a.modo), [null, 'proveedor'], 'el aviso ligado a una solicitud queda en el modo de su destinatario; el que no se pudo ligar queda general');
   });
 
   await t.test('reemplaza el CHECK inicial y exige un modo válido para cada cuenta no admin', async () => {
