@@ -130,6 +130,7 @@ test('doble modo: migración lógica, autorización, privacidad y reputaciones s
 
     const esperado = {
       con_capacidad_proveedor: 3,
+      con_ambos_modos: 1, // clienteConCapacidad: registrado como cliente y habilitado como proveedor
       en_modo_cliente: 1,
       en_modo_proveedor: 2,
       administradores: 1,
