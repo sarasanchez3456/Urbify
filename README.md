@@ -302,6 +302,10 @@ Push a main
 - ✅ Que la **infraestructura Docker** está correctamente definida
 - ❌ Ningún error llega silenciosamente a la rama principal
 
+### 🧪 Pruebas automáticas del frontend
+
+`npm test` (desde `frontend/`) corre las pruebas con **Vitest** y un navegador simulado; no necesitan backend ni base de datos. Cubren la sesión del navegador (solo se guarda el token), el interceptor de Axios (token, 401, tokens vencidos), `AuthContext` (el registro no inicia sesión, la verificación sí, modo cliente/proveedor) y la pantalla del código de verificación (mayúsculas, 6 caracteres, errores, reenvío). Corren en el CI antes de compilar.
+
 ### 🧪 Pruebas automáticas del backend
 
 | Comando (desde `backend/`) | Qué ejecuta | Necesita MySQL |
