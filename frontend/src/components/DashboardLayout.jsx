@@ -54,19 +54,22 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
 
     return new Promise((resolver) => {
       let resuelto = false;
+      let timeoutRespaldo;
       const terminar = () => {
         if (resuelto) return;
         resuelto = true;
+        window.clearTimeout(timeoutRespaldo);
         sidebar.removeEventListener('transitionend', alTerminar);
         sidebar.removeEventListener('transitioncancel', terminar);
         resolver();
       };
       const alTerminar = (evento) => {
-        if (evento.target === sidebar && evento.propertyName === 'transform') terminar();
+        if (evento.target === sidebar && ['transform', 'translate'].includes(evento.propertyName)) terminar();
       };
 
       sidebar.addEventListener('transitionend', alTerminar);
       sidebar.addEventListener('transitioncancel', terminar);
+      timeoutRespaldo = window.setTimeout(terminar, 500);
       setSidebarOpen(debeAbrir);
 
       requestAnimationFrame(() => {
