@@ -133,3 +133,19 @@ mysqldump -h <host-tidb> -P 4000 -u <usuario> -p --ssl-mode=VERIFY_IDENTITY urbi
 ## Seguridad
 
 Secretos solo en las variables de Vercel (o en archivos fuera del repositorio), `CORS_ORIGIN` con direcciones exactas (nunca `*`), `DB_SSL=true`, cuenta de Gmail exclusiva de Urbify y contraseña de aplicación revocable. Más detalles en `docs/DESPLIEGUE.md`.
+
+## Estado del despliegue (2026-11-17)
+
+Publicado con la línea de comandos de Vercel, desde la cuenta **Urbify (Hobby)**:
+
+| Pieza | Dirección |
+|---|---|
+| Página | https://urbify-web-gamma.vercel.app (el nombre `urbify-web` ya estaba tomado, por eso lleva `-gamma`) |
+| API | https://urbify-api.vercel.app (`/api/health?deep=1` responde `db: ok`) |
+| Base de datos | TiDB Cloud Starter, base `urbify_db` (tablas creadas con `npm run migrate`) |
+
+- `CORS_ORIGIN` de la API = `https://urbify-web-gamma.vercel.app`. Si cambia la dirección de la página, hay que cambiarla allí y volver a desplegar la API.
+- `frontend/vercel.json` y `frontend/.env.production` ya traen la dirección de la API.
+- Las variables viven en el panel de Vercel (las sensibles, como la clave de TiDB, el `JWT_SECRET` y la contraseña de Gmail, no se pueden volver a leer). Los valores originales están en archivos **fuera del repositorio**.
+- Comprobado: la página responde con sus cabeceras de seguridad, la API acepta el origen de la página y rechaza otros, el administrador inicia sesión, la búsqueda y las categorías leen de TiDB y el registro responde 202.
+- ⚠️ Falta confirmar con una persona real: que llegue el correo del código de verificación y el de recuperar contraseña desde Vercel, y probar cada pantalla.
