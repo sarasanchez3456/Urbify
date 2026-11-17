@@ -482,7 +482,8 @@ exports.perfil = async (req, res, next) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    res.json(presentarUsuario(usuarios[0]));
+    // modo_activo es el de ESTA sesión (puede ser distinto al de otro dispositivo), no el de inicio de la cuenta.
+    res.json({ ...presentarUsuario(usuarios[0]), modo_activo: req.usuarioModo });
   } catch (err) {
     return next(err);
   }
@@ -516,7 +517,7 @@ exports.actualizarPerfil = async (req, res, next) => {
        FROM usuarios WHERE id = ?`,
       [req.usuarioId]
     );
-    res.json({ mensaje: 'Perfil actualizado exitosamente', usuario: presentarUsuario(usuarios[0]) });
+    res.json({ mensaje: 'Perfil actualizado exitosamente', usuario: { ...presentarUsuario(usuarios[0]), modo_activo: req.usuarioModo } });
   } catch (err) {
     return next(err);
   }

@@ -34,9 +34,12 @@ test('doble modo: migración lógica, autorización, privacidad y reputaciones s
   });
 
   await t.test('el modo cliente bloquea rutas de proveedor, muestra contacto y conserva la regla anti-autosolicitud', async () => {
-    // El modo de la cuenta sin actualizar la sesión revoca de inmediato el token anterior.
+    // El modo vive en la sesión: cambiar el modo de la cuenta (el que usará el próximo inicio de sesión) no toca
+    // una sesión ya abierta, que sigue en su propio modo.
     await fijarModo(pool, doble.id, 'cliente', { actualizarSesion: false });
-    assert.equal((await api('GET', '/auth/perfil', { token: doble.token })).status, 401);
+    const sinCambio = await api('GET', '/auth/perfil', { token: doble.token });
+    assert.equal(sinCambio.status, 200);
+    assert.equal(sinCambio.body.modo_activo, 'proveedor');
     await pool.execute("UPDATE tokens_sesion SET modo_activo = 'cliente' WHERE usuario_id = ?", [doble.id]);
 
     assert.equal((await api('GET', '/servicios/mios', { token: doble.token })).status, 403);
@@ -56,6 +59,30 @@ test('doble modo: migración lógica, autorización, privacidad y reputaciones s
     assert.equal(detalle.status, 200);
     assert.equal('telefono' in detalle.body, false);
     assert.equal('direccion' in detalle.body, false);
+  });
+
+  await t.test('el modo vive en la sesión: dos dispositivos de la misma cuenta conviven en modos distintos', async () => {
+    await fijarModo(pool, doble.id, 'cliente'); // el próximo inicio de sesión empieza en modo cliente
+    const login = await api('POST', '/auth/login', { body: { correo: doble.correo, contrasena: 'Clave-de-pruebas-1' } });
+    assert.equal(login.status, 200);
+    assert.equal(login.body.usuario.modo_activo, 'cliente');
+    const celular = login.body.token;
+    await pool.execute("UPDATE tokens_sesion SET modo_activo = 'proveedor' WHERE token = ?", [doble.token]);
+
+    assert.equal((await api('GET', '/servicios/mios', { token: doble.token })).status, 200);
+    assert.equal((await api('GET', '/solicitudes/cliente', { token: doble.token })).status, 403);
+    assert.equal((await api('GET', '/servicios/mios', { token: celular })).status, 403);
+    assert.equal((await api('GET', '/solicitudes/cliente', { token: celular })).status, 200);
+    assert.equal((await api('GET', '/auth/perfil', { token: doble.token })).body.modo_activo, 'proveedor');
+    assert.equal((await api('GET', '/auth/perfil', { token: celular })).body.modo_activo, 'cliente');
+
+    // Una sesión en modo proveedor deja de valer si la cuenta pierde la capacidad; la de modo cliente sigue.
+    await pool.execute('UPDATE usuarios SET es_proveedor = 0 WHERE id = ?', [doble.id]);
+    assert.equal((await api('GET', '/auth/perfil', { token: doble.token })).status, 401);
+    assert.equal((await api('GET', '/auth/perfil', { token: celular })).status, 200);
+    await pool.execute('UPDATE usuarios SET es_proveedor = 1 WHERE id = ?', [doble.id]);
+    assert.equal((await api('GET', '/auth/perfil', { token: doble.token })).status, 200);
+    await fijarModo(pool, doble.id, 'proveedor');
   });
 
   await t.test('las reputaciones como proveedor y como cliente quedan en tablas separadas', async () => {

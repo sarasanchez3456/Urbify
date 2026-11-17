@@ -16,10 +16,10 @@ Resultado de la auditoría del issue #2. Describe quién puede hacer qué y qué
 
 - `rol` se conserva por compatibilidad e historial de la cuenta (`cliente`, `proveedor`, `admin`); no decide por sí solo los permisos de una cuenta no administrativa.
 - `es_proveedor` expresa la capacidad permanente de operar como proveedor. Una cuenta no administrativa conserva siempre la capacidad de operar como cliente.
-- `modo_activo` (`cliente` o `proveedor`) es el modo efectivo de una cuenta no administrativa. Un administrador permanece separado: tiene `es_proveedor = false` y `modo_activo = null`.
-- El JWT solo identifica la sesión. `authenticate` valida en cada petición la sesión en `tokens_sesion`, el estado `activo` de la cuenta y que el modo de sesión coincida con `usuarios.modo_activo`; el JWT no es la fuente autoritativa del modo.
+- `tokens_sesion.modo_activo` (`cliente` o `proveedor`) es el modo efectivo de **esa sesión**: cada dispositivo puede estar en un modo distinto. `usuarios.modo_activo` es el modo con el que empieza el próximo inicio de sesión. Un administrador permanece separado: tiene `es_proveedor = false` y `modo_activo = null` (en la cuenta y en sus sesiones).
+- El JWT solo identifica la sesión. `authenticate` valida en cada petición la sesión en `tokens_sesion`, el estado `activo` de la cuenta y que el modo de la sesión sea válido para la cuenta (`proveedor` solo si `es_proveedor`); el JWT no es la fuente autoritativa del modo. `GET /auth/perfil` devuelve el modo de la sesión que hace la petición.
 - `authorize` usa el modo efectivo determinado por el servidor. Una ruta exclusiva de proveedor responde `403` en modo cliente, y una exclusiva de cliente responde `403` en modo proveedor.
-- Si el modo almacenado cambia, las sesiones emitidas para el modo anterior dejan de coincidir y se rechazan con `401`; esto evita que un token antiguo conserve permisos obsoletos.
+- Cambiar de modo (#46) reemite el token de esa sesión y deja de valer el anterior; las sesiones de otros dispositivos no se tocan. Una sesión en modo `proveedor` se rechaza con `401` si la cuenta pierde la capacidad `es_proveedor`, de modo que un token antiguo no conserva permisos obsoletos.
 - El registro público (`POST /api/auth/registro`) solo acepta `cliente` y `proveedor`.
 - **Primer administrador:** `npm run create-admin` en el servidor, con `ADMIN_EMAIL` y `ADMIN_PASSWORD` del entorno. Es la única vía para obtener el rol `admin`; promover a un usuario existente cierra sus sesiones abiertas.
 - No hay endpoint para cambiar roles ni para crear administradores. Un administrador no puede eliminar a otro administrador ni a sí mismo desde la API.
