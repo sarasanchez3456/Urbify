@@ -66,6 +66,11 @@ jobs:
           echo "✅ Sintaxis del backend válida"
         working-directory: ./backend
 
+      - name: "📜 Validar el contrato de la API (docs/openapi.yaml)"
+        # Un error en el contrato (YAML inválido, propiedades mal escritas, referencias rotas) hace fallar el CI.
+        # Las advertencias de estilo (por ejemplo, operaciones sin operationId) no lo bloquean.
+        run: npx --yes @redocly/cli@2.79.0 lint docs/openapi.yaml --extends minimal
+
       - name: "🧪 Pruebas unitarias del backend"
         run: npm test
         working-directory: ./backend
