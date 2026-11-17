@@ -6,6 +6,14 @@ exports.getStatsAdmin = async (req, res, next) => {
     const [usuariosPorRol] = await db.query(
       'SELECT rol, COUNT(*) AS total FROM usuarios GROUP BY rol'
     );
+    const [cuentasPorCapacidadYModo] = await db.query(
+      `SELECT
+         COALESCE(SUM(es_proveedor = 1), 0) AS con_capacidad_proveedor,
+         COALESCE(SUM(modo_activo = 'cliente'), 0) AS en_modo_cliente,
+         COALESCE(SUM(modo_activo = 'proveedor'), 0) AS en_modo_proveedor,
+         COALESCE(SUM(rol = 'admin'), 0) AS administradores
+       FROM usuarios`
+    );
     const [servicios] = await db.query(
       'SELECT COUNT(*) AS total, COALESCE(SUM(disponible = 1), 0) AS disponibles FROM servicios'
     );
@@ -25,6 +33,14 @@ exports.getStatsAdmin = async (req, res, next) => {
 
     res.json({
       usuarios_por_rol: usuarios,
+      // Compatibilidad: usuarios_por_rol sigue contando el rol histórico;
+      // las capacidades y los modos se exponen de forma independiente.
+      cuentas_por_capacidad_y_modo: {
+        con_capacidad_proveedor: Number(cuentasPorCapacidadYModo[0].con_capacidad_proveedor),
+        en_modo_cliente: Number(cuentasPorCapacidadYModo[0].en_modo_cliente),
+        en_modo_proveedor: Number(cuentasPorCapacidadYModo[0].en_modo_proveedor),
+        administradores: Number(cuentasPorCapacidadYModo[0].administradores),
+      },
       servicios: {
         total: Number(servicios[0].total),
         disponibles: Number(servicios[0].disponibles),
@@ -43,7 +59,7 @@ exports.getStatsAdmin = async (req, res, next) => {
 exports.getStats = async (req, res, next) => {
   try {
     const [proveedores] = await db.query(
-      "SELECT COUNT(*) AS total FROM usuarios WHERE rol = 'proveedor' AND activo = 1"
+      'SELECT COUNT(*) AS total FROM usuarios WHERE es_proveedor = 1 AND activo = 1'
     );
     const [solicitudesCompletadas] = await db.query(
       "SELECT COUNT(*) AS total FROM solicitudes WHERE estado = 'completada'"

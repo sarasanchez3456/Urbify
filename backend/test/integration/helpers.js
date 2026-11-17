@@ -151,7 +151,8 @@ async function registrar(rol, extra = {}) {
 
 // Convierte un usuario ya registrado en administrador (el rol se lee de la base en cada petición).
 async function volverAdmin(pool, usuario) {
-  await pool.execute("UPDATE usuarios SET rol = 'admin' WHERE id = ?", [usuario.id]);
+  await pool.execute("UPDATE usuarios SET rol = 'admin', es_proveedor = 0, modo_activo = NULL WHERE id = ?", [usuario.id]);
+  await pool.execute('UPDATE tokens_sesion SET modo_activo = NULL WHERE usuario_id = ?', [usuario.id]);
   return { ...usuario, rol: 'admin' };
 }
 

@@ -13,9 +13,14 @@ info:
     `Authorization: Bearer <token>`. El token dura `JWT_EXPIRES_IN` (7 días) y es revocable: vive en
     `tokens_sesion` y `POST /auth/logout` lo borra. Un token inválido, vencido o cerrado responde `401`.
 
-    **Roles.** `cliente`, `proveedor` y `admin`. El registro público solo crea `cliente` y `proveedor`.
-    Cada operación indica sus roles en `x-roles` y en la descripción. El rol se lee de la base de datos
-    en cada petición. Detalle y reglas de pertenencia: `docs/AUTORIZACION.md`.
+    **Roles y modo activo.** `cliente`, `proveedor` y `admin`. El registro público solo crea `cliente` y
+    `proveedor`. Una cuenta no administrativa habilitada como proveedor también puede actuar como cliente;
+    `es_proveedor` expresa esa capacidad y `modo_activo` es el modo efectivo de la sesión. Cada operación
+    indica sus roles en `x-roles`; el backend lee el modo, la sesión y el estado desde la base de datos en
+    cada petición. Los administradores no participan de los modos. Detalle y reglas de pertenencia:
+    `docs/AUTORIZACION.md`.
+
+    Las notificaciones pertenecen a la cuenta y la bandeja es única: el modo activo no las oculta, elimina ni transfiere.
 
     **Errores.** Siempre `{"error": "mensaje"}`. Todo cuerpo o consulta se valida contra los límites de este documento (tipos, longitudes, rangos): si no cumple, `400` con el campo y el motivo, nunca `500`. Los errores de la base de datos causados por datos del usuario también se traducen: valor demasiado largo, fuera de rango, mal formado o referencia inexistente → `400`; registro duplicado o dato con relaciones → `409`. Los `429` añaden `bloqueado: true` y `minutos_restantes`
     y las cabeceras `Retry-After` y `RateLimit`. Códigos: `400` datos o estado inválido, `401` sin sesión
@@ -1089,7 +1094,7 @@ paths:
       parameters:
         - { name: semanas, in: query, schema: { type: integer, enum: [4, 8, 12], default: 8 } }
       responses:
-        '200': { description: 'usuarios_por_rol, servicios, solicitudes_por_estado, calificaciones (sin las ocultas), semanas [{hasta, usuarios, solicitudes}] y atencion {solicitudes_pendientes, servicios_no_disponibles, usuarios_suspendidos, resenas_bajas}' }
+        '200': { description: 'usuarios_por_rol (rol histórico), cuentas_por_capacidad_y_modo, servicios, solicitudes_por_estado, calificaciones (sin las ocultas), semanas [{hasta, usuarios, solicitudes}] y atencion {solicitudes_pendientes, servicios_no_disponibles, usuarios_suspendidos, resenas_bajas}' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
   /admin/usuarios/{id}:
@@ -1100,7 +1105,7 @@ paths:
       summary: Detalle de un usuario con su actividad
       x-roles: [admin]
       responses:
-        '200': { description: Datos de la cuenta, conteos de solicitudes y servicios, calificación media y últimas 5 solicitudes }
+        '200': { description: 'Datos de la cuenta (incluye rol histórico, es_proveedor y modo_activo), conteos de solicitudes y servicios, calificación media y últimas 5 solicitudes' }
         '404': { $ref: '#/components/responses/NotFound' }
   /admin/usuarios/{id}/estado:
     parameters:
@@ -1522,6 +1527,11 @@ components:
     Rol:
       type: string
       enum: [cliente, proveedor, admin]
+    ModoActivo:
+      type: string
+      nullable: true
+      enum: [cliente, proveedor]
+      description: Modo efectivo de una cuenta no administrativa; null para administradores.
     EstadoSolicitud:
       type: string
       enum: [pendiente, aceptada, en_proceso, completada, cancelada]
@@ -1559,6 +1569,8 @@ components:
         apellido: { type: string }
         correo: { type: string }
         rol: { $ref: '#/components/schemas/Rol' }
+        es_proveedor: { type: boolean, description: La cuenta puede operar como proveedor. }
+        modo_activo: { $ref: '#/components/schemas/ModoActivo' }
         telefono: { type: string, nullable: true }
         foto_url: { type: string, nullable: true }
         direccion: { type: string, nullable: true }
@@ -1575,6 +1587,8 @@ components:
         correo: { type: string }
         telefono: { type: string, nullable: true }
         rol: { $ref: '#/components/schemas/Rol' }
+        es_proveedor: { type: boolean }
+        modo_activo: { $ref: '#/components/schemas/ModoActivo' }
         foto_url: { type: string, nullable: true }
         direccion: { type: string, nullable: true }
         latitud: { $ref: '#/components/schemas/DecimalNulo' }
@@ -1591,6 +1605,8 @@ components:
         correo: { type: string }
         telefono: { type: string, nullable: true }
         rol: { $ref: '#/components/schemas/Rol' }
+        es_proveedor: { type: boolean, description: La cuenta puede operar como proveedor. }
+        modo_activo: { $ref: '#/components/schemas/ModoActivo' }
         activo: { type: integer }
         fecha_creacion: { $ref: '#/components/schemas/Fecha' }
     Categoria:
@@ -1787,15 +1803,25 @@ components:
         calificacion_media: { type: string, description: 'Un decimal en texto, "0.0" si no hay calificaciones', example: '4.6' }
     StatsAdmin:
       type: object
-      required: [usuarios_por_rol, servicios, solicitudes_por_estado, calificaciones]
+      required: [usuarios_por_rol, cuentas_por_capacidad_y_modo, servicios, solicitudes_por_estado, calificaciones]
       properties:
         usuarios_por_rol:
+          description: Conteo histórico por usuarios.rol; se conserva por compatibilidad y no representa capacidades actuales.
           type: object
           required: [cliente, proveedor, admin]
           properties:
             cliente: { type: integer }
             proveedor: { type: integer }
             admin: { type: integer }
+        cuentas_por_capacidad_y_modo:
+          type: object
+          description: Conteos de todas las cuentas, activas o suspendidas, por capacidad y modo efectivo.
+          required: [con_capacidad_proveedor, en_modo_cliente, en_modo_proveedor, administradores]
+          properties:
+            con_capacidad_proveedor: { type: integer, description: Cuentas no administrativas habilitadas para operar como proveedor. }
+            en_modo_cliente: { type: integer, description: Cuentas no administrativas cuyo modo activo es cliente. }
+            en_modo_proveedor: { type: integer, description: Cuentas no administrativas cuyo modo activo es proveedor. }
+            administradores: { type: integer, description: Cuentas administrativas, fuera del sistema de modos. }
         servicios:
           type: object
           required: [total, disponibles]

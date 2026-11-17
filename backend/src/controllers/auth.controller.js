@@ -36,6 +36,15 @@ const verificarDominioCorreo = NODE_ENV !== 'test' && process.env.VERIFICAR_DOMI
 
 const normalizarCorreo = (valor) => String(valor || '').trim().toLowerCase();
 
+// mysql2 representa BOOLEAN como 0/1. Las respuestas de autenticación y perfil
+// exponen el contrato de la API, por lo que es_proveedor siempre se serializa
+// como booleano cuando forma parte de la cuenta devuelta.
+const presentarUsuario = (usuario) => (
+  Object.prototype.hasOwnProperty.call(usuario, 'es_proveedor')
+    ? { ...usuario, es_proveedor: Boolean(usuario.es_proveedor) }
+    : usuario
+);
+
 // Guarda un código nuevo (reemplaza al anterior: solo hay uno vigente por usuario) y lo envía al correo.
 // Con `respetarEspera`, si ya se envió uno hace menos de un minuto no se envía otro (frena el spam a un correo).
 async function enviarCodigoDeVerificacion(usuarioId, correo, nombre, { respetarEspera = false } = {}) {
@@ -141,18 +150,18 @@ exports.registrar = async (req, res, next) => {
       // contraseña), quien de verdad lo posee sustituye todos los datos y la contraseña del primero deja de servir.
       // Al primero no le sirve el código: llega al correo de la víctima, no al suyo.
       await query(
-        `UPDATE usuarios SET nombre = ?, apellido = ?, contrasena = ?, telefono = ?, rol = ?, direccion = ?, latitud = ?,
+        `UPDATE usuarios SET nombre = ?, apellido = ?, contrasena = ?, telefono = ?, rol = ?, es_proveedor = ?, modo_activo = ?, direccion = ?, latitud = ?,
                 longitud = ?, oficio = ?, fecha_creacion = NOW()
           WHERE id = ? AND correo_verificado = 0`,
-        [nombre, apellido, hashedPassword, telefonoLimpio, rol, direccion || null, latitud || null, longitud || null, oficio || null, existe[0].id]
+        [nombre, apellido, hashedPassword, telefonoLimpio, rol, rol === 'proveedor', rol, direccion || null, latitud || null, longitud || null, oficio || null, existe[0].id]
       );
       pendiente = { id: existe[0].id };
     } else {
       try {
         const [result] = await query(
-          `INSERT INTO usuarios (nombre, apellido, correo, contrasena, telefono, rol, direccion, latitud, longitud, oficio)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [nombre, apellido, correo, hashedPassword, telefonoLimpio, rol, direccion || null, latitud || null, longitud || null, oficio || null]
+          `INSERT INTO usuarios (nombre, apellido, correo, contrasena, telefono, rol, es_proveedor, modo_activo, direccion, latitud, longitud, oficio)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [nombre, apellido, correo, hashedPassword, telefonoLimpio, rol, rol === 'proveedor', rol, direccion || null, latitud || null, longitud || null, oficio || null]
         );
         pendiente = { id: result.insertId };
       } catch (err) {
@@ -193,7 +202,7 @@ exports.verificarCorreo = async (req, res, next) => {
     if (!EMAIL_REGEX.test(correo) || !codigo) return res.status(400).json({ error: CODIGO_VERIFICACION_INVALIDO });
 
     const [filas] = await query(
-      `SELECT u.id, u.nombre, u.apellido, u.correo, u.telefono, u.rol, u.foto_url, u.direccion, u.latitud, u.longitud, u.oficio,
+      `SELECT u.id, u.nombre, u.apellido, u.correo, u.telefono, u.rol, u.es_proveedor, u.modo_activo, u.foto_url, u.direccion, u.latitud, u.longitud, u.oficio,
               v.codigo_hash
          FROM usuarios u JOIN verificaciones_correo v ON v.usuario_id = u.id
         WHERE u.correo = ? AND u.activo = 1 AND u.correo_verificado = 0 AND v.expira_en > NOW()`,
@@ -232,18 +241,18 @@ exports.verificarCorreo = async (req, res, next) => {
     }
 
     const token = jwt.sign(
-      { id: usuario.id, rol: usuario.rol },
+      { id: usuario.id },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
     await query('DELETE FROM tokens_sesion WHERE usuario_id = ? AND expira_en < NOW()', [usuario.id]);
     await query(
-      'INSERT INTO tokens_sesion (usuario_id, token, expira_en) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))',
-      [usuario.id, token]
+      'INSERT INTO tokens_sesion (usuario_id, token, modo_activo, expira_en) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))',
+      [usuario.id, token, usuario.modo_activo]
     );
 
     const { codigo_hash: _omitido, ...publico } = usuario;
-    res.json({ mensaje: 'Correo verificado. ¡Bienvenido a Urbify!', token, usuario: publico });
+    res.json({ mensaje: 'Correo verificado. ¡Bienvenido a Urbify!', token, usuario: presentarUsuario(publico) });
   } catch (err) {
     return next(err);
   }
@@ -278,7 +287,7 @@ exports.login = async (req, res, next) => {
     }
 
     const [usuarios] = await query(
-      'SELECT id, nombre, apellido, correo, contrasena, telefono, rol, foto_url, direccion, latitud, longitud, correo_verificado FROM usuarios WHERE correo = ? AND activo = 1',
+      'SELECT id, nombre, apellido, correo, contrasena, telefono, rol, es_proveedor, modo_activo, foto_url, direccion, latitud, longitud, correo_verificado FROM usuarios WHERE correo = ? AND activo = 1',
       [String(correo).trim().toLowerCase()]
     );
     if (usuarios.length === 0) {
@@ -308,7 +317,7 @@ exports.login = async (req, res, next) => {
     }
 
     const token = jwt.sign(
-      { id: usuario.id, rol: usuario.rol },
+      { id: usuario.id },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
@@ -318,8 +327,8 @@ exports.login = async (req, res, next) => {
       [usuario.id]
     );
     await query(
-      'INSERT INTO tokens_sesion (usuario_id, token, expira_en) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))',
-      [usuario.id, token]
+      'INSERT INTO tokens_sesion (usuario_id, token, modo_activo, expira_en) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))',
+      [usuario.id, token, usuario.modo_activo]
     );
 
     res.json({
@@ -331,6 +340,8 @@ exports.login = async (req, res, next) => {
         apellido: usuario.apellido,
         correo: usuario.correo,
         rol: usuario.rol,
+        es_proveedor: Boolean(usuario.es_proveedor),
+        modo_activo: usuario.modo_activo,
         telefono: usuario.telefono,
         foto_url: usuario.foto_url,
         direccion: usuario.direccion,
@@ -458,7 +469,7 @@ exports.logout = async (req, res, next) => {
 exports.perfil = async (req, res, next) => {
   try {
     const [usuarios] = await query(
-      `SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, latitud, longitud, oficio, fecha_creacion
+      `SELECT id, nombre, apellido, correo, telefono, rol, es_proveedor, modo_activo, foto_url, direccion, latitud, longitud, oficio, fecha_creacion
        FROM usuarios WHERE id = ?`,
       [req.usuarioId]
     );
@@ -467,7 +478,7 @@ exports.perfil = async (req, res, next) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    res.json(usuarios[0]);
+    res.json(presentarUsuario(usuarios[0]));
   } catch (err) {
     return next(err);
   }
@@ -497,11 +508,11 @@ exports.actualizarPerfil = async (req, res, next) => {
     );
 
     const [usuarios] = await query(
-      `SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, latitud, longitud, oficio, fecha_creacion
+      `SELECT id, nombre, apellido, correo, telefono, rol, es_proveedor, modo_activo, foto_url, direccion, latitud, longitud, oficio, fecha_creacion
        FROM usuarios WHERE id = ?`,
       [req.usuarioId]
     );
-    res.json({ mensaje: 'Perfil actualizado exitosamente', usuario: usuarios[0] });
+    res.json({ mensaje: 'Perfil actualizado exitosamente', usuario: presentarUsuario(usuarios[0]) });
   } catch (err) {
     return next(err);
   }
@@ -510,9 +521,9 @@ exports.actualizarPerfil = async (req, res, next) => {
 exports.listarUsuarios = async (req, res, next) => {
   try {
     const [usuarios] = await query(
-      'SELECT id, nombre, apellido, correo, telefono, rol, activo, fecha_creacion FROM usuarios ORDER BY fecha_creacion DESC'
+      'SELECT id, nombre, apellido, correo, telefono, rol, es_proveedor, modo_activo, activo, fecha_creacion FROM usuarios ORDER BY fecha_creacion DESC'
     );
-    res.json(usuarios);
+    res.json(usuarios.map(presentarUsuario));
   } catch (err) {
     return next(err);
   }
@@ -522,13 +533,13 @@ exports.usuarioPorId = async (req, res, next) => {
   try {
     const { id } = req.params;
     const [usuarios] = await query(
-      'SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, latitud, longitud, oficio, activo, fecha_creacion FROM usuarios WHERE id = ?',
+      'SELECT id, nombre, apellido, correo, telefono, rol, es_proveedor, modo_activo, foto_url, direccion, latitud, longitud, oficio, activo, fecha_creacion FROM usuarios WHERE id = ?',
       [id]
     );
     if (usuarios.length === 0) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
-    res.json(usuarios[0]);
+    res.json(presentarUsuario(usuarios[0]));
   } catch (err) {
     return next(err);
   }

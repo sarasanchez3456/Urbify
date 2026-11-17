@@ -33,7 +33,11 @@ CREATE TABLE IF NOT EXISTS usuarios (
   correo        VARCHAR(150) NOT NULL UNIQUE,
   contrasena    VARCHAR(255) NOT NULL,
   telefono      VARCHAR(20),
+  -- rol se conserva como tipo histórico de la cuenta. La autorización de una
+  -- sesión usa modo_activo; es_proveedor expresa la capacidad permanente.
   rol           VARCHAR(20) NOT NULL,
+  es_proveedor  BOOLEAN NOT NULL DEFAULT 0,
+  modo_activo   VARCHAR(20) NULL,
   foto_url      VARCHAR(255),
   categoria_id  INT NULL,
   latitud       DECIMAL(10,8),
@@ -46,9 +50,15 @@ CREATE TABLE IF NOT EXISTS usuarios (
   bloqueado_hasta   DATETIME NULL,
   fecha_creacion     DATETIME DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT chk_usuarios_rol CHECK (rol IN ('cliente', 'proveedor', 'admin')),
+  CONSTRAINT chk_usuarios_modo_activo CHECK (
+    (rol = 'admin' AND es_proveedor = 0 AND modo_activo IS NULL)
+    OR (rol <> 'admin' AND modo_activo IS NOT NULL AND modo_activo IN ('cliente', 'proveedor')
+        AND (modo_activo <> 'proveedor' OR es_proveedor = 1))
+  ),
   FOREIGN KEY (categoria_id) REFERENCES categorias(id),
   INDEX idx_usuarios_geo (latitud, longitud),
-  INDEX idx_usuarios_rol_activo (rol, activo)
+  INDEX idx_usuarios_rol_activo (rol, activo),
+  INDEX idx_usuarios_proveedor_activo (es_proveedor, activo)
 );
 
 CREATE TABLE IF NOT EXISTS servicios (
@@ -213,6 +223,10 @@ CREATE TABLE IF NOT EXISTS tokens_sesion (
   id               INT AUTO_INCREMENT PRIMARY KEY,
   usuario_id       INT NOT NULL,
   token            VARCHAR(512) NOT NULL,
+  -- El modo queda ligado a la sesión. authenticate lo compara con
+  -- usuarios.modo_activo, por lo que un futuro cambio de modo invalida tokens
+  -- emitidos para el modo anterior.
+  modo_activo      VARCHAR(20) NULL,
   expira_en        DATETIME NOT NULL,
   fecha_creacion        DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
