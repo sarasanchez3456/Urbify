@@ -9,6 +9,7 @@ exports.getStatsAdmin = async (req, res, next) => {
     const [cuentasPorCapacidadYModo] = await db.query(
       `SELECT
          COALESCE(SUM(es_proveedor = 1), 0) AS con_capacidad_proveedor,
+         COALESCE(SUM(rol = 'cliente' AND es_proveedor = 1), 0) AS con_ambos_modos,
          COALESCE(SUM(modo_activo = 'cliente'), 0) AS en_modo_cliente,
          COALESCE(SUM(modo_activo = 'proveedor'), 0) AS en_modo_proveedor,
          COALESCE(SUM(rol = 'admin'), 0) AS administradores
@@ -37,6 +38,7 @@ exports.getStatsAdmin = async (req, res, next) => {
       // las capacidades y los modos se exponen de forma independiente.
       cuentas_por_capacidad_y_modo: {
         con_capacidad_proveedor: Number(cuentasPorCapacidadYModo[0].con_capacidad_proveedor),
+        con_ambos_modos: Number(cuentasPorCapacidadYModo[0].con_ambos_modos),
         en_modo_cliente: Number(cuentasPorCapacidadYModo[0].en_modo_cliente),
         en_modo_proveedor: Number(cuentasPorCapacidadYModo[0].en_modo_proveedor),
         administradores: Number(cuentasPorCapacidadYModo[0].administradores),

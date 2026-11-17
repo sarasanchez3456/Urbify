@@ -238,9 +238,13 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403':
           description: |
-            Contraseña correcta pero el correo nunca se verificó. Cuerpo `{error, codigo: "correo_no_verificado", correo}`.
-            Se llega aquí solo con la contraseña correcta, así que no revela nada a terceros. Pide un código con
-            `POST /auth/reenviar-codigo` y verifícalo con `POST /auth/verificar-correo`.
+            Solo se responde con la **contraseña correcta**, así que no revela nada a terceros (con contraseña incorrecta
+            sigue siendo `401`). Dos casos, distinguibles por `codigo`:
+
+            - `cuenta_suspendida`: un administrador suspendió la cuenta. Cuerpo `{error, codigo: "cuenta_suspendida"}`;
+              el mensaje (`error`) se puede mostrar tal cual.
+            - `correo_no_verificado`: el correo nunca se verificó. Cuerpo `{error, codigo: "correo_no_verificado", correo}`.
+              Pide un código con `POST /auth/reenviar-codigo` y verifícalo con `POST /auth/verificar-correo`.
           content:
             application/json:
               schema:
@@ -1895,6 +1899,7 @@ components:
           required: [con_capacidad_proveedor, en_modo_cliente, en_modo_proveedor, administradores]
           properties:
             con_capacidad_proveedor: { type: integer, description: Cuentas no administrativas habilitadas para operar como proveedor. }
+            con_ambos_modos: { type: integer, description: Cuentas registradas como cliente que además ofrecen servicios (tienen los dos modos). }
             en_modo_cliente: { type: integer, description: Cuentas no administrativas cuyo modo activo es cliente. }
             en_modo_proveedor: { type: integer, description: Cuentas no administrativas cuyo modo activo es proveedor. }
             administradores: { type: integer, description: Cuentas administrativas, fuera del sistema de modos. }

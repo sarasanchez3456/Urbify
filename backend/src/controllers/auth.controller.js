@@ -289,7 +289,7 @@ exports.login = async (req, res, next) => {
     }
 
     const [usuarios] = await query(
-      'SELECT id, nombre, apellido, correo, contrasena, telefono, rol, es_proveedor, modo_activo, foto_url, direccion, latitud, longitud, correo_verificado FROM usuarios WHERE correo = ? AND activo = 1',
+      'SELECT id, nombre, apellido, correo, contrasena, telefono, rol, es_proveedor, modo_activo, foto_url, direccion, latitud, longitud, correo_verificado, activo FROM usuarios WHERE correo = ?',
       [String(correo).trim().toLowerCase()]
     );
     if (usuarios.length === 0) {
@@ -306,6 +306,16 @@ exports.login = async (req, res, next) => {
     const valido = await hasher.compare(contrasena, usuario.contrasena);
     if (!valido) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
+    }
+
+    // Cuenta suspendida por un administrador. Solo se dice DESPUÉS de comprobar la contraseña: así la persona sabe por qué
+    // no puede entrar (antes veía "credenciales inválidas" y creía haberse equivocado), pero un tercero que solo conozca el
+    // correo no puede averiguar si esa cuenta existe o está suspendida (con contraseña incorrecta sigue siendo 401).
+    if (!usuario.activo) {
+      return res.status(403).json({
+        error: 'Tu cuenta ha sido suspendida. Si crees que es un error, contacta al equipo de Urbify.',
+        codigo: 'cuenta_suspendida',
+      });
     }
 
     // La contraseña es correcta pero el correo nunca se verificó: no hay sesión hasta escribir el código.
