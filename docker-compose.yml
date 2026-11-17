@@ -46,6 +46,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        EXTRA_CA_PEM_B64: ${EXTRA_CA_PEM_B64:-}
     container_name: urbify-backend
     restart: unless-stopped
     environment:
@@ -65,10 +67,22 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       GMAIL_USER: ${GMAIL_USER:-}
       GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
+      # Solo si se construyó con EXTRA_CA_PEM_B64 (antivirus que intercepta el correo, p. ej. Norton): Node confía en ese
+      # certificado raíz también para el envío por SMTP. Vacío = no se usa.
+      NODE_EXTRA_CA_CERTS: ${EXTRA_CA_PEM_B64:+/etc/ssl/extra-ca.pem}
       BODY_LIMIT: ${BODY_LIMIT:-100kb}
       # Nginx (servicio frontend) va delante de la API: 1 proxy de confianza
       TRUST_PROXY: ${TRUST_PROXY:-1}
       FORCE_HTTPS: ${FORCE_HTTPS:-false}
+      # Límites de peticiones (opcionales; vacío = valor por defecto de la API). Con un túnel TODOS los visitantes llegan
+      # a la API con la misma IP, así que para una presentación con varias personas conviene subirlos (ver docs/PRESENTACION.md).
+      RATE_LIMIT_GLOBAL: ${RATE_LIMIT_GLOBAL:-}
+      RATE_LIMIT_PUBLIC_PER_MINUTE: ${RATE_LIMIT_PUBLIC_PER_MINUTE:-}
+      RATE_LIMIT_REGISTER_PER_HOUR: ${RATE_LIMIT_REGISTER_PER_HOUR:-}
+      RATE_LIMIT_LOGIN_IP: ${RATE_LIMIT_LOGIN_IP:-}
+      RATE_LIMIT_LOGIN_ACCOUNT_IP: ${RATE_LIMIT_LOGIN_ACCOUNT_IP:-}
+      RATE_LIMIT_VERIFY_IP_PER_HOUR: ${RATE_LIMIT_VERIFY_IP_PER_HOUR:-}
+      RATE_LIMIT_SEND_CODE_IP_PER_HOUR: ${RATE_LIMIT_SEND_CODE_IP_PER_HOUR:-}
     ports:
       # Solo la propia máquina: la web llega por Nginx (/api) y TRUST_PROXY=1 confía en ese proxy
       - "127.0.0.1:4000:4000"
@@ -85,6 +99,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        EXTRA_CA_PEM_B64: ${EXTRA_CA_PEM_B64:-}
     container_name: urbify-frontend
     restart: unless-stopped
     ports:

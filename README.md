@@ -123,6 +123,8 @@ Antes de comenzar, asegúrate de tener instalados:
 ## 🚀 Despliegue Local (Paso a Paso)
 
 > ¿Quieres publicar Urbify en internet (Vercel + backend + MySQL + correo)? Mira la [guía de despliegue](docs/DESPLIEGUE.md).
+>
+> ¿Vas a **presentar** Urbify? Un comando lo levanta todo y comprueba que funcione: [guía de presentación](docs/PRESENTACION.md) (`scripts/presentacion.ps1`).
 
 ### Paso 1 — Clonar el repositorio
 
