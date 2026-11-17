@@ -2,6 +2,30 @@ const jwt = require('jsonwebtoken');
 const { query } = require('../config/db');
 require('dotenv').config();
 
+// La sesión y la base son la autoridad: el JWT solo identifica la sesión y
+// nunca decide permisos. modo_activo de la sesión debe coincidir con el de la
+// cuenta; #46 podrá cambiarlo e invalidar inmediatamente tokens anteriores.
+const leerSesion = async (token, usuarioId) => {
+  const [rows] = await query(
+    `SELECT u.rol, u.activo, u.es_proveedor, u.modo_activo AS modo_cuenta,
+            t.modo_activo AS modo_sesion
+       FROM tokens_sesion t
+       JOIN usuarios u ON u.id = t.usuario_id
+      WHERE t.token = ? AND t.usuario_id = ? AND t.expira_en > NOW()`,
+    [token, usuarioId]
+  );
+  const sesion = rows[0];
+  if (!sesion || !sesion.activo) return null;
+  const esAdmin = sesion.rol === 'admin';
+  const modoValido = esAdmin
+    ? sesion.modo_cuenta === null && sesion.modo_sesion === null
+    : sesion.modo_cuenta === sesion.modo_sesion
+      && ['cliente', 'proveedor'].includes(sesion.modo_sesion)
+      && (sesion.modo_sesion !== 'proveedor' || Boolean(sesion.es_proveedor));
+  if (!modoValido) return null;
+  return { rol: esAdmin ? 'admin' : sesion.modo_sesion, modo: sesion.modo_sesion };
+};
+
 const authenticate = async (req, res, next) => {
   if (!process.env.JWT_SECRET) {
     console.error('JWT_SECRET no configurado');
@@ -21,19 +45,12 @@ const authenticate = async (req, res, next) => {
     req.token = token;
 
     try {
-      // El rol y el estado de la cuenta se leen de la base de datos, no del token:
-      // un cambio de rol o una cuenta desactivada surten efecto de inmediato.
-      const [rows] = await query(
-        `SELECT u.rol, u.activo
-           FROM tokens_sesion t
-           JOIN usuarios u ON u.id = t.usuario_id
-          WHERE t.token = ? AND t.usuario_id = ? AND t.expira_en > NOW()`,
-        [token, decoded.id]
-      );
-      if (rows.length === 0 || !rows[0].activo) {
+      const sesion = await leerSesion(token, decoded.id);
+      if (!sesion) {
         return res.status(401).json({ error: 'Token inválido o expirado' });
       }
-      req.usuarioRol = rows[0].rol;
+      req.usuarioRol = sesion.rol;
+      req.usuarioModo = sesion.modo;
     } catch (dbErr) {
       console.error('Error al verificar token en DB:', dbErr);
       return res.status(500).json({ error: 'Error al verificar sesión' });
@@ -55,16 +72,11 @@ const authenticateOptional = async (req, res, next) => {
   const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const [rows] = await query(
-      `SELECT u.rol, u.activo
-         FROM tokens_sesion t
-         JOIN usuarios u ON u.id = t.usuario_id
-        WHERE t.token = ? AND t.usuario_id = ? AND t.expira_en > NOW()`,
-      [token, decoded.id]
-    );
-    if (rows.length > 0 && rows[0].activo) {
+    const sesion = await leerSesion(token, decoded.id);
+    if (sesion) {
       req.usuarioId = decoded.id;
-      req.usuarioRol = rows[0].rol;
+      req.usuarioRol = sesion.rol;
+      req.usuarioModo = sesion.modo;
       req.token = token;
     }
   } catch (err) {

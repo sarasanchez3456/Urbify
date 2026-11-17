@@ -26,7 +26,7 @@ async function main() {
 
   if (existe.length > 0) {
     await query(
-      "UPDATE usuarios SET rol = 'admin', contrasena = ?, activo = 1, correo_verificado = 1, intentos_fallidos = 0, bloqueado_hasta = NULL WHERE id = ?",
+      "UPDATE usuarios SET rol = 'admin', es_proveedor = 0, modo_activo = NULL, contrasena = ?, activo = 1, correo_verificado = 1, intentos_fallidos = 0, bloqueado_hasta = NULL WHERE id = ?",
       [hash, existe[0].id]
     );
     // Cierra las sesiones abiertas con el rol anterior.
@@ -34,7 +34,7 @@ async function main() {
     console.log(`Usuario ${ADMIN_EMAIL} promovido a admin`);
   } else {
     await query(
-      "INSERT INTO usuarios (nombre, apellido, correo, contrasena, rol, correo_verificado) VALUES (?, ?, ?, ?, 'admin', 1)",
+      "INSERT INTO usuarios (nombre, apellido, correo, contrasena, rol, es_proveedor, modo_activo, correo_verificado) VALUES (?, ?, ?, ?, 'admin', 0, NULL, 1)",
       [ADMIN_NOMBRE || 'Administrador', ADMIN_APELLIDO || 'Urbify', ADMIN_EMAIL, hash]
     );
     console.log(`Administrador ${ADMIN_EMAIL} creado`);

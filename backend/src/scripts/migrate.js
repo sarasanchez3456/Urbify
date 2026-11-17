@@ -17,6 +17,8 @@ const COLUMNAS = [
   { tabla: 'usuarios', nombre: 'intentos_fallidos', ddl: 'intentos_fallidos INT DEFAULT 0' },
   { tabla: 'usuarios', nombre: 'bloqueado_hasta', ddl: 'bloqueado_hasta DATETIME NULL' },
   { tabla: 'usuarios', nombre: 'categoria_id', ddl: 'categoria_id INT NULL' },
+  { tabla: 'usuarios', nombre: 'es_proveedor', ddl: 'es_proveedor BOOLEAN NOT NULL DEFAULT 0' },
+  { tabla: 'usuarios', nombre: 'modo_activo', ddl: 'modo_activo VARCHAR(20) NULL' },
   { tabla: 'solicitudes', nombre: 'tarifa_acordada', ddl: 'tarifa_acordada DECIMAL(10,2) NULL' },
   { tabla: 'solicitudes', nombre: 'tipo_tarifa_acordada', ddl: 'tipo_tarifa_acordada VARCHAR(20) NULL' },
   { tabla: 'calificaciones', nombre: 'motivos', ddl: 'motivos VARCHAR(120) NULL' },
@@ -24,12 +26,14 @@ const COLUMNAS = [
   // Las notificaciones existentes se mantienen y reciben el tipo por defecto "general".
   { tabla: 'notificaciones', nombre: 'tipo', ddl: "tipo VARCHAR(50) NOT NULL DEFAULT 'general'" },
   { tabla: 'notificaciones', nombre: 'solicitud_id', ddl: 'solicitud_id INT NULL' },
+  { tabla: 'tokens_sesion', nombre: 'modo_activo', ddl: 'modo_activo VARCHAR(20) NULL' },
 ];
 
 // Mismos índices que declara schema.sql.
 const INDICES = [
   { tabla: 'usuarios', nombre: 'idx_usuarios_geo', columnas: 'latitud, longitud' },
   { tabla: 'usuarios', nombre: 'idx_usuarios_rol_activo', columnas: 'rol, activo' },
+  { tabla: 'usuarios', nombre: 'idx_usuarios_proveedor_activo', columnas: 'es_proveedor, activo' },
   { tabla: 'servicios', nombre: 'idx_servicios_categoria', columnas: 'categoria_id, disponible' },
   { tabla: 'servicios', nombre: 'idx_servicios_proveedor', columnas: 'proveedor_id' },
   { tabla: 'solicitudes', nombre: 'idx_solicitudes_cliente', columnas: 'cliente_id' },
@@ -116,6 +120,53 @@ async function asegurarCorreoVerificado(conn) {
   console.log(`Migración: usuarios.correo_verificado agregada; ${r.affectedRows} cuentas existentes marcadas como verificadas`);
 }
 
+// Conserva rol para compatibilidad, pero migra las cuentas existentes a la
+// representación de capacidad + modo. Solo se rellenan valores sin inicializar:
+// una segunda ejecución nunca sobrescribe un modo elegido posteriormente.
+async function asegurarModeloDobleModo(conn) {
+  const [proveedores] = await conn.query(
+    "UPDATE usuarios SET es_proveedor = 1 WHERE rol = 'proveedor' AND es_proveedor = 0"
+  );
+  const [modos] = await conn.query(
+    `UPDATE usuarios
+        SET modo_activo = CASE
+          WHEN rol = 'proveedor' THEN 'proveedor'
+          WHEN rol = 'cliente' THEN 'cliente'
+          ELSE NULL
+        END
+      WHERE modo_activo IS NULL AND rol IN ('cliente', 'proveedor')`
+  );
+  // Admin no participa del sistema de modos, incluso si una base se alteró a mano.
+  const [admins] = await conn.query(
+    "UPDATE usuarios SET es_proveedor = 0, modo_activo = NULL WHERE rol = 'admin' AND (es_proveedor <> 0 OR modo_activo IS NOT NULL)"
+  );
+  const [sesiones] = await conn.query(
+    `UPDATE tokens_sesion t JOIN usuarios u ON u.id = t.usuario_id
+        SET t.modo_activo = u.modo_activo
+      WHERE t.modo_activo IS NULL`
+  );
+  if (proveedores.affectedRows || modos.affectedRows || admins.affectedRows || sesiones.affectedRows) {
+    console.log(`Migración: modelo de doble modo inicializado (${proveedores.affectedRows} capacidades, ${modos.affectedRows} modos, ${sesiones.affectedRows} sesiones)`);
+  }
+}
+
+async function asegurarCheckDobleModo(conn) {
+  const [checks] = await conn.query(
+    `SELECT 1 FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+      WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'usuarios' AND CONSTRAINT_NAME = 'chk_usuarios_modo_activo'`,
+    [DB_NAME]
+  );
+  if (checks.length > 0) return;
+  await conn.query(
+    `ALTER TABLE usuarios ADD CONSTRAINT chk_usuarios_modo_activo CHECK (
+      (rol = 'admin' AND es_proveedor = 0 AND modo_activo IS NULL)
+      OR (rol <> 'admin' AND modo_activo IN ('cliente', 'proveedor')
+          AND (modo_activo <> 'proveedor' OR es_proveedor = 1))
+    )`
+  );
+  console.log('Migración: restricción de modo activo creada');
+}
+
 async function migrate() {
   // Conexión propia con multipleStatements: schema.sql trae varias sentencias
   // y el pool de db.js usa prepared statements (una sola sentencia).
@@ -161,6 +212,8 @@ async function migrate() {
     await asegurarCorreoVerificado(conn);
     await asegurarFkNotificacionesSolicitud(conn);
     await asegurarRolAdmin(conn);
+    await asegurarModeloDobleModo(conn);
+    await asegurarCheckDobleModo(conn);
 
     // Historial de estados: las solicitudes anteriores a esta tabla reciben su fila de creación (con la fecha en que
     // se hicieron). Los cambios de estado anteriores no se pueden reconstruir: no hay de dónde sacar su fecha.

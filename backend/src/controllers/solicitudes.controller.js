@@ -41,7 +41,7 @@ exports.crearSolicitud = async (req, res, next) => {
     }
 
     const [proveedor] = await query(
-      "SELECT id, nombre, apellido, correo FROM usuarios WHERE id = ? AND rol = 'proveedor' AND activo = 1",
+      'SELECT id, nombre, apellido, correo FROM usuarios WHERE id = ? AND es_proveedor = 1 AND activo = 1',
       [proveedor_id]
     );
     if (proveedor.length === 0) {
@@ -242,6 +242,13 @@ exports.actualizarEstadoSolicitud = async (req, res, next) => {
       return res.status(403).json({ error: 'No autorizado para esta solicitud' });
     }
 
+    if (esProveedor && req.usuarioRol !== 'proveedor') {
+      return res.status(403).json({ error: 'Debes operar como proveedor para gestionar esta solicitud' });
+    }
+    if (esCliente && req.usuarioRol !== 'cliente') {
+      return res.status(403).json({ error: 'Debes operar como cliente para gestionar esta solicitud' });
+    }
+
     if (esCliente && estado !== 'cancelada') {
       return res.status(403).json({ error: 'Como cliente solo puedes cancelar la solicitud' });
     }
@@ -356,7 +363,7 @@ exports.actualizarEstadoSolicitud = async (req, res, next) => {
 
 // Chat de la solicitud: solo lo ven y escriben el cliente y el proveedor de esa solicitud.
 // 404 si no existe, 403 si el usuario no es parte de ella.
-async function solicitudDelParticipante(id, usuarioId, res) {
+async function solicitudDelParticipante(id, usuarioId, usuarioRol, res) {
   const [solicitudes] = await query('SELECT id, cliente_id, proveedor_id FROM solicitudes WHERE id = ?', [id]);
   const solicitud = solicitudes[0];
   if (!solicitud) {
@@ -367,12 +374,16 @@ async function solicitudDelParticipante(id, usuarioId, res) {
     res.status(403).json({ error: 'No autorizado para esta solicitud' });
     return null;
   }
+  if ((solicitud.cliente_id === usuarioId && usuarioRol !== 'cliente') || (solicitud.proveedor_id === usuarioId && usuarioRol !== 'proveedor')) {
+    res.status(403).json({ error: 'Debes usar el modo correspondiente a esta solicitud' });
+    return null;
+  }
   return solicitud;
 }
 
 exports.listarMensajes = async (req, res, next) => {
   try {
-    const solicitud = await solicitudDelParticipante(req.params.id, req.usuarioId, res);
+    const solicitud = await solicitudDelParticipante(req.params.id, req.usuarioId, req.usuarioRol, res);
     if (!solicitud) return;
 
     const [mensajes] = await query(
@@ -392,7 +403,7 @@ exports.listarMensajes = async (req, res, next) => {
 
 exports.enviarMensaje = async (req, res, next) => {
   try {
-    const solicitud = await solicitudDelParticipante(req.params.id, req.usuarioId, res);
+    const solicitud = await solicitudDelParticipante(req.params.id, req.usuarioId, req.usuarioRol, res);
     if (!solicitud) return;
 
     const contenido = typeof req.body?.contenido === 'string' ? req.body.contenido.trim() : '';
@@ -408,7 +419,7 @@ exports.enviarMensaje = async (req, res, next) => {
     try {
       const destinatarioId = solicitud.cliente_id === req.usuarioId ? solicitud.proveedor_id : solicitud.cliente_id;
       const [datos] = await query(
-        `SELECT u.nombre, u.apellido, u.rol, s.titulo
+        `SELECT u.nombre, u.apellido, s.titulo
            FROM usuarios u
            JOIN solicitudes sol ON sol.id = ?
            JOIN servicios s ON s.id = sol.servicio_id
@@ -416,13 +427,13 @@ exports.enviarMensaje = async (req, res, next) => {
         [solicitud.id, req.usuarioId]
       );
       if (datos.length > 0) {
-        const { nombre, apellido, rol, titulo } = datos[0];
+        const { nombre, apellido, titulo } = datos[0];
         const vistaPrevia = contenido.length > 80 ? `${contenido.slice(0, 80).trimEnd()}…` : contenido;
         await query('INSERT INTO notificaciones (usuario_id, tipo, solicitud_id, mensaje) VALUES (?, ?, ?, ?)', [
           destinatarioId,
           'mensaje',
           solicitud.id,
-          `${rol === 'proveedor' ? 'El proveedor' : 'El cliente'} ${nombre} ${apellido} te envió un mensaje sobre "${titulo}": "${vistaPrevia}"`,
+          `${solicitud.proveedor_id === req.usuarioId ? 'El proveedor' : 'El cliente'} ${nombre} ${apellido} te envió un mensaje sobre "${titulo}": "${vistaPrevia}"`,
         ]);
       }
     } catch (notifErr) {
@@ -438,7 +449,7 @@ exports.enviarMensaje = async (req, res, next) => {
 // Historial de estados de la solicitud (cuándo se creó, aceptó, inició...). Solo lo ven el cliente y el proveedor.
 exports.listarHistorial = async (req, res, next) => {
   try {
-    const solicitud = await solicitudDelParticipante(req.params.id, req.usuarioId, res);
+    const solicitud = await solicitudDelParticipante(req.params.id, req.usuarioId, req.usuarioRol, res);
     if (!solicitud) return;
 
     const [historial] = await query(
@@ -464,6 +475,9 @@ exports.eliminarSolicitud = async (req, res, next) => {
     const s = solicitud[0];
     if (s.cliente_id !== req.usuarioId && s.proveedor_id !== req.usuarioId) {
       return res.status(403).json({ error: 'No autorizado para eliminar esta solicitud' });
+    }
+    if ((s.cliente_id === req.usuarioId && req.usuarioRol !== 'cliente') || (s.proveedor_id === req.usuarioId && req.usuarioRol !== 'proveedor')) {
+      return res.status(403).json({ error: 'Debes usar el modo correspondiente a esta solicitud' });
     }
     if (s.estado !== 'cancelada' && s.estado !== 'pendiente') {
       return res.status(400).json({ error: 'Solo se pueden eliminar solicitudes en estado pendiente o cancelada' });

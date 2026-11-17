@@ -13,9 +13,12 @@ info:
     `Authorization: Bearer <token>`. El token dura `JWT_EXPIRES_IN` (7 días) y es revocable: vive en
     `tokens_sesion` y `POST /auth/logout` lo borra. Un token inválido, vencido o cerrado responde `401`.
 
-    **Roles.** `cliente`, `proveedor` y `admin`. El registro público solo crea `cliente` y `proveedor`.
-    Cada operación indica sus roles en `x-roles` y en la descripción. El rol se lee de la base de datos
-    en cada petición. Detalle y reglas de pertenencia: `docs/AUTORIZACION.md`.
+    **Roles y modo activo.** `cliente`, `proveedor` y `admin`. El registro público solo crea `cliente` y
+    `proveedor`. Una cuenta no administrativa habilitada como proveedor también puede actuar como cliente;
+    `es_proveedor` expresa esa capacidad y `modo_activo` es el modo efectivo de la sesión. Cada operación
+    indica sus roles en `x-roles`; el backend lee el modo, la sesión y el estado desde la base de datos en
+    cada petición. Los administradores no participan de los modos. Detalle y reglas de pertenencia:
+    `docs/AUTORIZACION.md`.
 
     **Errores.** Siempre `{"error": "mensaje"}`. Todo cuerpo o consulta se valida contra los límites de este documento (tipos, longitudes, rangos): si no cumple, `400` con el campo y el motivo, nunca `500`. Los errores de la base de datos causados por datos del usuario también se traducen: valor demasiado largo, fuera de rango, mal formado o referencia inexistente → `400`; registro duplicado o dato con relaciones → `409`. Los `429` añaden `bloqueado: true` y `minutos_restantes`
     y las cabeceras `Retry-After` y `RateLimit`. Códigos: `400` datos o estado inválido, `401` sin sesión
@@ -1522,6 +1525,11 @@ components:
     Rol:
       type: string
       enum: [cliente, proveedor, admin]
+    ModoActivo:
+      type: string
+      nullable: true
+      enum: [cliente, proveedor]
+      description: Modo efectivo de una cuenta no administrativa; null para administradores.
     EstadoSolicitud:
       type: string
       enum: [pendiente, aceptada, en_proceso, completada, cancelada]
@@ -1559,6 +1567,8 @@ components:
         apellido: { type: string }
         correo: { type: string }
         rol: { $ref: '#/components/schemas/Rol' }
+        es_proveedor: { type: boolean, description: La cuenta puede operar como proveedor. }
+        modo_activo: { $ref: '#/components/schemas/ModoActivo' }
         telefono: { type: string, nullable: true }
         foto_url: { type: string, nullable: true }
         direccion: { type: string, nullable: true }
@@ -1575,6 +1585,8 @@ components:
         correo: { type: string }
         telefono: { type: string, nullable: true }
         rol: { $ref: '#/components/schemas/Rol' }
+        es_proveedor: { type: boolean }
+        modo_activo: { $ref: '#/components/schemas/ModoActivo' }
         foto_url: { type: string, nullable: true }
         direccion: { type: string, nullable: true }
         latitud: { $ref: '#/components/schemas/DecimalNulo' }
@@ -1591,6 +1603,8 @@ components:
         correo: { type: string }
         telefono: { type: string, nullable: true }
         rol: { $ref: '#/components/schemas/Rol' }
+        es_proveedor: { type: boolean, description: La cuenta puede operar como proveedor. }
+        modo_activo: { $ref: '#/components/schemas/ModoActivo' }
         activo: { type: integer }
         fecha_creacion: { $ref: '#/components/schemas/Fecha' }
     Categoria:

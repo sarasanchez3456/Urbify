@@ -43,7 +43,7 @@ exports.getStatsAdmin = async (req, res, next) => {
 exports.getStats = async (req, res, next) => {
   try {
     const [proveedores] = await db.query(
-      "SELECT COUNT(*) AS total FROM usuarios WHERE rol = 'proveedor' AND activo = 1"
+      'SELECT COUNT(*) AS total FROM usuarios WHERE es_proveedor = 1 AND activo = 1'
     );
     const [solicitudesCompletadas] = await db.query(
       "SELECT COUNT(*) AS total FROM solicitudes WHERE estado = 'completada'"

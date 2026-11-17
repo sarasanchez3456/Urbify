@@ -49,7 +49,7 @@ router.get('/cercanos', publicLimiter, authenticateOptional, async (req, res, ne
           FROM calificaciones cal WHERE cal.oculta = 0
           GROUP BY cal.proveedor_id
         ) cal_stats ON cal_stats.proveedor_id = u.id
-        WHERE u.rol = 'proveedor' AND u.activo = 1
+        WHERE u.es_proveedor = 1 AND u.activo = 1
         AND u.latitud IS NOT NULL AND u.longitud IS NOT NULL
       ) sub
       WHERE sub.distancia_km <= ?
@@ -177,7 +177,7 @@ router.get('/:id/agenda', authenticate, authorize('cliente', 'proveedor', 'admin
     }
     if (desde < hoy) return res.status(400).json({ error: 'desde no puede ser una fecha pasada' });
 
-    const [prov] = await query("SELECT id FROM usuarios WHERE id = ? AND rol = 'proveedor' AND activo = 1", [proveedorId]);
+    const [prov] = await query('SELECT id FROM usuarios WHERE id = ? AND es_proveedor = 1 AND activo = 1', [proveedorId]);
     if (prov.length === 0) return res.status(404).json({ error: 'Proveedor no encontrado' });
 
     // Para reprogramar, la cita actual no cuenta como ocupada. Solo la puede indicar quien participa en ella.

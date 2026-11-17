@@ -17,7 +17,7 @@ const notificar = async (usuarioId, mensaje, solicitudId) => {
 };
 
 // 404 si no existe, 403 si el usuario no participa en la solicitud.
-async function solicitudDelParticipante(id, usuarioId, res) {
+async function solicitudDelParticipante(id, usuarioId, usuarioRol, res) {
   const [filas] = await query(
     `SELECT sol.id, sol.cliente_id, sol.proveedor_id, sol.estado, sol.fecha_servicio, s.titulo AS servicio_titulo,
             cli.nombre AS cli_nombre, prov.nombre AS prov_nombre
@@ -37,12 +37,16 @@ async function solicitudDelParticipante(id, usuarioId, res) {
     res.status(403).json({ error: 'No autorizado para esta solicitud' });
     return null;
   }
+  if ((solicitud.cliente_id === usuarioId && usuarioRol !== 'cliente') || (solicitud.proveedor_id === usuarioId && usuarioRol !== 'proveedor')) {
+    res.status(403).json({ error: 'Debes usar el modo correspondiente a esta solicitud' });
+    return null;
+  }
   return solicitud;
 }
 
 exports.listarReprogramaciones = async (req, res, next) => {
   try {
-    const solicitud = await solicitudDelParticipante(req.params.id, req.usuarioId, res);
+    const solicitud = await solicitudDelParticipante(req.params.id, req.usuarioId, req.usuarioRol, res);
     if (!solicitud) return;
     const [filas] = await query(
       `SELECT id, solicitud_id, solicitado_por, fecha_actual, fecha_propuesta, estado, fecha_creacion, fecha_respuesta
@@ -57,7 +61,7 @@ exports.listarReprogramaciones = async (req, res, next) => {
 
 exports.crearReprogramacion = async (req, res, next) => {
   try {
-    const solicitud = await solicitudDelParticipante(req.params.id, req.usuarioId, res);
+    const solicitud = await solicitudDelParticipante(req.params.id, req.usuarioId, req.usuarioRol, res);
     if (!solicitud) return;
 
     if (solicitud.cliente_id !== req.usuarioId) {
@@ -112,7 +116,7 @@ exports.crearReprogramacion = async (req, res, next) => {
 // accion: 'aceptar' | 'rechazar' (el profesional) o 'cancelar' (quien lo pidió).
 exports.responderReprogramacion = async (req, res, next) => {
   try {
-    const solicitud = await solicitudDelParticipante(req.params.id, req.usuarioId, res);
+    const solicitud = await solicitudDelParticipante(req.params.id, req.usuarioId, req.usuarioRol, res);
     if (!solicitud) return;
 
     const accion = req.body && req.body.accion;

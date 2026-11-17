@@ -28,6 +28,10 @@ test('migraciones sobre una base existente (MySQL real)', async (t) => {
   for (const { n } of fks) await conn.query(`ALTER TABLE notificaciones DROP FOREIGN KEY \`${n}\``);
   await conn.query('DROP INDEX idx_notificaciones_solicitud ON notificaciones');
   await conn.query('ALTER TABLE notificaciones DROP COLUMN tipo, DROP COLUMN solicitud_id');
+  await conn.query('ALTER TABLE usuarios DROP CHECK chk_usuarios_modo_activo');
+  await conn.query('DROP INDEX idx_usuarios_proveedor_activo ON usuarios');
+  await conn.query('ALTER TABLE usuarios DROP COLUMN es_proveedor, DROP COLUMN modo_activo');
+  await conn.query('ALTER TABLE tokens_sesion DROP COLUMN modo_activo');
   await conn.query('ALTER TABLE calificaciones DROP COLUMN motivos, DROP COLUMN oculta');
   await conn.query('ALTER TABLE solicitudes DROP COLUMN tarifa_acordada, DROP COLUMN tipo_tarifa_acordada');
   await conn.query('DROP INDEX idx_usuarios_geo ON usuarios');
@@ -37,7 +41,8 @@ test('migraciones sobre una base existente (MySQL real)', async (t) => {
   // ── Datos existentes que deben sobrevivir.
   await conn.query(`
     INSERT INTO usuarios (id, nombre, apellido, correo, contrasena, rol) VALUES
-      (1, 'Pablo', 'Proveedor', 'p@antiguo.test', 'hash', 'proveedor'), (2, 'Carla', 'Cliente', 'c@antiguo.test', 'hash', 'cliente');
+      (1, 'Pablo', 'Proveedor', 'p@antiguo.test', 'hash', 'proveedor'), (2, 'Carla', 'Cliente', 'c@antiguo.test', 'hash', 'cliente'),
+      (3, 'Ada', 'Admin', 'a@antiguo.test', 'hash', 'admin');
     INSERT INTO servicios (id, proveedor_id, categoria_id, titulo, tarifa) VALUES (1, 1, 1, 'Arreglo de fugas', 50000);
     INSERT INTO solicitudes (id, cliente_id, proveedor_id, servicio_id, estado, fecha_solicitud) VALUES (1, 2, 1, 1, 'aceptada', '2026-01-05 10:00:00');
     INSERT INTO notificaciones (usuario_id, mensaje) VALUES
@@ -73,6 +78,12 @@ test('migraciones sobre una base existente (MySQL real)', async (t) => {
     const [[u]] = await conn.query('SELECT correo FROM usuarios WHERE id = 1');
     assert.equal(u.correo, 'p@antiguo.test');
     assert.equal(Number((await conn.query('SELECT correo_verificado AS v FROM usuarios WHERE id = 1'))[0][0].v), 1, 'las cuentas que ya existían quedan con el correo verificado (si no, nadie podría iniciar sesión)');
+    const [modos] = await conn.query('SELECT id, rol, es_proveedor, modo_activo FROM usuarios ORDER BY id');
+    assert.deepEqual(modos.map((u) => ({ ...u, es_proveedor: Number(u.es_proveedor) })), [
+      { id: 1, rol: 'proveedor', es_proveedor: 1, modo_activo: 'proveedor' },
+      { id: 2, rol: 'cliente', es_proveedor: 0, modo_activo: 'cliente' },
+      { id: 3, rol: 'admin', es_proveedor: 0, modo_activo: null },
+    ], 'cliente, proveedor y administrador conservan su semántica al migrar');
     assert.equal(Number((await conn.query("SELECT COUNT(*) AS n FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'verificaciones_correo'", [NOMBRE]))[0][0].n), 1, 'falta la tabla verificaciones_correo');
   });
 
@@ -87,11 +98,18 @@ test('migraciones sobre una base existente (MySQL real)', async (t) => {
   });
 
   await t.test('ejecutarla otra vez no cambia nada y sigue saliendo con código 0 (idempotente)', async () => {
+    // Simula el modo que #46 podrá elegir después de esta migración. Reejecutar
+    // migraciones no puede restaurarlo al modo histórico de proveedor.
+    await conn.query("UPDATE usuarios SET modo_activo = 'cliente' WHERE id = 1");
     const r = migrar();
     assert.equal(r.status, 0, `${r.stdout}\n${r.stderr}`);
     assert.match(r.stdout, /Migración completada exitosamente/);
     assert.ok(!/agregada|creado|inicializado|enlazados|reemplazada/.test(r.stdout), `la segunda ejecución no debería modificar nada:\n${r.stdout}`);
     assert.deepEqual({ usuarios: await contar('usuarios'), servicios: await contar('servicios'), solicitudes: await contar('solicitudes'), notificaciones: await contar('notificaciones') }, antes);
     assert.equal(await contar('solicitud_historial'), 1, 'no debe duplicar el historial');
+    const [modos] = await conn.query('SELECT es_proveedor, modo_activo FROM usuarios ORDER BY id');
+    assert.deepEqual(modos.map((u) => ({ ...u, es_proveedor: Number(u.es_proveedor) })), [
+      { es_proveedor: 1, modo_activo: 'cliente' }, { es_proveedor: 0, modo_activo: 'cliente' }, { es_proveedor: 0, modo_activo: null },
+    ]);
   });
 });
