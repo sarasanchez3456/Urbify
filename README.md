@@ -388,7 +388,7 @@ Si el correo ya existe, ese usuario se promueve a `admin`. En una base de datos 
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | `/api/health` | Estado del servidor; con `?deep=1` consulta también la base de datos y responde `503` si no contesta |
+| GET | `/api/health` | Estado del servidor; con `?deep=1` consulta también la base de datos y responde `503` si no contesta. Limitado por IP como las lecturas públicas (`429` al superarlo) |
 | POST | `/api/auth/registro` | Registro (`cliente` o `proveedor`): crea la cuenta SIN verificar y envía un código al correo (no devuelve token) |
 | POST | `/api/auth/verificar-correo` | Verifica el código de 6 caracteres (MAYÚSCULAS y números) y abre la sesión |
 | POST | `/api/auth/reenviar-codigo` | Pide un código nuevo (espera de 1 minuto entre envíos) |

@@ -5,7 +5,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 
 const { query } = require('./config/db');
-const { globalLimiter } = require('./middleware/rateLimit');
+const { globalLimiter, publicLimiter } = require('./middleware/rateLimit');
 const { errorHandler } = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth.routes');
 const categoriasRoutes = require('./routes/categorias.routes');
@@ -56,8 +56,10 @@ app.use((req, res, next) => {
 });
 
 // /api/health responde siempre (el proceso está vivo). Con ?deep=1 comprueba también la base de datos y
-// responde 503 si no contesta: es el endpoint adecuado para el healthcheck de un orquestador.
-app.get('/api/health', async (req, res) => {
+// responde 503 si no contesta: es el endpoint adecuado para el healthcheck de un orquestador. Es público, así que tiene el
+// mismo límite por IP que las demás lecturas públicas (RATE_LIMIT_PUBLIC_PER_MINUTE): con ?deep=1 cada llamada consulta la
+// base de datos, y sin límite alguien podría gastar la cuota de la base o del hosting. Un healthcheck normal va muy por debajo.
+app.get('/api/health', publicLimiter, async (req, res) => {
   const base = { status: 'ok', version: '1.0.0', nombre: 'Urbify API' };
   if (req.query.deep !== '1') return res.json(base);
   try {
@@ -68,7 +70,7 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Después de /api/health, que debe poder consultarse siempre.
+// Después de /api/health (que tiene su propio límite y no entra en el global).
 app.use('/api', globalLimiter);
 
 app.use('/api/auth', authRoutes);
