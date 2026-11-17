@@ -258,6 +258,72 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Mensaje' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/ser-proveedor:
+    post:
+      tags: [Auth]
+      summary: Habilitar la cuenta para ofrecer servicios (cliente → también proveedor)
+      description: |
+        Una cuenta de cliente se habilita como proveedor con la **misma cuenta y el mismo correo** (no se verifica
+        otra vez). Pide el oficio y la categoría. La sesión que lo pide pasa a **modo proveedor** y recibe un token
+        nuevo: el anterior deja de servir en el acto. Las sesiones de otros dispositivos no se tocan.
+
+        Errores: `400` datos inválidos o categoría inexistente; `401` sin sesión; `403` administrador;
+        `409` la cuenta ya puede ofrecer servicios; `429` demasiados intentos (límite **por usuario**, ver README).
+      x-roles: [cliente, proveedor]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [oficio, categoria_id]
+              properties:
+                oficio: { type: string, minLength: 1, maxLength: 100, example: Plomero }
+                categoria_id: { type: integer, minimum: 1, description: "Acepta también número como texto (\"1\")." }
+      responses:
+        '200':
+          description: Cuenta habilitada; sesión en modo proveedor con token nuevo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/cambiar-modo:
+    post:
+      tags: [Auth]
+      summary: Cambiar el modo de ESTA sesión (cliente o proveedor)
+      description: |
+        Reemite el token de la sesión con el modo pedido: el token anterior deja de valer y el nuevo **conserva el
+        mismo vencimiento** (cambiar de modo no alarga la sesión). Las sesiones de otros dispositivos no se tocan: cada
+        dispositivo puede estar en un modo distinto. El modo pedido también queda como el modo con el que empieza el
+        próximo inicio de sesión. Pedir el modo en el que ya estás responde `200` con el mismo token.
+
+        Errores: `400` modo inválido; `401` sin sesión (o el token ya fue reemplazado: si se envían dos cambios a la
+        vez con el mismo token, solo uno se aplica); `403` administrador, o pedir `proveedor` sin estar habilitado
+        (usa `POST /auth/ser-proveedor`); `429` demasiados cambios (límite **por usuario**).
+      x-roles: [cliente, proveedor]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [modo]
+              properties:
+                modo: { type: string, enum: [cliente, proveedor] }
+      responses:
+        '200':
+          description: Modo cambiado; token nuevo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
   /auth/olvido-contrasena:
     post:
       tags: [Auth]

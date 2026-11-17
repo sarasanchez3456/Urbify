@@ -88,6 +88,16 @@ const limitadoresEnvioCodigo = [
   crearLimitador({ ventanaMs: HORA_MS, max: cfg.envioCodigoCorreo, mensaje: 'Ya pediste varios códigos para este correo. Intenta de nuevo más tarde.', key: correoDe }),
 ];
 
+// Doble modo: se limita por USUARIO (la sesión ya está validada, va después de `authenticate`), no por IP: una cuenta
+// no puede cambiar de modo en bucle ni probar activaciones, aunque cambie de red.
+const usuario = (req) => `usuario:${req.usuarioId}`;
+const cambioModoLimiter = crearLimitador({
+  ventanaMs: HORA_MS, max: cfg.cambioModo, mensaje: 'Cambiaste de modo demasiadas veces. Intenta de nuevo más tarde.', key: usuario,
+});
+const serProveedorLimiter = crearLimitador({
+  ventanaMs: HORA_MS, max: cfg.serProveedor, mensaje: 'Demasiados intentos de activar el modo proveedor. Intenta de nuevo más tarde.', key: usuario,
+});
+
 // Login: tres límites en cadena. Los dos por cuenta solo cuentan los intentos fallidos,
 // así un inicio de sesión correcto no consume cupo.
 //  1) por IP (cualquier intento): frena el barrido de muchas cuentas desde un origen.
@@ -120,5 +130,5 @@ const loginLimiters = [
 
 module.exports = {
   globalLimiter, publicLimiter, registroLimiter, loginLimiters, olvidoLimiters, restablecerLimiters,
-  limitadoresVerificacion, limitadoresEnvioCodigo,
+  limitadoresVerificacion, limitadoresEnvioCodigo, cambioModoLimiter, serProveedorLimiter,
 };

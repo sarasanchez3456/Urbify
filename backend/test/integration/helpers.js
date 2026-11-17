@@ -48,7 +48,7 @@ function abrirPool() {
 let registroDeLogs = [];
 
 // Arranca el servidor y espera a que responda. Devuelve { detener, logs }.
-async function arrancarServidor() {
+async function arrancarServidor(extraEnv = {}) {
   const logs = [];
   registroDeLogs = logs;
   const proceso = spawn(process.execPath, ['src/index.js'], {
@@ -65,8 +65,10 @@ async function arrancarServidor() {
       RATE_LIMIT_LOGIN_IP: '100000', RATE_LIMIT_LOGIN_ACCOUNT_IP: '100000', RATE_LIMIT_LOGIN_ACCOUNT: '100000',
       RATE_LIMIT_VERIFY_IP_PER_HOUR: '100000', RATE_LIMIT_VERIFY_EMAIL_PER_HOUR: '100000',
       RATE_LIMIT_SEND_CODE_IP_PER_HOUR: '100000', RATE_LIMIT_SEND_CODE_EMAIL_PER_HOUR: '100000',
+      RATE_LIMIT_MODE_SWITCH_PER_HOUR: '100000', RATE_LIMIT_BECOME_PROVIDER_PER_HOUR: '100000',
       // Sin proveedor de correo: el servidor imprime los códigos en su consola y las pruebas los leen de ahí.
       RESEND_API_KEY: '', GMAIL_USER: '', GMAIL_APP_PASSWORD: '',
+      ...extraEnv,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -189,10 +191,10 @@ async function solicitudEn(estado, { cliente, proveedor, servicioId, fecha }) {
 }
 
 // Prepara todo lo que necesita un archivo de pruebas: base limpia, servidor y pool. `cerrar()` lo deja todo apagado.
-async function iniciarEntorno() {
+async function iniciarEntorno(extraEnv = {}) {
   await prepararBase();
   const pool = abrirPool();
-  const servidor = await arrancarServidor();
+  const servidor = await arrancarServidor(extraEnv);
   return { pool, servidor, cerrar: async () => { await servidor.detener(); await pool.end(); } };
 }
 

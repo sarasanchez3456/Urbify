@@ -3,6 +3,7 @@ const authController = require('../controllers/auth.controller');
 const { authenticate, authorize } = require('../middleware/auth');
 const {
   registroLimiter, loginLimiters, olvidoLimiters, restablecerLimiters, limitadoresVerificacion, limitadoresEnvioCodigo,
+  cambioModoLimiter, serProveedorLimiter,
 } = require('../middleware/rateLimit');
 const { validarBody, idParams } = require('../middleware/validate');
 
@@ -15,6 +16,8 @@ router.post('/login', ...loginLimiters, validarBody('login'), authController.log
 router.post('/logout', authenticate, authController.logout);
 router.post('/olvido-contrasena', ...olvidoLimiters, validarBody('olvidoContrasena'), authController.olvidoContrasena);
 router.post('/restablecer-contrasena', ...restablecerLimiters, validarBody('restablecerContrasena'), authController.restablecerContrasena);
+router.post('/ser-proveedor', authenticate, serProveedorLimiter, validarBody('serProveedor'), authController.serProveedor);
+router.post('/cambiar-modo', authenticate, cambioModoLimiter, validarBody('cambiarModo'), authController.cambiarModo);
 router.get('/perfil', authenticate, authController.perfil);
 router.put('/perfil', authenticate, validarBody('perfil'), authController.actualizarPerfil);
 router.get('/', authenticate, authorize('admin'), authController.listarUsuarios);

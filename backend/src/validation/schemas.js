@@ -53,6 +53,18 @@ module.exports = {
     required: ['correo'],
     properties: { correo: { type: 'string', maxLength: 150 } },
   },
+  // Doble modo (#46). `categoria_id` puede llegar como texto (un <select> envía texto): se convierte a número antes.
+  serProveedor: {
+    type: 'object',
+    required: ['oficio', 'categoria_id'],
+    properties: { oficio: texto(100, { obligatorio: true }), categoria_id: id },
+    numericos: ['categoria_id'],
+  },
+  cambiarModo: {
+    type: 'object',
+    required: ['modo'],
+    properties: { modo: { type: 'string', enum: ['cliente', 'proveedor'] } },
+  },
   olvidoContrasena: {
     type: 'object',
     required: ['correo'],
