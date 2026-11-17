@@ -9,7 +9,7 @@ const pool = mysql.createPool({
   password: dbConfig.password,
   database: dbConfig.name,
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: dbConfig.poolSize,
   queueLimit: 0,
   charset: 'utf8mb4',
   ...(dbConfig.ssl ? { ssl: { minVersion: 'TLSv1.2', rejectUnauthorized: true } } : {}),
@@ -44,7 +44,9 @@ async function conectarConReintentos(intento = 1) {
   }
 }
 
-conectarConReintentos();
+// En un entorno sin servidor (Vercel) no hace falta: cada instancia conecta con su primera consulta y reintentar en
+// segundo plano mantendría la función ocupada sin necesidad.
+if (!process.env.VERCEL) conectarConReintentos();
 
 async function query(sql, params = []) {
   // mysql2 `execute` (prepared statements) lanza si algún parámetro es `undefined`.

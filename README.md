@@ -330,6 +330,8 @@ El backend lee `backend/.env.<NODE_ENV>` (si existe) y luego `backend/.env`; las
 | `EMAIL_FROM` | opcional | **obligatoria** |
 | `GMAIL_USER`, `GMAIL_APP_PASSWORD` | opcionales | correo gratis con una cuenta de Gmail y su "contraseña de aplicación"; si están, se usan en lugar de Resend |
 | `RESEND_API_KEY` | opcional | alternativa a Gmail (con dominio propio verificado). Sin Gmail ni Resend no se envían correos (en development el código de verificación se imprime en la consola) |
+| `DB_SSL`, `DB_POOL_SIZE` | `false`, `10` | `DB_SSL=true` si la base exige TLS (TiDB, Aiven...); `DB_POOL_SIZE=3` en Vercel (un pool por instancia) |
+| `AVISOS_EN_VIVO` | `true` | se apaga solo en Vercel (la web consulta cada 30 s); `true`/`false` para forzarlo |
 | `BODY_LIMIT` | `100kb` | `100kb` (tamaño máximo del JSON) |
 | `TRUST_PROXY` | `0` | nº de proxys delante de la API (Nginx del compose = `1`) |
 | `FORCE_HTTPS` | `false` | `true` redirige a HTTPS y activa HSTS (requiere `TRUST_PROXY>=1`) |

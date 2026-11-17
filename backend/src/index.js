@@ -89,6 +89,12 @@ app.use('/api/*', (req, res) => {
 // Manejador global: errores de MySQL por datos del usuario -> 400/409; cuerpo grande -> 413; JSON malo -> 400.
 app.use(errorHandler);
 
-app.listen(config.port, () => {
-  console.log(`Urbify API corriendo en puerto ${config.port} (${config.NODE_ENV})`);
-});
+// Vercel (y las pruebas que montan la app sin red) IMPORTAN este archivo y usan la app exportada: solo se abre el
+// puerto cuando se ejecuta directamente (`node src/index.js`, Docker, `npm start`).
+if (require.main === module) {
+  app.listen(config.port, () => {
+    console.log(`Urbify API corriendo en puerto ${config.port} (${config.NODE_ENV})`);
+  });
+}
+
+module.exports = app;

@@ -3,11 +3,16 @@ const notificacionesController = require('../controllers/notificaciones.controll
 const { authenticate } = require('../middleware/auth');
 const { validarBody, idParams } = require('../middleware/validate');
 const avisos = require('../utils/avisos');
+const config = require('../config/env');
 
 idParams(router, 'id');
 
 // Canal de avisos en vivo (SSE). Va antes de '/:id' y exige la sesión como cualquier otra ruta.
 router.get('/stream', authenticate, (req, res) => {
+  // Sin servidor (Vercel) no hay conexiones largas: se responde de inmediato y la web usa su consulta cada 30 s.
+  if (!config.avisosEnVivo) {
+    return res.status(503).json({ error: 'Los avisos en vivo no están disponibles en este entorno; se actualizan cada 30 segundos' });
+  }
   res.set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
   res.flushHeaders();
   res.write('retry: 5000\n\n');
