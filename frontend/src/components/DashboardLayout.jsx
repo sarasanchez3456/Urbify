@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -33,6 +33,50 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const sidebarRef = useRef(null);
+  const sidebarObjetivoRef = useRef(false);
+
+  useEffect(() => {
+    sidebarObjetivoRef.current = sidebarOpen;
+  }, [sidebarOpen]);
+
+  const controlarSidebarTour = useCallback((debeAbrir) => {
+    if (!window.matchMedia('(max-width: 1023px)').matches || sidebarObjetivoRef.current === debeAbrir) {
+      return Promise.resolve();
+    }
+
+    sidebarObjetivoRef.current = debeAbrir;
+    const sidebar = sidebarRef.current;
+    if (!sidebar) {
+      setSidebarOpen(debeAbrir);
+      return Promise.resolve();
+    }
+
+    return new Promise((resolver) => {
+      let resuelto = false;
+      const terminar = () => {
+        if (resuelto) return;
+        resuelto = true;
+        sidebar.removeEventListener('transitionend', alTerminar);
+        sidebar.removeEventListener('transitioncancel', terminar);
+        resolver();
+      };
+      const alTerminar = (evento) => {
+        if (evento.target === sidebar && evento.propertyName === 'transform') terminar();
+      };
+
+      sidebar.addEventListener('transitionend', alTerminar);
+      sidebar.addEventListener('transitioncancel', terminar);
+      setSidebarOpen(debeAbrir);
+
+      requestAnimationFrame(() => {
+        const estilos = window.getComputedStyle(sidebar);
+        const duracion = parseFloat(estilos.transitionDuration) || 0;
+        const retraso = parseFloat(estilos.transitionDelay) || 0;
+        if (duracion + retraso === 0) requestAnimationFrame(terminar);
+      });
+    });
+  }, []);
 
   const isActive = (path) => location.pathname === path;
 
@@ -59,6 +103,7 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
       )}
 
       <aside
+        ref={sidebarRef}
         className={`dl-aside fixed lg:static inset-y-0 left-0 z-50 w-64 flex flex-col transition-transform duration-300 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
@@ -138,6 +183,7 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
                 onCerrar={() => setHelpOpen(false)}
                 usuario={usuario}
                 rutaActual={location.pathname}
+                controlarSidebarTour={controlarSidebarTour}
               />
             </div>
 

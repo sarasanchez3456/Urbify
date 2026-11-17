@@ -16,9 +16,10 @@ const configuracionComun = {
   popoverClass: 'urbify-tour',
 };
 
-export function crearTour(pasos) {
+export function crearTour(pasos, callbacks = {}) {
   return driver({
     ...configuracionComun,
+    ...callbacks,
     steps: pasos,
   });
 }

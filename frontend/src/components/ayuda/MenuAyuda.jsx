@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { PlayCircle, X } from 'lucide-react';
 import { iniciarTourInicioCliente } from '../../tours/cliente/inicio';
 
-export default function MenuAyuda({ abierto, onCerrar, usuario, rutaActual }) {
+export default function MenuAyuda({ abierto, onCerrar, usuario, rutaActual, controlarSidebarTour }) {
   useEffect(() => {
     if (!abierto) return undefined;
 
@@ -18,7 +18,7 @@ export default function MenuAyuda({ abierto, onCerrar, usuario, rutaActual }) {
   const hayTourDisponible = usuario?.rol === 'cliente' && rutaActual === '/dashboard';
   const iniciarTour = () => {
     onCerrar();
-    iniciarTourInicioCliente();
+    iniciarTourInicioCliente({ controlarSidebar: controlarSidebarTour });
   };
 
   return (
