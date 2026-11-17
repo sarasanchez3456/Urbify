@@ -195,6 +195,9 @@ export default function ServicioDetalle() {
     ? distanciaKm(ubicacion.lat, ubicacion.lng, Number(servicio.latitud), Number(servicio.longitud))
     : null;
   const esCliente = usuario?.rol === 'cliente';
+  // Con doble modo, quien ofrece este servicio también puede verlo como cliente: no puede solicitárselo a sí mismo
+  // (el servidor responde 400), así que en vez del formulario se le explica.
+  const esServicioPropio = Boolean(usuario) && Number(servicio.proveedor_id) === Number(usuario.id);
   const promedio = parseFloat(servicio.calificacion_promedio || 0);
 
   const contenido = (
@@ -263,6 +266,8 @@ export default function ServicioDetalle() {
                 <p>Pediste la cita para el {fechaServicioLarga(enviadaPara)} · {servicio.nombre} te responderá pronto.</p>
                 <Link to="/mis-solicitudes" className="sv-btn sv-btn--principal">Ver Mis Solicitudes</Link>
               </div>
+            ) : esServicioPropio ? (
+              <p className="sv-dato sv-suave" role="note">Este es tu servicio, así que no puedes solicitártelo.</p>
             ) : esCliente ? (
               <FormularioSolicitud servicio={servicio} onEnviada={setEnviadaPara} />
             ) : !usuario ? (

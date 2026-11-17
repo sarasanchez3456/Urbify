@@ -4,6 +4,7 @@ import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import DashboardLayout from '../components/DashboardLayout';
 import CambiarContrasena from '../components/CambiarContrasena';
+import OfrecerServicios from '../components/OfrecerServicios';
 import { logError } from '../utils/log';
 import './Perfil.css';
 
@@ -353,6 +354,7 @@ export default function Perfil() {
                   </Link>
                 )}
               </div>
+              <OfrecerServicios />
               <div className="pf-card">
                 <h3>Seguridad</h3>
                 <p className="pf-sd">Te enviamos un código a tu correo para confirmar el cambio.</p>
