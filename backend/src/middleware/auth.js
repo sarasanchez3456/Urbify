@@ -3,12 +3,14 @@ const { query } = require('../config/db');
 require('dotenv').config();
 
 // La sesión y la base son la autoridad: el JWT solo identifica la sesión y
-// nunca decide permisos. modo_activo de la sesión debe coincidir con el de la
-// cuenta; #46 podrá cambiarlo e invalidar inmediatamente tokens anteriores.
+// nunca decide permisos. El modo vive en la SESIÓN (tokens_sesion.modo_activo):
+// cada dispositivo puede estar en un modo distinto y cambiar de modo en uno no
+// cierra los demás. De la cuenta solo se lee la capacidad (es_proveedor): una
+// sesión en modo proveedor deja de valer si la cuenta pierde esa capacidad.
+// usuarios.modo_activo es el modo con el que empieza el próximo inicio de sesión.
 const leerSesion = async (token, usuarioId) => {
   const [rows] = await query(
-    `SELECT u.rol, u.activo, u.es_proveedor, u.modo_activo AS modo_cuenta,
-            t.modo_activo AS modo_sesion
+    `SELECT u.rol, u.activo, u.es_proveedor, t.modo_activo AS modo_sesion
        FROM tokens_sesion t
        JOIN usuarios u ON u.id = t.usuario_id
       WHERE t.token = ? AND t.usuario_id = ? AND t.expira_en > NOW()`,
@@ -18,9 +20,8 @@ const leerSesion = async (token, usuarioId) => {
   if (!sesion || !sesion.activo) return null;
   const esAdmin = sesion.rol === 'admin';
   const modoValido = esAdmin
-    ? sesion.modo_cuenta === null && sesion.modo_sesion === null
-    : sesion.modo_cuenta === sesion.modo_sesion
-      && ['cliente', 'proveedor'].includes(sesion.modo_sesion)
+    ? sesion.modo_sesion === null
+    : ['cliente', 'proveedor'].includes(sesion.modo_sesion)
       && (sesion.modo_sesion !== 'proveedor' || Boolean(sesion.es_proveedor));
   if (!modoValido) return null;
   return { rol: esAdmin ? 'admin' : sesion.modo_sesion, modo: sesion.modo_sesion };

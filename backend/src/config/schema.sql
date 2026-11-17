@@ -34,7 +34,9 @@ CREATE TABLE IF NOT EXISTS usuarios (
   contrasena    VARCHAR(255) NOT NULL,
   telefono      VARCHAR(20),
   -- rol se conserva como tipo histórico de la cuenta. La autorización de una
-  -- sesión usa modo_activo; es_proveedor expresa la capacidad permanente.
+  -- sesión usa tokens_sesion.modo_activo; es_proveedor expresa la capacidad
+  -- permanente y usuarios.modo_activo es el modo con el que empieza el próximo
+  -- inicio de sesión.
   rol           VARCHAR(20) NOT NULL,
   es_proveedor  BOOLEAN NOT NULL DEFAULT 0,
   modo_activo   VARCHAR(20) NULL,
@@ -223,9 +225,9 @@ CREATE TABLE IF NOT EXISTS tokens_sesion (
   id               INT AUTO_INCREMENT PRIMARY KEY,
   usuario_id       INT NOT NULL,
   token            VARCHAR(512) NOT NULL,
-  -- El modo queda ligado a la sesión. authenticate lo compara con
-  -- usuarios.modo_activo, por lo que un futuro cambio de modo invalida tokens
-  -- emitidos para el modo anterior.
+  -- El modo vive en la sesión: authenticate lo usa como modo efectivo de este
+  -- dispositivo. Cambiar de modo (#46) reemite el token de ESA sesión y no
+  -- afecta a las sesiones de otros dispositivos.
   modo_activo      VARCHAR(20) NULL,
   expira_en        DATETIME NOT NULL,
   fecha_creacion        DATETIME DEFAULT CURRENT_TIMESTAMP,

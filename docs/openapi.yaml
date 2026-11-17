@@ -15,7 +15,8 @@ info:
 
     **Roles y modo activo.** `cliente`, `proveedor` y `admin`. El registro público solo crea `cliente` y
     `proveedor`. Una cuenta no administrativa habilitada como proveedor también puede actuar como cliente;
-    `es_proveedor` expresa esa capacidad y `modo_activo` es el modo efectivo de la sesión. Cada operación
+    `es_proveedor` expresa esa capacidad y `modo_activo` es el modo efectivo de la sesión (cada dispositivo
+    puede estar en un modo distinto; `GET /auth/perfil` devuelve el de la sesión que consulta). Cada operación
     indica sus roles en `x-roles`; el backend lee el modo, la sesión y el estado desde la base de datos en
     cada petición. Los administradores no participan de los modos. Detalle y reglas de pertenencia:
     `docs/AUTORIZACION.md`.
@@ -1531,7 +1532,7 @@ components:
       type: string
       nullable: true
       enum: [cliente, proveedor]
-      description: Modo efectivo de una cuenta no administrativa; null para administradores.
+      description: Modo efectivo de la sesión de una cuenta no administrativa (en el listado y detalle de usuarios, el modo con el que empieza su próximo inicio de sesión); null para administradores.
     EstadoSolicitud:
       type: string
       enum: [pendiente, aceptada, en_proceso, completada, cancelada]
@@ -1562,7 +1563,7 @@ components:
     UsuarioSesion:
       type: object
       description: Usuario devuelto al iniciar sesión o registrarse (los campos opcionales dependen de la ruta)
-      required: [id, nombre, apellido, correo, rol]
+      required: [id, nombre, apellido, correo, rol, es_proveedor, modo_activo]
       properties:
         id: { type: integer }
         nombre: { type: string }
@@ -1579,7 +1580,7 @@ components:
         oficio: { type: string, nullable: true }
     Usuario:
       type: object
-      required: [id, nombre, apellido, correo, rol]
+      required: [id, nombre, apellido, correo, rol, es_proveedor, modo_activo]
       properties:
         id: { type: integer }
         nombre: { type: string }
