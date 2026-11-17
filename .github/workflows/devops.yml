@@ -103,6 +103,11 @@ jobs:
         run: npm ci
         working-directory: ./frontend
 
+      - name: "🧪 Pruebas del frontend (Vitest)"
+        # Sesión, interceptor de Axios, AuthContext y la pantalla del código de verificación. Un fallo bloquea el CI.
+        run: npm test
+        working-directory: ./frontend
+
       - name: "🏗️ Compilar el frontend con Vite (build de producción)"
         run: npm run build
         working-directory: ./frontend

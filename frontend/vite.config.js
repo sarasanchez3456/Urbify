@@ -36,4 +36,12 @@ export default defineConfig({
       },
     },
   },
+  // Pruebas (Vitest): entorno de navegador simulado; los CSS no se procesan.
+  test: {
+    environment: "jsdom",
+    css: false,
+    restoreMocks: true,
+    setupFiles: ["src/test/setup.js"],
+    include: ["src/**/*.test.{js,jsx}"],
+  },
 });
