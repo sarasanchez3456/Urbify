@@ -117,6 +117,34 @@ Después, volver al proyecto de la API y poner en `CORS_ORIGIN` la dirección de
 - [ ] La consola del navegador no muestra errores de CORS ni de política de seguridad.
 - [ ] Las notificaciones se actualizan (cada 30 s).
 
+## Actualizar el sitio publicado
+
+Flujo para cada cambio:
+
+1. Se trabaja en una rama y se abre un **PR**; el CI corre las pruebas.
+2. Con el CI en verde se **fusiona a `main`**.
+3. En el computador que va a publicar: `git checkout main` y `git pull` (se publica lo que esté en esta carpeta).
+4. Si cambió la estructura de la base de datos: **copia de seguridad** y luego `-Migrar` (ver abajo). `migrate` se puede repetir sin riesgo.
+5. Publicar con **un comando** (necesita Docker; no hace falta instalar Node):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\desplegar-vercel.ps1            # API y página
+powershell -ExecutionPolicy Bypass -File scripts\desplegar-vercel.ps1 -Que api   # solo la API
+powershell -ExecutionPolicy Bypass -File scripts\desplegar-vercel.ps1 -Que web   # solo la página
+powershell -ExecutionPolicy Bypass -File scripts\desplegar-vercel.ps1 -Migrar    # antes, actualiza las tablas de TiDB
+```
+
+El script publica y al final **comprueba** que la API y la base respondan, que lea categorías, que CORS acepte a la página y que la página traiga sus cabeceras de seguridad. Si algo falla, termina con error y lo dice.
+
+- **Primera vez en un computador:** pide iniciar sesión en Vercel; muestra un enlace con un código que se autoriza en el navegador donde está la cuenta. La sesión queda guardada en un volumen de Docker (`vercel_home`).
+- **`-Migrar`** necesita un archivo con `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` y `DB_SSL=true` de TiDB. Por defecto busca `tidb.env` **junto a la carpeta del proyecto** (fuera del repositorio); se puede indicar otro con `-ArchivoTidb`.
+- **Antivirus que intercepta HTTPS (Norton):** poner `EXTRA_CA_PEM_B64` en el `.env` (ver `docs/PRESENTACION.md`, sección 8).
+- Las **variables de entorno** no se vuelven a subir en cada publicación: viven en Vercel. Para cambiar una, se cambia en el panel de Vercel (o con `vercel env`) y luego se vuelve a publicar. `VITE_API_URL` y la política de `frontend/vercel.json` se incrustan al compilar la página.
+- **Publicar no toca los datos:** viven en TiDB.
+- **Volver atrás:** Vercel conserva los despliegues anteriores y desde su panel se puede volver a uno de ellos. ⚠️ No se probó.
+
+**Publicación automática (opcional):** si la dueña del repositorio instala la aplicación de Vercel en su cuenta de GitHub y conecta los dos proyectos (`urbify-api` con carpeta raíz `backend`, `urbify-web` con carpeta raíz `frontend`), cada fusión a `main` publica sola. ⚠️ En el plan gratis (Hobby) puede haber restricciones cuando quien hace el commit no es el dueño de la cuenta de Vercel: verificarlo antes de depender de esto.
+
 ## Cambios futuros (cuenta, hosting o base)
 
 - **Cambiar de cuenta de Vercel o de hosting del backend:** no se pierden datos (están en TiDB). Se vuelve a desplegar con las **mismas variables**. La dirección `.vercel.app` cambia: actualizar `VITE_API_URL`, `CORS_ORIGIN`, la política de `frontend/vercel.json` y la app móvil.
