@@ -124,6 +124,30 @@ test('migraciones sobre una base existente (MySQL real)', async (t) => {
     assert.equal(avisos[1].solicitud_id, 1);
   });
 
+  await t.test('reemplaza el CHECK inicial y exige un modo válido para cada cuenta no admin', async () => {
+    // Simula la primera versión de #45: MySQL aceptaba NULL porque el CHECK
+    // no contenía una condición explícita IS NOT NULL para no administradores.
+    await conn.query('ALTER TABLE usuarios DROP CHECK chk_usuarios_modo_activo');
+    await conn.query(`ALTER TABLE usuarios ADD CONSTRAINT chk_usuarios_modo_activo CHECK (
+      (rol = 'admin' AND es_proveedor = 0 AND modo_activo IS NULL)
+      OR (rol <> 'admin' AND modo_activo IN ('cliente', 'proveedor')
+          AND (modo_activo <> 'proveedor' OR es_proveedor = 1))
+    )`);
+    await conn.query('UPDATE usuarios SET modo_activo = NULL WHERE id = 2');
+
+    const r = migrar();
+    assert.equal(r.status, 0, `${r.stdout}\n${r.stderr}`);
+    assert.match(r.stdout, /restricción de modo activo actualizada/);
+
+    const violaCheck = (promesa) => assert.rejects(promesa, (err) => err?.errno === 3819 || err?.code === 'ER_CHECK_CONSTRAINT_VIOLATED');
+    await violaCheck(conn.query('UPDATE usuarios SET modo_activo = NULL WHERE id = 2'));
+    await violaCheck(conn.query('UPDATE usuarios SET modo_activo = NULL WHERE id = 1'));
+    await conn.query("UPDATE usuarios SET modo_activo = NULL WHERE id = 3");
+    await conn.query("UPDATE usuarios SET modo_activo = 'cliente' WHERE id = 2");
+    await conn.query("UPDATE usuarios SET modo_activo = 'proveedor' WHERE id = 1");
+    await violaCheck(conn.query("UPDATE usuarios SET modo_activo = 'proveedor' WHERE id = 2"));
+  });
+
   await t.test('ejecutarla otra vez no cambia nada y sigue saliendo con código 0 (idempotente)', async () => {
     // Simula el modo que #46 podrá elegir después de esta migración. Reejecutar
     // migraciones no puede restaurarlo al modo histórico de proveedor.

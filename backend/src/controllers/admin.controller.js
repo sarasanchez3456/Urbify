@@ -14,8 +14,14 @@ exports.resumen = async (req, res, next) => {
   try {
     const semanas = [4, 8, 12].includes(Number(req.query.semanas)) ? Number(req.query.semanas) : 8;
 
-    const [[roles], [servicios], [estados], [calif]] = await Promise.all([
+    const [[roles], [[cuentas]], [servicios], [estados], [calif]] = await Promise.all([
       query('SELECT rol, COUNT(*) AS total FROM usuarios GROUP BY rol'),
+      query(`SELECT
+               COALESCE(SUM(es_proveedor = 1), 0) AS con_capacidad_proveedor,
+               COALESCE(SUM(modo_activo = 'cliente'), 0) AS en_modo_cliente,
+               COALESCE(SUM(modo_activo = 'proveedor'), 0) AS en_modo_proveedor,
+               COALESCE(SUM(rol = 'admin'), 0) AS administradores
+             FROM usuarios`),
       query('SELECT COUNT(*) AS total, COALESCE(SUM(disponible = 1), 0) AS disponibles FROM servicios'),
       query('SELECT estado, COUNT(*) AS total FROM solicitudes GROUP BY estado'),
       query('SELECT COUNT(*) AS total, AVG(puntuacion) AS media, COALESCE(SUM(puntuacion <= 2), 0) AS bajas FROM calificaciones WHERE oculta = 0'),
@@ -45,6 +51,14 @@ exports.resumen = async (req, res, next) => {
     const [[reportesNuevos]] = await query("SELECT COUNT(*) AS n FROM reportes WHERE estado = 'nuevo'");
     res.json({
       usuarios_por_rol: usuarios,
+      // usuarios_por_rol se conserva como registro histórico. Este objeto
+      // distingue capacidades y modo efectivo sin cambiar ese contrato.
+      cuentas_por_capacidad_y_modo: {
+        con_capacidad_proveedor: Number(cuentas.con_capacidad_proveedor),
+        en_modo_cliente: Number(cuentas.en_modo_cliente),
+        en_modo_proveedor: Number(cuentas.en_modo_proveedor),
+        administradores: Number(cuentas.administradores),
+      },
       servicios: { total: Number(servicios[0].total), disponibles: Number(servicios[0].disponibles) },
       solicitudes_por_estado: solicitudes,
       calificaciones: { total: Number(calif[0].total), media: calif[0].media ? Number(Number(calif[0].media).toFixed(1)) : 0 },
@@ -67,7 +81,7 @@ exports.detalleUsuario = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
     const [usuarios] = await query(
-      'SELECT id, nombre, apellido, correo, telefono, rol, foto_url, direccion, oficio, activo, fecha_creacion FROM usuarios WHERE id = ?',
+      'SELECT id, nombre, apellido, correo, telefono, rol, es_proveedor, modo_activo, foto_url, direccion, oficio, activo, fecha_creacion FROM usuarios WHERE id = ?',
       [id]
     );
     if (usuarios.length === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -86,6 +100,7 @@ exports.detalleUsuario = async (req, res, next) => {
     );
     res.json({
       ...u,
+      es_proveedor: Boolean(u.es_proveedor),
       solicitudes_como_cliente: Number(comoCliente.n),
       solicitudes_como_proveedor: Number(comoProveedor.n),
       servicios: Number(serv.n),

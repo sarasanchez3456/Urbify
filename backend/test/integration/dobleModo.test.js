@@ -17,6 +17,7 @@ test('doble modo: migración lógica, autorización, privacidad y reputaciones s
 
   const doble = await registrar('proveedor', { telefono: '+573001111111', direccion: 'Calle Doble 1, Bogotá' });
   const cliente = await registrar('cliente');
+  const clienteConCapacidad = await registrar('cliente');
   const otroProveedor = await registrar('proveedor', { telefono: '+573002222222', direccion: 'Calle Otro 2, Bogotá' });
   const servicioDoble = await crearServicio(doble, { titulo: 'Servicio del doble modo' });
   const servicioAjeno = await crearServicio(otroProveedor, { titulo: 'Servicio del otro proveedor' });
@@ -76,6 +77,9 @@ test('doble modo: migración lógica, autorización, privacidad y reputaciones s
   });
 
   await t.test('un administrador sigue fuera del sistema de modos', async () => {
+    // #46 será quien conceda esta capacidad; aquí se prepara directamente para
+    // comprobar que administración no confunde capacidad/mode con rol histórico.
+    await pool.execute("UPDATE usuarios SET es_proveedor = 1, modo_activo = 'proveedor' WHERE id = ?", [clienteConCapacidad.id]);
     const admin = await volverAdmin(pool, cliente);
     assert.equal((await api('GET', '/admin/resumen', { token: admin.token })).status, 200);
     const [[u]] = await pool.execute('SELECT es_proveedor, modo_activo FROM usuarios WHERE id = ?', [admin.id]);
@@ -85,5 +89,30 @@ test('doble modo: migración lógica, autorización, privacidad y reputaciones s
     assert.equal(perfil.status, 200);
     assert.equal(perfil.body.es_proveedor, false);
     assert.equal(perfil.body.modo_activo, null);
+
+    const detalle = await api('GET', `/admin/usuarios/${clienteConCapacidad.id}`, { token: admin.token });
+    assert.equal(detalle.status, 200);
+    assert.equal(detalle.body.rol, 'cliente');
+    assert.equal(detalle.body.es_proveedor, true);
+    assert.equal(detalle.body.modo_activo, 'proveedor');
+
+    const lista = await api('GET', '/auth', { token: admin.token });
+    const enLista = lista.body.find((u) => u.id === clienteConCapacidad.id);
+    assert.equal(enLista.es_proveedor, true);
+    assert.equal(enLista.modo_activo, 'proveedor');
+
+    const esperado = {
+      con_capacidad_proveedor: 3,
+      en_modo_cliente: 1,
+      en_modo_proveedor: 2,
+      administradores: 1,
+    };
+    const resumen = await api('GET', '/admin/resumen', { token: admin.token });
+    assert.deepEqual(resumen.body.usuarios_por_rol, { cliente: 1, proveedor: 2, admin: 1 });
+    assert.deepEqual(resumen.body.cuentas_por_capacidad_y_modo, esperado);
+    const stats = await api('GET', '/stats/admin', { token: admin.token });
+    assert.equal(stats.status, 200);
+    assert.deepEqual(stats.body.usuarios_por_rol, { cliente: 1, proveedor: 2, admin: 1 });
+    assert.deepEqual(stats.body.cuentas_por_capacidad_y_modo, esperado);
   });
 });

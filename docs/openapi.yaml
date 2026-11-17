@@ -20,6 +20,8 @@ info:
     cada petición. Los administradores no participan de los modos. Detalle y reglas de pertenencia:
     `docs/AUTORIZACION.md`.
 
+    Las notificaciones pertenecen a la cuenta y la bandeja es única: el modo activo no las oculta, elimina ni transfiere.
+
     **Errores.** Siempre `{"error": "mensaje"}`. Todo cuerpo o consulta se valida contra los límites de este documento (tipos, longitudes, rangos): si no cumple, `400` con el campo y el motivo, nunca `500`. Los errores de la base de datos causados por datos del usuario también se traducen: valor demasiado largo, fuera de rango, mal formado o referencia inexistente → `400`; registro duplicado o dato con relaciones → `409`. Los `429` añaden `bloqueado: true` y `minutos_restantes`
     y las cabeceras `Retry-After` y `RateLimit`. Códigos: `400` datos o estado inválido, `401` sin sesión
     válida, `403` sin permiso (rol o recurso ajeno), `404` no existe, `409` conflicto de estado, `413`
@@ -1092,7 +1094,7 @@ paths:
       parameters:
         - { name: semanas, in: query, schema: { type: integer, enum: [4, 8, 12], default: 8 } }
       responses:
-        '200': { description: 'usuarios_por_rol, servicios, solicitudes_por_estado, calificaciones (sin las ocultas), semanas [{hasta, usuarios, solicitudes}] y atencion {solicitudes_pendientes, servicios_no_disponibles, usuarios_suspendidos, resenas_bajas}' }
+        '200': { description: 'usuarios_por_rol (rol histórico), cuentas_por_capacidad_y_modo, servicios, solicitudes_por_estado, calificaciones (sin las ocultas), semanas [{hasta, usuarios, solicitudes}] y atencion {solicitudes_pendientes, servicios_no_disponibles, usuarios_suspendidos, resenas_bajas}' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
   /admin/usuarios/{id}:
@@ -1103,7 +1105,7 @@ paths:
       summary: Detalle de un usuario con su actividad
       x-roles: [admin]
       responses:
-        '200': { description: Datos de la cuenta, conteos de solicitudes y servicios, calificación media y últimas 5 solicitudes }
+        '200': { description: 'Datos de la cuenta (incluye rol histórico, es_proveedor y modo_activo), conteos de solicitudes y servicios, calificación media y últimas 5 solicitudes' }
         '404': { $ref: '#/components/responses/NotFound' }
   /admin/usuarios/{id}/estado:
     parameters:
@@ -1801,15 +1803,25 @@ components:
         calificacion_media: { type: string, description: 'Un decimal en texto, "0.0" si no hay calificaciones', example: '4.6' }
     StatsAdmin:
       type: object
-      required: [usuarios_por_rol, servicios, solicitudes_por_estado, calificaciones]
+      required: [usuarios_por_rol, cuentas_por_capacidad_y_modo, servicios, solicitudes_por_estado, calificaciones]
       properties:
         usuarios_por_rol:
+          description: Conteo histórico por usuarios.rol; se conserva por compatibilidad y no representa capacidades actuales.
           type: object
           required: [cliente, proveedor, admin]
           properties:
             cliente: { type: integer }
             proveedor: { type: integer }
             admin: { type: integer }
+        cuentas_por_capacidad_y_modo:
+          type: object
+          description: Conteos de todas las cuentas, activas o suspendidas, por capacidad y modo efectivo.
+          required: [con_capacidad_proveedor, en_modo_cliente, en_modo_proveedor, administradores]
+          properties:
+            con_capacidad_proveedor: { type: integer, description: Cuentas no administrativas habilitadas para operar como proveedor. }
+            en_modo_cliente: { type: integer, description: Cuentas no administrativas cuyo modo activo es cliente. }
+            en_modo_proveedor: { type: integer, description: Cuentas no administrativas cuyo modo activo es proveedor. }
+            administradores: { type: integer, description: Cuentas administrativas, fuera del sistema de modos. }
         servicios:
           type: object
           required: [total, disponibles]
