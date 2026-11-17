@@ -209,6 +209,7 @@ export default function NotificationBell() {
         type="button"
         onClick={() => setAbierto(!abierto)}
         aria-label="Notificaciones"
+        data-tour="notificaciones"
         className="relative p-2.5 rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center"
         style={{
           color: abierto || noLeidas > 0 ? 'oklch(0.40 0.18 255)' : 'oklch(0.45 0.03 240)',

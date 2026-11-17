@@ -1,0 +1,103 @@
+.ayuda-boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: oklch(0.40 0.18 255);
+  font: 600 0.85rem 'Plus Jakarta Sans', sans-serif;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.ayuda-boton:hover { background: oklch(0.40 0.18 255 / 0.08); color: oklch(0.32 0.18 255); }
+
+.ayuda-boton:focus-visible,
+.ayuda-cerrar:focus-visible,
+.ayuda-opcion:focus-visible {
+  outline: 3px solid oklch(0.72 0.13 200);
+  outline-offset: 2px;
+}
+
+.ayuda-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+
+.ayuda-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
+  width: min(19rem, calc(100vw - 2rem));
+  overflow: hidden;
+  border: 1px solid oklch(0.40 0.18 255 / 0.14);
+  border-radius: 14px;
+  background: oklch(0.995 0.004 80 / 0.98);
+  box-shadow: 0 16px 32px oklch(0.25 0.06 240 / 0.16);
+  backdrop-filter: blur(16px);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.ayuda-menu-encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 14px 10px 16px;
+  border-bottom: 1px solid oklch(0.40 0.18 255 / 0.1);
+}
+
+.ayuda-menu-encabezado h2 {
+  margin: 0;
+  color: oklch(0.25 0.06 240);
+  font: 700 1rem 'Playfair Display', serif;
+}
+
+.ayuda-cerrar {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: oklch(0.40 0.04 240);
+  cursor: pointer;
+}
+
+.ayuda-cerrar:hover { background: oklch(0.40 0.18 255 / 0.08); }
+
+.ayuda-opciones { padding: 6px; }
+
+.ayuda-opcion {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: oklch(0.32 0.06 240);
+  font: 600 0.86rem 'Plus Jakarta Sans', sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ayuda-opcion:hover { background: oklch(0.40 0.18 255 / 0.08); color: oklch(0.40 0.18 255); }
+
+.ayuda-sin-tour {
+  margin: 0;
+  padding: 15px 16px 17px;
+  color: oklch(0.40 0.04 240);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}

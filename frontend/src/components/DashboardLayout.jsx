@@ -21,7 +21,10 @@ import {
 
 import NotificationBell from './NotificationBell';
 import SelectorModo from './SelectorModo';
+import BotonAyuda from './ayuda/BotonAyuda';
+import MenuAyuda from './ayuda/MenuAyuda';
 import './DashboardLayout.css';
+import './ayuda/Ayuda.css';
 
 export default function DashboardLayout({ children, titulo, subtitulo }) {
   const { usuario, logout } = useAuth();
@@ -29,6 +32,7 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const isActive = (path) => location.pathname === path;
 
@@ -36,11 +40,11 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
     { path: '/admin', label: 'Panel de administración', icon: LayoutDashboard, roles: ['admin'] },
     { path: '/dashboard', label: 'Inicio', icon: LayoutDashboard, roles: ['cliente', 'proveedor'] },
     { path: '/perfil', label: 'Mi Perfil', icon: User, roles: ['cliente', 'proveedor', 'admin'] },
-    { path: '/mis-solicitudes', label: usuario?.rol === 'proveedor' ? 'Notificaciones' : 'Mis Solicitudes', icon: ClipboardList, roles: ['cliente', 'proveedor'] },
+    { path: '/mis-solicitudes', label: usuario?.rol === 'proveedor' ? 'Notificaciones' : 'Mis Solicitudes', icon: ClipboardList, roles: ['cliente', 'proveedor'], tourId: 'nav-mis-solicitudes' },
     { path: '/mis-servicios', label: 'Mis Servicios', icon: Wrench, roles: ['proveedor'] },
     { path: '/mi-agenda', label: 'Mi agenda', icon: CalendarDays, roles: ['proveedor'] },
     { path: '/ingresos', label: 'Billetera', icon: Wallet, roles: ['proveedor'] },
-    { path: '/buscar', label: 'Buscar Servicios', icon: Search, roles: ['cliente'] },
+    { path: '/buscar', label: 'Buscar Servicios', icon: Search, roles: ['cliente'], tourId: 'nav-buscar-servicios' },
   ].filter((item) => item.roles.includes(usuario?.rol));
 
   const handleLogout = () => {
@@ -64,7 +68,7 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
           <span className="dl-logo-texto">Urbify</span>
         </Link>
 
-        <nav className="dl-nav" aria-label="Menú principal">
+        <nav className="dl-nav" aria-label="Menú principal" data-tour="navegacion-principal">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -75,6 +79,7 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
                 onClick={() => setSidebarOpen(false)}
                 className={`dl-nav-link${active ? ' is-on' : ''}`}
                 aria-current={active ? 'page' : undefined}
+                data-tour={item.tourId}
               >
                 <Icon size={20} />
                 <span>{item.label}</span>
@@ -121,11 +126,31 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
             <NotificationBell />
 
             <div className="relative">
+              <BotonAyuda
+                abierto={helpOpen}
+                onClick={() => {
+                  setHelpOpen((abierto) => !abierto);
+                  setProfileOpen(false);
+                }}
+              />
+              <MenuAyuda
+                abierto={helpOpen}
+                onCerrar={() => setHelpOpen(false)}
+                usuario={usuario}
+                rutaActual={location.pathname}
+              />
+            </div>
+
+            <div className="relative">
               <button
-                onClick={() => setProfileOpen(!profileOpen)}
+                onClick={() => {
+                  setProfileOpen((abierto) => !abierto);
+                  setHelpOpen(false);
+                }}
                 className="dl-perfil"
                 aria-haspopup="menu"
                 aria-expanded={profileOpen}
+                data-tour="perfil-usuario"
               >
                 <div className="dl-avatar">
                   {usuario?.nombre?.charAt(0)?.toUpperCase() || 'U'}
