@@ -124,6 +124,8 @@ Antes de comenzar, asegúrate de tener instalados:
 
 > ¿Quieres publicar Urbify en internet (Vercel + backend + MySQL + correo)? Mira la [guía de despliegue](docs/DESPLIEGUE.md).
 >
+> ¿Ya está publicado y quieres **actualizarlo**? Un comando: `scripts/desplegar-vercel.ps1` (ver [actualizar el sitio](docs/DESPLIEGUE_VERCEL.md#actualizar-el-sitio-publicado)).
+>
 > ¿Vas a **presentar** Urbify? Un comando lo levanta todo y comprueba que funcione: [guía de presentación](docs/PRESENTACION.md) (`scripts/presentacion.ps1`).
 
 ### Paso 1 — Clonar el repositorio
