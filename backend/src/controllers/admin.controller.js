@@ -232,7 +232,7 @@ exports.cancelarSolicitud = async (req, res, next) => {
 
     // Los avisos a las dos partes se envían después de confirmar: son informativos y no deben deshacer la cancelación.
     for (const destino of [sol.cliente_id, sol.proveedor_id]) {
-      await query("INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)", [id, destino, `Un administrador canceló la solicitud de "${sol.titulo}". Motivo: ${motivo}`]).catch(() => {});
+      await query("INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, modo, mensaje) VALUES ('solicitud', ?, ?, ?, ?)", [id, destino, destino === sol.cliente_id ? 'cliente' : 'proveedor', `Un administrador canceló la solicitud de "${sol.titulo}". Motivo: ${motivo}`]).catch(() => {});
     }
     res.json({ mensaje: 'Solicitud cancelada' });
   } catch (err) {

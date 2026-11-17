@@ -265,9 +265,13 @@ CREATE TABLE IF NOT EXISTS notificaciones (
   solicitud_id     INT NULL,
   mensaje          TEXT NOT NULL,
   leida            BOOLEAN DEFAULT 0,
+  -- Modo en el que se ve: 'cliente' o 'proveedor' según el papel del destinatario en la solicitud. Una cuenta con
+  -- los dos modos solo ve en cada uno las suyas. NULL = general (sin modo): se ve en ambos.
+  modo             VARCHAR(20) NULL,
   fecha_creacion        DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
   -- La notificación se conserva como historial aunque la solicitud se elimine.
   FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id) ON DELETE SET NULL,
-  INDEX idx_notificaciones_solicitud (solicitud_id)
+  INDEX idx_notificaciones_solicitud (solicitud_id),
+  INDEX idx_notificaciones_usuario_modo (usuario_id, modo)
 );

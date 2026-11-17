@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 
 const { errorDeDireccion } = require('../../src/utils/direccion');
 const { validarMotivos, motivosAColumna, motivosDeColumna } = require('../../src/utils/motivosCalificacion');
-const { posicionUsuario, suscribir, avisar } = require('../../src/utils/avisos');
+const { posicionUsuario, posicionesNotificacion, suscribir, avisar } = require('../../src/utils/avisos');
 const { motivoValido } = require('../../src/utils/auditoria.pure');
 
 test('dirección: vacía o ausente es válida (es opcional)', () => {
@@ -58,4 +58,34 @@ test('motivo de auditoría: entre 10 y 300 caracteres, sin contar espacios de lo
   assert.equal(motivoValido('   suficiente motivo   '), 'suficiente motivo');
   assert.equal(motivoValido('x'.repeat(301)), null);
   assert.equal(motivoValido(undefined), null);
+});
+test('avisos: encuentra también la posición del modo en el INSERT', () => {
+  assert.deepEqual(posicionesNotificacion("INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, modo, mensaje) VALUES ('solicitud', ?, ?, ?, ?)"), { usuario: 1, modo: 2 });
+  assert.deepEqual(posicionesNotificacion('INSERT INTO notificaciones (usuario_id, modo, tipo, solicitud_id, mensaje) VALUES (?, ?, ?, ?, ?)'), { usuario: 0, modo: 1 });
+  assert.deepEqual(posicionesNotificacion('INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)'), { usuario: 0, modo: -1 });
+  assert.deepEqual(posicionesNotificacion('SELECT * FROM notificaciones'), { usuario: -1, modo: -1 });
+});
+
+test('avisos: una conexión solo recibe los avisos de su modo y los generales', () => {
+  const nueva = () => ({ escrito: [], write(x) { this.escrito.push(x); }, on() {} });
+  const comoCliente = nueva();
+  const comoProveedor = nueva();
+  const sinModo = nueva(); // administrador: no tiene modo y recibe todo
+  suscribir(910, comoCliente, 'cliente');
+  suscribir(910, comoProveedor, 'proveedor');
+  suscribir(910, sinModo, null);
+
+  avisar(910, { id: 1, modo: 'proveedor' });
+  assert.equal(comoCliente.escrito.length, 0, 'el aviso de proveedor no llega a la conexión en modo cliente');
+  assert.equal(comoProveedor.escrito.length, 1);
+  assert.equal(sinModo.escrito.length, 1);
+
+  avisar(910, { id: 2, modo: 'cliente' });
+  assert.equal(comoCliente.escrito.length, 1);
+  assert.equal(comoProveedor.escrito.length, 1, 'el aviso de cliente no llega a la conexión en modo proveedor');
+
+  avisar(910, { id: 3, modo: null }); // general: llega a todas
+  assert.equal(comoCliente.escrito.length, 2);
+  assert.equal(comoProveedor.escrito.length, 2);
+  assert.equal(sinModo.escrito.length, 3);
 });

@@ -26,6 +26,7 @@ const COLUMNAS = [
   // Las notificaciones existentes se mantienen y reciben el tipo por defecto "general".
   { tabla: 'notificaciones', nombre: 'tipo', ddl: "tipo VARCHAR(50) NOT NULL DEFAULT 'general'" },
   { tabla: 'notificaciones', nombre: 'solicitud_id', ddl: 'solicitud_id INT NULL' },
+  { tabla: 'notificaciones', nombre: 'modo', ddl: 'modo VARCHAR(20) NULL' },
   { tabla: 'tokens_sesion', nombre: 'modo_activo', ddl: 'modo_activo VARCHAR(20) NULL' },
 ];
 
@@ -41,6 +42,7 @@ const INDICES = [
   { tabla: 'calificaciones', nombre: 'idx_calificaciones_proveedor', columnas: 'proveedor_id' },
   { tabla: 'tokens_sesion', nombre: 'idx_tokens_sesion_token', columnas: 'usuario_id, expira_en' },
   { tabla: 'notificaciones', nombre: 'idx_notificaciones_solicitud', columnas: 'solicitud_id' },
+  { tabla: 'notificaciones', nombre: 'idx_notificaciones_usuario_modo', columnas: 'usuario_id, modo' },
 ];
 
 // El schema crea esta FK en instalaciones nuevas. Esta comprobación la agrega en bases existentes y
@@ -178,6 +180,20 @@ async function asegurarCheckDobleModo(conn) {
   console.log(`Migración: restricción de modo activo ${checks.length > 0 ? 'actualizada' : 'creada'}`);
 }
 
+// Cada notificación ligada a una solicitud pertenece al modo que el destinatario tiene en ella: cliente si es el
+// cliente de la solicitud, proveedor si es su proveedor. Solo se rellenan las que aún no tienen modo, así que una
+// segunda ejecución no cambia nada. Las que no están ligadas a una solicitud (o cuya solicitud se borró) quedan
+// sin modo y se ven en ambos.
+async function asegurarModoNotificaciones(conn) {
+  const [r] = await conn.query(
+    `UPDATE notificaciones n JOIN solicitudes s ON s.id = n.solicitud_id
+        SET n.modo = CASE WHEN n.usuario_id = s.cliente_id THEN 'cliente'
+                          WHEN n.usuario_id = s.proveedor_id THEN 'proveedor' END
+      WHERE n.modo IS NULL`
+  );
+  if (r.affectedRows) console.log(`Migración: ${r.affectedRows} notificaciones asignadas a su modo`);
+}
+
 async function migrate() {
   // Conexión propia con multipleStatements: schema.sql trae varias sentencias
   // y el pool de db.js usa prepared statements (una sola sentencia).
@@ -255,6 +271,9 @@ async function migrate() {
           SET n.tipo = 'mensaje', n.solicitud_id = x.sid`
     );
     if (enlazados.affectedRows > 0) console.log(`Migración: ${enlazados.affectedRows} avisos de mensajes enlazados a su solicitud`);
+
+    // Va después de enlazar los avisos: así también reciben su modo los que acaban de ligarse a una solicitud.
+    await asegurarModoNotificaciones(conn);
 
     console.log('Migración completada exitosamente');
   } catch (err) {

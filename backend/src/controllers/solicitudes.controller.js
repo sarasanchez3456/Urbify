@@ -78,18 +78,20 @@ exports.crearSolicitud = async (req, res, next) => {
     // Crear notificación para el proveedor
     try {
       await query(
-        "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)",
-        [solicitudId, 
+        "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, modo, mensaje) VALUES ('solicitud', ?, ?, ?, ?)",
+        [solicitudId,
           proveedor_id,
+          'proveedor',
           `Nueva solicitud de ${cliente[0].nombre} ${cliente[0].apellido} para el servicio "${servicio[0].titulo}"`
         ]
       );
 
       // Crear notificación de confirmación para el cliente
       await query(
-        "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)",
-        [solicitudId, 
+        "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, modo, mensaje) VALUES ('solicitud', ?, ?, ?, ?)",
+        [solicitudId,
           req.usuarioId,
+          'cliente',
           `Enviaste una solicitud a ${proveedor[0].nombre} ${proveedor[0].apellido} para el servicio "${servicio[0].titulo}"`
         ]
       );
@@ -293,9 +295,10 @@ exports.actualizarEstadoSolicitud = async (req, res, next) => {
     try {
       if (estado === 'aceptada') {
         await query(
-          "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)",
-          [solicitudActual.id, 
+          "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, modo, mensaje) VALUES ('solicitud', ?, ?, ?, ?)",
+          [solicitudActual.id,
             solicitudActual.cliente_id,
+            'cliente',
             `El proveedor ${solicitudActual.prov_nombre} ${solicitudActual.prov_apellido} aceptó tu solicitud para "${solicitudActual.servicio_titulo}"`
           ]
         );
@@ -318,34 +321,38 @@ exports.actualizarEstadoSolicitud = async (req, res, next) => {
         }
       } else if (estado === 'en_proceso') {
         await query(
-          "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)",
-          [solicitudActual.id, 
+          "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, modo, mensaje) VALUES ('solicitud', ?, ?, ?, ?)",
+          [solicitudActual.id,
             solicitudActual.cliente_id,
+            'cliente',
             `El proveedor ${solicitudActual.prov_nombre} inició el trabajo para "${solicitudActual.servicio_titulo}"`
           ]
         );
       } else if (estado === 'completada') {
         await query(
-          "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)",
-          [solicitudActual.id, 
+          "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, modo, mensaje) VALUES ('solicitud', ?, ?, ?, ?)",
+          [solicitudActual.id,
             solicitudActual.cliente_id,
+            'cliente',
             `El servicio "${solicitudActual.servicio_titulo}" fue completado por ${solicitudActual.prov_nombre}. ¡Ya puedes calificar su trabajo!`
           ]
         );
       } else if (estado === 'cancelada') {
         if (esProveedor) {
           await query(
-            "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)",
-            [solicitudActual.id, 
+            "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, modo, mensaje) VALUES ('solicitud', ?, ?, ?, ?)",
+            [solicitudActual.id,
               solicitudActual.cliente_id,
+              'cliente',
               `El proveedor ${solicitudActual.prov_nombre} canceló la solicitud para "${solicitudActual.servicio_titulo}"`
             ]
           );
         } else {
           await query(
-            "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, mensaje) VALUES ('solicitud', ?, ?, ?)",
-            [solicitudActual.id, 
+            "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, modo, mensaje) VALUES ('solicitud', ?, ?, ?, ?)",
+            [solicitudActual.id,
               solicitudActual.proveedor_id,
+              'proveedor',
               `El cliente ${solicitudActual.cli_nombre} canceló su solicitud para "${solicitudActual.servicio_titulo}"`
             ]
           );
@@ -429,8 +436,9 @@ exports.enviarMensaje = async (req, res, next) => {
       if (datos.length > 0) {
         const { nombre, apellido, titulo } = datos[0];
         const vistaPrevia = contenido.length > 80 ? `${contenido.slice(0, 80).trimEnd()}…` : contenido;
-        await query('INSERT INTO notificaciones (usuario_id, tipo, solicitud_id, mensaje) VALUES (?, ?, ?, ?)', [
+        await query('INSERT INTO notificaciones (usuario_id, modo, tipo, solicitud_id, mensaje) VALUES (?, ?, ?, ?, ?)', [
           destinatarioId,
+          destinatarioId === solicitud.cliente_id ? 'cliente' : 'proveedor',
           'mensaje',
           solicitud.id,
           `${solicitud.proveedor_id === req.usuarioId ? 'El proveedor' : 'El cliente'} ${nombre} ${apellido} te envió un mensaje sobre "${titulo}": "${vistaPrevia}"`,
