@@ -144,6 +144,9 @@ const db = {
   // Casi todas las bases MySQL gestionadas (Railway, Aiven, TiDB, PlanetScale...) exigen TLS. Con DB_SSL=true la
   // conexión se cifra y el certificado del servidor se VERIFICA siempre (nunca se desactiva la verificación).
   ssl: booleano('DB_SSL', false),
+  // Conexiones por instancia del backend. En un entorno sin servidor (Vercel) cada instancia abre su propio pool y
+  // pueden coexistir muchas: se recomienda 2 o 3 (DB_POOL_SIZE=3) para no agotar las conexiones de la base de datos.
+  poolSize: entero('DB_POOL_SIZE', 10, { min: 1, max: 50 }),
 };
 if (ESTRICTO) {
   requerida('DB_HOST');
@@ -217,6 +220,10 @@ const config = {
   trustProxy: entero('TRUST_PROXY', 0, { max: 10 }),
   // Redirige HTTP a HTTPS (requiere TRUST_PROXY para leer X-Forwarded-Proto).
   forceHttps: booleano('FORCE_HTTPS', false),
+  // Avisos en vivo (SSE). Mantienen una conexión abierta por usuario y viven en la memoria de UN proceso: no sirven en un
+  // entorno sin servidor (Vercel), donde la conexión se cortaría y se reabriría sin parar. Se apagan solos allí y la web
+  // consulta cada 30 segundos. Se puede forzar con AVISOS_EN_VIVO=true/false.
+  avisosEnVivo: booleano('AVISOS_EN_VIVO', !process.env.VERCEL),
 };
 
 if (config.forceHttps && config.trustProxy === 0) {

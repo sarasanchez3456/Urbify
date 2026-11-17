@@ -1,6 +1,8 @@
 # Guía de despliegue de Urbify (Vercel + backend + MySQL)
 
 > Preparada el 2026-11-12. Los precios y límites de los servicios cambian: **verifícalos en la página oficial antes de contratar** (se marca cada dato dudoso).
+> **Camino elegido para publicar (Vercel + TiDB + Gmail, todo gratis): [docs/DESPLIEGUE_VERCEL.md](DESPLIEGUE_VERCEL.md).** Esta guía queda como comparación de alternativas.
+
 
 ## Respuesta corta
 

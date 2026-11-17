@@ -7,6 +7,7 @@ const { NODE_ENV } = require('../config/env');
 const { enviarCorreo } = require('../utils/correo');
 const { plantillaCorreo } = require('../utils/plantillaCorreo');
 const { enTransaccion } = require('../utils/transaccion');
+const { mantenerVivo } = require('../utils/segundoPlano');
 const { generarCodigo, normalizarCodigo, hashDeCodigo, codigoCoincide } = require('../utils/codigoVerificacion');
 const { dominioPuedeRecibirCorreo } = require('../utils/dominioCorreo');
 const { normalizarTelefono, MENSAJE_TELEFONO } = require('../utils/telefono');
@@ -99,7 +100,7 @@ async function avisarCorreoYaRegistrado(correo, nombre) {
   await enviarCorreo({ to: correo, subject: 'Alguien intentó registrarse con tu correo en Urbify', html, text });
 }
 
-const enSegundoPlano = (promesa, contexto) => promesa.catch((err) => console.error(`${contexto}:`, err.message));
+const enSegundoPlano = (promesa, contexto) => mantenerVivo(promesa, contexto);
 
 exports.registrar = async (req, res, next) => {
   try {
@@ -268,16 +269,15 @@ exports.reenviarCodigo = async (req, res, next) => {
   }
   res.json({ mensaje: MENSAJE_CODIGO_ENVIADO, expira_minutos: VERIFICACION_EXPIRA_MIN });
 
-  try {
+  // Después de responder; mantenerVivo evita que Vercel congele la función antes de enviar el correo.
+  mantenerVivo((async () => {
     const [filas] = await query(
       'SELECT id, nombre FROM usuarios WHERE correo = ? AND activo = 1 AND correo_verificado = 0',
       [correo]
     );
     if (filas.length === 0) return;
     await enviarCodigoDeVerificacion(filas[0].id, correo, filas[0].nombre, { respetarEspera: true });
-  } catch (err) {
-    console.error('No se pudo reenviar el código de verificación:', err.message);
-  }
+  })(), 'No se pudo reenviar el código de verificación');
 };
 
 exports.login = async (req, res, next) => {
@@ -368,7 +368,8 @@ exports.olvidoContrasena = async (req, res, next) => {
 
   res.json({ mensaje: 'Si el correo está registrado, recibirás un código para restablecer tu contraseña' });
 
-  try {
+  // Después de responder; mantenerVivo evita que Vercel congele la función antes de enviar el correo.
+  mantenerVivo((async () => {
     const [usuarios] = await query('SELECT id, nombre FROM usuarios WHERE correo = ? AND activo = 1', [correo]);
     if (usuarios.length === 0) return;
 
@@ -401,9 +402,7 @@ exports.olvidoContrasena = async (req, res, next) => {
       html,
       text,
     });
-  } catch (err) {
-    console.error('Error en olvido de contraseña:', err.message);
-  }
+  })(), 'Error en olvido de contraseña');
 };
 
 // Paso 2: valida el código y cambia la contraseña. Cierra todas las sesiones abiertas de la cuenta.
