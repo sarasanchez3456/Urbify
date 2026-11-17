@@ -16,12 +16,14 @@ const DB = {
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   name: process.env.TEST_DB_NAME || 'urbify_test',
+  // Con DB_SSL=true (bases gestionadas como TiDB Cloud) la conexión va cifrada y el certificado se verifica.
+  ssl: process.env.DB_SSL === 'true' ? { minVersion: 'TLSv1.2', rejectUnauthorized: true } : undefined,
 };
 const PUERTO = Number(process.env.TEST_PORT || 4100);
 const URL_BASE = `http://127.0.0.1:${PUERTO}/api`;
 
 const conexionAdmin = () => mysql.createConnection({
-  host: DB.host, port: DB.port, user: DB.user, password: DB.password, multipleStatements: true, charset: 'utf8mb4',
+  host: DB.host, port: DB.port, user: DB.user, password: DB.password, multipleStatements: true, charset: 'utf8mb4', ssl: DB.ssl,
 });
 
 // Borra y vuelve a crear la base de pruebas con el esquema actual.
@@ -40,7 +42,7 @@ async function prepararBase(nombre = DB.name) {
 function abrirPool() {
   return mysql.createPool({
     host: DB.host, port: DB.port, user: DB.user, password: DB.password, database: DB.name,
-    waitForConnections: true, connectionLimit: 5, charset: 'utf8mb4', timezone: 'Z',
+    waitForConnections: true, connectionLimit: 5, charset: 'utf8mb4', timezone: 'Z', ssl: DB.ssl,
   });
 }
 
@@ -198,16 +200,29 @@ async function iniciarEntorno(extraEnv = {}) {
   return { pool, servidor, cerrar: async () => { await servidor.detener(); await pool.end(); } };
 }
 
-// Crea un trigger que hace fallar el INSERT en `tabla` cuando `condicion` es verdadera (usa NEW.<columna>).
+// Crea un trigger que hace fallar el INSERT en `tabla` cuando `condicion` es verdadera (usa NEW.<columna>). Devuelve null si el
+// motor no permite simularlo (TiDB con condición): la prueba debe omitirse.
 // Sirve para simular que una escritura secundaria falla y comprobar que todo se deshace. Devuelve `quitar()`.
 async function hacerFallar(pool, tabla, condicion = '1 = 1') {
   const nombre = `tg_falla_${tabla}`;
-  await pool.query(`DROP TRIGGER IF EXISTS ${nombre}`);
-  await pool.query(
-    `CREATE TRIGGER ${nombre} BEFORE INSERT ON ${tabla} FOR EACH ROW
-     BEGIN IF ${condicion} THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'fallo simulado por la prueba'; END IF; END`
-  );
-  return () => pool.query(`DROP TRIGGER IF EXISTS ${nombre}`);
+  try {
+    await pool.query(`DROP TRIGGER IF EXISTS ${nombre}`);
+    await pool.query(
+      `CREATE TRIGGER ${nombre} BEFORE INSERT ON ${tabla} FOR EACH ROW
+       BEGIN IF ${condicion} THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'fallo simulado por la prueba'; END IF; END`
+    );
+    return () => pool.query(`DROP TRIGGER IF EXISTS ${nombre}`);
+  } catch (err) {
+    // Motores sin triggers (TiDB): si TODAS las escrituras deben fallar, se renombra una columna que usa el INSERT del
+    // servidor: cada INSERT falla ("columna desconocida", un error que el servidor responde como 500) mientras las
+    // lecturas siguen funcionando, y la operación debe deshacerse igual. TiDB tampoco aplica las restricciones CHECK,
+    // así que no hay forma de fallar solo algunas filas: en ese caso se devuelve null y la prueba se omite.
+    if (!/syntax|not supported|unsupported/i.test(err.message)) throw err;
+    const columna = { auditoria: 'objeto' }[tabla];
+    if (condicion !== '1 = 1' || !columna) return null;
+    await pool.query(`ALTER TABLE ${tabla} RENAME COLUMN ${columna} TO ${columna}_falla_prueba`);
+    return () => pool.query(`ALTER TABLE ${tabla} RENAME COLUMN ${columna}_falla_prueba TO ${columna}`);
+  }
 }
 
 const contar = async (pool, sql, params = []) => Number((await pool.execute(sql, params))[0][0].n);
@@ -217,3 +232,10 @@ module.exports = {
   volverAdmin, crearServicio,
   fechaColombia, diaSemana, solicitar, solicitudEn, iniciarEntorno, hacerFallar, contar,
 };
+
+// ¿Es TiDB (y no MySQL)? Algunas pruebas simulan fallos con triggers o parten de una base antigua, y no aplican allí.
+async function esTiDB(pool) {
+  const [[fila]] = await pool.query('SELECT VERSION() AS v');
+  return /tidb/i.test(String(fila.v));
+}
+module.exports.esTiDB = esTiDB;
