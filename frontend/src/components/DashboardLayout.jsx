@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 
 import NotificationBell from './NotificationBell';
+import SelectorModo from './SelectorModo';
 import './DashboardLayout.css';
 
 export default function DashboardLayout({ children, titulo, subtitulo }) {
@@ -148,8 +149,9 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
                   >
                     <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
                       <p className="text-sm font-medium" style={{ color: 'oklch(0.25 0.06 240)' }}>{usuario?.nombre} {usuario?.apellido}</p>
-                      <p className="text-xs capitalize" style={{ color: 'oklch(0.45 0.03 240)' }}>{usuario?.rol}</p>
+                      <p className="text-xs capitalize" style={{ color: 'oklch(0.45 0.03 240)' }}>{usuario?.rol === 'admin' ? 'admin' : `modo ${usuario?.rol}`}</p>
                     </div>
+                    <SelectorModo onCambiado={() => { setProfileOpen(false); setSidebarOpen(false); }} />
                     <Link
                       to="/perfil"
                       onClick={() => setProfileOpen(false)}

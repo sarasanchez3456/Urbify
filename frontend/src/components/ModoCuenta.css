@@ -1,0 +1,174 @@
+/* Selector de modo cliente/proveedor y tarjeta "Ofrece tus servicios" */
+
+.modo-selector,
+.modo-oferta {
+  --modo-primary: oklch(0.40 0.18 255);
+  --modo-teal: oklch(0.72 0.13 200);
+  --modo-ink: oklch(0.25 0.06 240);
+  --modo-soft: oklch(0.40 0.04 240);
+  --modo-line: oklch(0.40 0.18 255 / 0.14);
+  --modo-bad: oklch(0.50 0.19 25);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.modo-selector {
+  padding: 12px 16px 14px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.modo-titulo {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--modo-soft);
+}
+
+.modo-grupo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: oklch(0.96 0.01 240);
+}
+
+.modo-opcion {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--modo-soft);
+  font: 600 0.82rem 'Plus Jakarta Sans', sans-serif;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.modo-opcion:hover:not(:disabled):not(.is-on) {
+  background: #fff;
+  color: var(--modo-ink);
+}
+
+.modo-opcion.is-on {
+  background: var(--modo-primary);
+  color: #fff;
+  box-shadow: 0 2px 8px oklch(0.40 0.18 255 / 0.28);
+}
+
+.modo-opcion:focus-visible,
+.modo-btn:focus-visible,
+.modo-input:focus-visible {
+  outline: 2px solid var(--modo-teal);
+  outline-offset: 2px;
+}
+
+.modo-opcion:disabled {
+  cursor: progress;
+  opacity: 0.75;
+}
+
+/* En pantallas angostas el texto largo no cabe en dos columnas: se usa la versión corta. */
+.modo-corto { display: none; }
+@media (max-width: 380px) {
+  .modo-largo { display: none; }
+  .modo-corto { display: inline; }
+}
+
+.modo-cargando {
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: modo-giro 0.7s linear infinite;
+}
+
+@keyframes modo-giro {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modo-cargando { animation: none; }
+  .modo-opcion { transition: none; }
+}
+
+.modo-estado,
+.modo-error {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.modo-estado { color: var(--modo-soft); }
+.modo-error { color: var(--modo-bad); font-weight: 600; }
+
+/* Tarjeta de Mi Perfil */
+.modo-oferta {
+  border: 1px solid var(--modo-line);
+}
+
+.modo-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.modo-campo {
+  display: grid;
+  gap: 6px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--modo-ink);
+}
+
+.modo-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--modo-line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font: 500 0.95rem 'Plus Jakarta Sans', sans-serif;
+  color: var(--modo-ink);
+  background: oklch(0.99 0.005 80);
+}
+
+.modo-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.modo-btn {
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 1px solid var(--modo-line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--modo-ink);
+  font: 600 0.9rem 'Plus Jakarta Sans', sans-serif;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.modo-btn:hover:not(:disabled) { background: oklch(0.96 0.01 240); }
+
+.modo-btn--primario {
+  background: var(--modo-primary);
+  border-color: var(--modo-primary);
+  color: #fff;
+}
+
+.modo-btn--primario:hover:not(:disabled) { background: oklch(0.34 0.18 255); }
+
+.modo-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modo-oferta > .modo-btn { margin-top: 14px; width: 100%; }

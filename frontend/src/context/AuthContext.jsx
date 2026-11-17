@@ -13,6 +13,17 @@ import {
 
 const AuthContext = createContext();
 
+// Una cuenta puede actuar como cliente o como proveedor (modo activo). Para que el resto de la app siga leyendo
+// `usuario.rol`, aquí `rol` pasa a ser el modo activo; el rol "admin" queda aparte. `esProveedor` indica si la
+// cuenta puede cambiar a modo proveedor. El servidor decide los permisos: esto solo ajusta lo que se muestra.
+export function normalizarUsuario(u) {
+  if (!u) return u;
+  if (u.rol === 'admin') return { ...u, esProveedor: false };
+  const esProveedor = Boolean(u.es_proveedor ?? u.puede_ser_proveedor ?? u.rol === 'proveedor');
+  const modo = u.modo_activo === 'cliente' || u.modo_activo === 'proveedor' ? u.modo_activo : u.rol;
+  return { ...u, rol: modo, esProveedor };
+}
+
 export function AuthProvider({ children }) {
   // Los datos del usuario solo viven en memoria; en el navegador únicamente se guarda el token.
   const [usuario, setUsuario] = useState(null);
@@ -28,7 +39,7 @@ export function AuthProvider({ children }) {
       return;
     }
     api.get('/auth/perfil')
-      .then((res) => setUsuario(res.data))
+      .then((res) => setUsuario(normalizarUsuario(res.data)))
       .catch((err) => {
         // 401 ya lo gestiona el interceptor (limpia el token y avisa). Un 404 significa que
         // el usuario ya no existe. Otros errores (red caída) conservan la sesión.
@@ -82,8 +93,9 @@ export function AuthProvider({ children }) {
 
   const iniciarSesion = useCallback((token, user) => {
     setToken(token);
-    setUsuario(user);
-    return user;
+    const normalizado = normalizarUsuario(user);
+    setUsuario(normalizado);
+    return normalizado;
   }, []);
 
   const login = useCallback(async (correo, contrasena) => {
@@ -103,6 +115,28 @@ export function AuthProvider({ children }) {
     return iniciarSesion(res.data.token, res.data.usuario);
   }, [iniciarSesion]);
 
+  // Vuelve a pedir el perfil con el token actual (después de cambiar de modo o de volverse proveedor).
+  const recargarPerfil = useCallback(async () => {
+    const res = await api.get('/auth/perfil');
+    const normalizado = normalizarUsuario(res.data);
+    setUsuario(normalizado);
+    return normalizado;
+  }, []);
+
+  // POST /auth/cambiar-modo { modo }: el servidor devuelve el token nuevo de ese modo y el anterior deja de valer.
+  const cambiarModo = useCallback(async (modo) => {
+    const res = await api.post('/auth/cambiar-modo', { modo });
+    if (res.data?.token) setToken(res.data.token);
+    return recargarPerfil();
+  }, [recargarPerfil]);
+
+  // POST /auth/ser-proveedor { oficio, categoria_id }: habilita la cuenta como proveedor sin verificar el correo otra vez.
+  const serProveedor = useCallback(async ({ oficio, categoriaId }) => {
+    const res = await api.post('/auth/ser-proveedor', { oficio, categoria_id: Number(categoriaId) });
+    if (res.data?.token) setToken(res.data.token);
+    return recargarPerfil();
+  }, [recargarPerfil]);
+
   // Logout local inmediato + revocación del token en el servidor (POST /auth/logout).
   // Si el servidor no responde, la sesión local igual queda cerrada.
   const logout = useCallback(() => {
@@ -119,8 +153,8 @@ export function AuthProvider({ children }) {
   const actualizarUsuario = useCallback((cambios) => setUsuario((u) => (u ? { ...u, ...cambios } : u)), []);
 
   const value = useMemo(
-    () => ({ usuario, cargando, login, registrar, verificarCorreo, logout, actualizarUsuario }),
-    [usuario, cargando, login, registrar, verificarCorreo, logout, actualizarUsuario]
+    () => ({ usuario, cargando, login, registrar, verificarCorreo, logout, actualizarUsuario, cambiarModo, serProveedor }),
+    [usuario, cargando, login, registrar, verificarCorreo, logout, actualizarUsuario, cambiarModo, serProveedor]
   );
 
   return (

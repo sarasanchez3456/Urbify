@@ -24,7 +24,8 @@ function RutaProtegida({ children, rol }) {
   const { usuario, cargando } = useAuth();
   if (cargando) return null;
   if (!usuario) return <Navigate to="/login" />;
-  if (rol && usuario.rol !== rol) return <Navigate to="/" />;
+  // Una ruta de otro modo (o de otro rol) lleva al inicio del modo activo, no a una pantalla en blanco.
+  if (rol && usuario.rol !== rol) return <Navigate to={inicioDe(usuario)} replace />;
   return children;
 }
 
