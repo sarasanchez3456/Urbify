@@ -345,6 +345,7 @@ Cuando se supera un límite la API responde `429` con `{"error", "bloqueado": tr
 | Recuperación de contraseña: pedir código, por IP y por correo (restablecer admite el triple) | `RATE_LIMIT_RECOVERY_IP_PER_HOUR` / `RATE_LIMIT_RECOVERY_EMAIL_PER_HOUR` | `10` / `3` por hora |
 | Verificación de correo, intentos de código: por IP / por correo | `RATE_LIMIT_VERIFY_IP_PER_HOUR` / `RATE_LIMIT_VERIFY_EMAIL_PER_HOUR` | `30` / `10` por hora |
 | Envío de códigos (registro y reenvío): por IP / por correo | `RATE_LIMIT_SEND_CODE_IP_PER_HOUR` / `RATE_LIMIT_SEND_CODE_EMAIL_PER_HOUR` | `15` / `5` por hora |
+| Doble modo, por usuario: cambios de modo / activaciones como proveedor | `RATE_LIMIT_MODE_SWITCH_PER_HOUR` / `RATE_LIMIT_BECOME_PROVIDER_PER_HOUR` | `30` / `10` por hora |
 | Login, por IP (cualquier intento) | `RATE_LIMIT_LOGIN_IP` | `30` por ventana |
 | Login, intentos **fallidos** a una misma cuenta desde una misma IP | `RATE_LIMIT_LOGIN_ACCOUNT_IP` | `5` por ventana |
 | Login, intentos **fallidos** a una cuenta desde cualquier IP | `RATE_LIMIT_LOGIN_ACCOUNT` | `20` por ventana |
@@ -385,6 +386,8 @@ Si el correo ya existe, ese usuario se promueve a `admin`. En una base de datos 
 | POST | `/api/auth/registro` | Registro (`cliente` o `proveedor`): crea la cuenta SIN verificar y envía un código al correo (no devuelve token) |
 | POST | `/api/auth/verificar-correo` | Verifica el código de 6 caracteres (MAYÚSCULAS y números) y abre la sesión |
 | POST | `/api/auth/reenviar-codigo` | Pide un código nuevo (espera de 1 minuto entre envíos) |
+| POST | `/api/auth/ser-proveedor` | Un cliente se habilita como proveedor con la misma cuenta (oficio y categoría); pasa a modo proveedor con token nuevo |
+| POST | `/api/auth/cambiar-modo` | Cambia el modo (cliente/proveedor) de ESTA sesión y devuelve token nuevo; las demás sesiones no se tocan |
 | POST | `/api/auth/login` | Inicio de sesión |
 | POST | `/api/auth/logout` | Cierra la sesión: elimina el token enviado en `Authorization: Bearer` de `tokens_sesion`. Responde `200 {"mensaje"}`; después, ese token recibe `401` (web y app móvil deben llamarla antes de borrar el token local) |
 | POST | `/api/auth/olvido-contrasena` | Envía un código de 6 dígitos al correo (respuesta genérica); ver [`docs/RUTAS_MOVIL.md`](docs/RUTAS_MOVIL.md) |

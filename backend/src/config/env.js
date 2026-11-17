@@ -191,6 +191,9 @@ const rateLimit = {
   verificacionCorreo: entero('RATE_LIMIT_VERIFY_EMAIL_PER_HOUR', 10, { min: 1 }),
   envioCodigoIp: entero('RATE_LIMIT_SEND_CODE_IP_PER_HOUR', 15, { min: 1 }),
   envioCodigoCorreo: entero('RATE_LIMIT_SEND_CODE_EMAIL_PER_HOUR', 5, { min: 1 }),
+  // Doble modo, por USUARIO y por hora: cambios de modo y activaciones como proveedor.
+  cambioModo: entero('RATE_LIMIT_MODE_SWITCH_PER_HOUR', 30, { min: 1 }),
+  serProveedor: entero('RATE_LIMIT_BECOME_PROVIDER_PER_HOUR', 10, { min: 1 }),
   // Intentos de login (cualquier resultado) por IP.
   loginIp: entero('RATE_LIMIT_LOGIN_IP', 30, { min: 1 }),
   // Intentos fallidos contra una misma cuenta desde una misma IP.

@@ -575,3 +575,120 @@ exports.eliminarUsuario = async (req, res, next) => {
     return next(err);
   }
 };
+
+// ── Doble modo: ser proveedor y cambiar de modo (#46) ──
+// Una cuenta puede ser cliente y proveedor a la vez. El modo vive en la SESIÓN (tokens_sesion.modo_activo): cada
+// dispositivo puede estar en un modo distinto. usuarios.modo_activo guarda el modo con el que empieza el próximo
+// inicio de sesión. Ambas rutas exigen sesión válida (y por tanto correo verificado) y no aplican al administrador.
+
+const COLUMNAS_PERFIL = `id, nombre, apellido, correo, telefono, rol, es_proveedor, modo_activo, foto_url, direccion, latitud,
+                         longitud, oficio, categoria_id, fecha_creacion`;
+
+// Reemite el token de ESTA sesión con otro modo: se borra la fila del token anterior (deja de valer en el acto) y se
+// inserta la del nuevo con el MISMO vencimiento, así que cambiar de modo no alarga la sesión. Las sesiones de otros
+// dispositivos no se tocan. La fila se bloquea (FOR UPDATE): dos cambios a la vez con el mismo token no pueden tener
+// éxito los dos; el segundo ve que ese token ya no existe.
+async function reemitirSesion(conn, { usuarioId, tokenActual, modo }) {
+  const [filas] = await conn.execute(
+    `SELECT expira_en, TIMESTAMPDIFF(SECOND, NOW(), expira_en) AS restantes
+       FROM tokens_sesion WHERE token = ? AND usuario_id = ? AND expira_en > NOW() FOR UPDATE`,
+    [tokenActual, usuarioId]
+  );
+  if (filas.length === 0) throw new Error('SESION_CAMBIADA');
+  const token = jwt.sign(
+    { id: usuarioId },
+    process.env.JWT_SECRET,
+    { expiresIn: Math.max(1, Number(filas[0].restantes)), jwtid: crypto.randomUUID() }
+  );
+  await conn.execute('DELETE FROM tokens_sesion WHERE token = ? AND usuario_id = ?', [tokenActual, usuarioId]);
+  await conn.execute(
+    'INSERT INTO tokens_sesion (usuario_id, token, modo_activo, expira_en) VALUES (?, ?, ?, ?)',
+    [usuarioId, token, modo, filas[0].expira_en]
+  );
+  return token;
+}
+
+const respuestaDeModo = async (usuarioId, modo) => {
+  const [filas] = await query(`SELECT ${COLUMNAS_PERFIL} FROM usuarios WHERE id = ?`, [usuarioId]);
+  return { ...presentarUsuario(filas[0]), modo_activo: modo };
+};
+
+const SESION_CAMBIADA = { error: 'Token inválido o expirado' };
+
+// Un cliente se habilita como proveedor (oficio y categoría) con la MISMA cuenta: no se vuelve a verificar el correo.
+// La sesión que lo pide pasa a modo proveedor con un token nuevo.
+exports.serProveedor = async (req, res, next) => {
+  try {
+    if (req.usuarioRol === 'admin') {
+      return res.status(403).json({ error: 'El administrador no puede ofrecer servicios' });
+    }
+    const oficio = String(req.body.oficio).trim();
+    const categoriaId = req.body.categoria_id;
+
+    const [categoria] = await query('SELECT id FROM categorias WHERE id = ?', [categoriaId]);
+    if (categoria.length === 0) return res.status(400).json({ error: 'La categoría no existe' });
+
+    let token;
+    try {
+      token = await enTransaccion(async (conn) => {
+        // `es_proveedor = 0` en el WHERE: dos activaciones a la vez no pueden tener éxito las dos.
+        const [r] = await conn.execute(
+          `UPDATE usuarios SET es_proveedor = 1, oficio = ?, categoria_id = ?, modo_activo = 'proveedor'
+            WHERE id = ? AND activo = 1 AND es_proveedor = 0`,
+          [oficio, categoriaId, req.usuarioId]
+        );
+        if (r.affectedRows !== 1) throw new Error('YA_ES_PROVEEDOR');
+        return reemitirSesion(conn, { usuarioId: req.usuarioId, tokenActual: req.token, modo: 'proveedor' });
+      });
+    } catch (err) {
+      if (err.message === 'YA_ES_PROVEEDOR') return res.status(409).json({ error: 'Tu cuenta ya puede ofrecer servicios' });
+      if (err.message === 'SESION_CAMBIADA') return res.status(401).json(SESION_CAMBIADA);
+      throw err;
+    }
+
+    res.json({
+      mensaje: 'Tu cuenta ya puede ofrecer servicios',
+      token,
+      usuario: await respuestaDeModo(req.usuarioId, 'proveedor'),
+    });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+// Cambia el modo de ESTA sesión y devuelve el token nuevo; el anterior deja de servir. `proveedor` solo si la cuenta
+// está habilitada. Pedir el modo en el que ya estás no hace nada (se conserva el mismo token).
+exports.cambiarModo = async (req, res, next) => {
+  try {
+    if (req.usuarioRol === 'admin') {
+      return res.status(403).json({ error: 'El administrador no tiene modos de cuenta' });
+    }
+    const modo = req.body.modo;
+
+    const [cuenta] = await query('SELECT es_proveedor FROM usuarios WHERE id = ? AND activo = 1', [req.usuarioId]);
+    if (cuenta.length === 0) return res.status(401).json(SESION_CAMBIADA);
+    if (modo === 'proveedor' && !cuenta[0].es_proveedor) {
+      return res.status(403).json({ error: 'Tu cuenta no está habilitada como proveedor. Actívala primero desde tu perfil.' });
+    }
+    if (modo === req.usuarioModo) {
+      return res.json({ mensaje: `Ya estás en modo ${modo}`, token: req.token, usuario: await respuestaDeModo(req.usuarioId, modo) });
+    }
+
+    let token;
+    try {
+      token = await enTransaccion(async (conn) => {
+        const nuevo = await reemitirSesion(conn, { usuarioId: req.usuarioId, tokenActual: req.token, modo });
+        // Con este modo empezará el próximo inicio de sesión.
+        await conn.execute('UPDATE usuarios SET modo_activo = ? WHERE id = ?', [modo, req.usuarioId]);
+        return nuevo;
+      });
+    } catch (err) {
+      if (err.message === 'SESION_CAMBIADA') return res.status(401).json(SESION_CAMBIADA);
+      throw err;
+    }
+
+    res.json({ mensaje: `Ahora estás en modo ${modo}`, token, usuario: await respuestaDeModo(req.usuarioId, modo) });
+  } catch (err) {
+    return next(err);
+  }
+};
