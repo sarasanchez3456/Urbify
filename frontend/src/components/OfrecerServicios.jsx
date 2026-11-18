@@ -60,7 +60,7 @@ export default function OfrecerServicios() {
   };
 
   return (
-    <div className="pf-card modo-oferta">
+    <div className="pf-card modo-oferta" data-tour="perfil-cliente-ser-proveedor">
       <h3>Ofrece tus servicios</h3>
       <p className="pf-sd">
         Usa la misma cuenta para recibir solicitudes. Podrás cambiar entre modo cliente y modo proveedor cuando quieras.
