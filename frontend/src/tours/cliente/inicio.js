@@ -1,20 +1,24 @@
+import { Bell, ClipboardList, Compass, LayoutDashboard, Search, Sparkles, UserRound } from 'lucide-react';
 import { crearTour } from '../crearTour';
 
 const pasos = [
   {
     selector: '[data-tour="cliente-bienvenida"]',
+    icono: Sparkles,
     titulo: 'Bienvenido a Urbify',
     descripcion: 'Te mostraremos rápidamente cómo encontrar profesionales y administrar tus servicios.',
     lado: 'bottom',
   },
   {
     selector: '[data-tour="cliente-buscador"]',
+    icono: Search,
     titulo: 'Busca un servicio',
     descripcion: 'Escribe el servicio que necesitas para encontrar profesionales disponibles.',
     lado: 'bottom',
   },
   {
     selector: '[data-tour="nav-mis-solicitudes"]',
+    icono: ClipboardList,
     titulo: 'Mis Solicitudes',
     descripcion: 'Revisa el estado y los detalles de los servicios que has solicitado.',
     lado: 'right',
@@ -22,6 +26,7 @@ const pasos = [
   },
   {
     selector: '[data-tour="nav-buscar-servicios"]',
+    icono: Compass,
     titulo: 'Buscar Servicios',
     descripcion: 'Explora profesionales y servicios para encontrar la ayuda que necesitas.',
     lado: 'right',
@@ -29,18 +34,21 @@ const pasos = [
   },
   {
     selector: '[data-tour="notificaciones"]',
+    icono: Bell,
     titulo: 'Notificaciones',
     descripcion: 'Consulta aquí las actualizaciones importantes de tus servicios.',
     lado: 'bottom',
   },
   {
     selector: '[data-tour="perfil-usuario"]',
+    icono: UserRound,
     titulo: 'Mi Perfil',
     descripcion: 'Desde aquí puedes ver y actualizar la información de tu cuenta.',
     lado: 'bottom',
   },
   {
     selector: '[data-tour="navegacion-principal"]',
+    icono: LayoutDashboard,
     titulo: 'Navegación principal',
     descripcion: 'Desde este menú puedes acceder a las principales funciones de Urbify.',
     lado: 'right',
@@ -51,9 +59,10 @@ const pasos = [
 export function iniciarTourInicioCliente({ controlarSidebar = () => Promise.resolve() } = {}) {
   const pasosDisponibles = pasos
     .filter(({ selector }) => document.querySelector(selector))
-    .map(({ selector, titulo, descripcion, lado, requiereSidebar = false }) => ({
+    .map(({ selector, titulo, descripcion, lado, requiereSidebar = false, icono }) => ({
       element: selector,
       requiereSidebar,
+      icono,
       popover: {
         title: titulo,
         description: descripcion,
@@ -90,6 +99,7 @@ export function iniciarTourInicioCliente({ controlarSidebar = () => Promise.reso
   }));
 
   const tour = crearTour(pasosConNavegacion, {
+    iconos: pasosConNavegacion.map(({ icono }) => icono),
     onDestroyed: () => {
       controlarSidebar(false);
     },
