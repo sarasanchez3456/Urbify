@@ -1,8 +1,7 @@
 import { Link } from 'react-router-dom';
 import './Legal.css';
 
-// Páginas legales y de contacto (issue #75). El texto es un BORRADOR de relleno: el equipo debe aprobar la
-// versión definitiva (en especial la de privacidad, que suele apoyarse en la Ley 1581 de 2012).
+// Páginas legales y de contacto (issue #75).
 // Mismo correo que usa el backend para enviar las notificaciones (EMAIL_FROM por defecto).
 const CORREO_CONTACTO = 'notificaciones@urbify.app';
 
@@ -10,9 +9,6 @@ function PaginaLegal({ titulo, children }) {
   return (
     <article className="lg" aria-labelledby="lg-titulo">
       <h1 id="lg-titulo">{titulo}</h1>
-      <p className="lg-borrador" role="note">
-        Borrador: este texto es provisional hasta que el equipo apruebe la versión definitiva.
-      </p>
       {children}
       <p className="lg-volver">
         <Link to="/">Volver al inicio</Link>
@@ -36,11 +32,16 @@ export function Terminos() {
       </p>
       <h2>3. Solicitudes y cancelaciones</h2>
       <p>
-        Las solicitudes pasan por estados (pendiente, aceptada, en proceso, completada o cancelada). [Pendiente: reglas
-        de cancelación y reprogramación.]
+        Las solicitudes pasan por estados (pendiente, aceptada, en proceso, completada o cancelada). Puedes cancelar una
+        solicitud mientras esté pendiente o aceptada, es decir, antes de que empiece el servicio. En esos mismos estados,
+        cliente y proveedor pueden proponer una nueva fecha (reprogramación), que la otra parte acepta o rechaza. Procura
+        avisar con tiempo para no afectar el trabajo de la otra persona.
       </p>
       <h2>4. Calificaciones</h2>
-      <p>Las calificaciones deben ser honestas y respetuosas. [Pendiente: reglas de moderación.]</p>
+      <p>
+        Las calificaciones deben ser honestas y respetuosas, y basarse en un servicio realmente prestado. Podemos retirar
+        las que incluyan insultos, datos personales de terceros o contenido ajeno al servicio.
+      </p>
       <h2>5. Cambios en estos términos</h2>
       <p>Podemos actualizar estos términos y avisaremos dentro de la plataforma.</p>
     </PaginaLegal>
@@ -56,8 +57,9 @@ export function Privacidad() {
       <p>Para crear tu cuenta, mostrarte profesionales cercanos, gestionar tus solicitudes y enviarte avisos del servicio.</p>
       <h2>3. Quién los ve</h2>
       <p>
-        Tu teléfono y tu dirección solo se comparten con la otra parte de una solicitud en curso. [Pendiente: detalle de
-        proveedores de correo y mapas.]
+        Tu teléfono y tu dirección solo se comparten con la otra parte de una solicitud en curso. Para funcionar usamos
+        servicios de terceros, como el envío de correos (códigos de verificación y avisos) y los mapas para ubicar
+        direcciones; solo reciben los datos necesarios para esa tarea. No vendemos tus datos.
       </p>
       <h2>4. Tus derechos</h2>
       <p>

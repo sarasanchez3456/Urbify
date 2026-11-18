@@ -27,10 +27,11 @@ describe('páginas legales', () => {
     ['Términos y condiciones', Terminos],
     ['Política de privacidad', Privacidad],
     ['Contacto', Contacto],
-  ])('%s tiene su título y avisa que es un borrador', (titulo, Pagina) => {
-    enRuta(<Pagina />);
+  ])('%s tiene su título y no deja textos pendientes', (titulo, Pagina) => {
+    const { container } = enRuta(<Pagina />);
     expect(screen.getByRole('heading', { level: 1, name: titulo })).toBeTruthy();
-    expect(screen.getByRole('note').textContent).toMatch(/borrador/i);
+    // "pendiente" también es un estado de las solicitudes, así que se buscan los marcadores entre corchetes.
+    expect(container.textContent).not.toMatch(/\[|borrador|por definir/i);
   });
 
   it('Contacto muestra el correo como enlace mailto', () => {
