@@ -23,6 +23,14 @@
 
 .lg p { margin: 0 0 10px; }
 
+.lg ul {
+  margin: 0 0 12px;
+  padding-left: 1.4rem;
+  list-style: disc;
+}
+
+.lg li { margin-bottom: 4px; }
+
 .lg-borrador {
   padding: 10px 14px;
   border: 1px solid oklch(0.80 0.12 85);

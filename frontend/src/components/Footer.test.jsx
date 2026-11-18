@@ -38,4 +38,17 @@ describe('páginas legales', () => {
     const enlace = screen.getByRole('link', { name: 'notificaciones@urbify.app' });
     expect(enlace.getAttribute('href')).toBe('mailto:notificaciones@urbify.app');
   });
+
+  it('Contacto pide detalle del problema e indica el horario', () => {
+    enRuta(<Contacto />);
+    expect(screen.getByText(/con el mayor detalle posible/i)).toBeTruthy();
+    expect(screen.getByText(/lunes a viernes, de 8:00 a\. m\. a 6:00 p\. m\./i)).toBeTruthy();
+  });
+
+  it('Privacidad cita la Ley 1581 de 2012 y el canal para ejercer los derechos', () => {
+    enRuta(<Privacidad />);
+    expect(screen.getByText(/Ley 1581 de 2012/)).toBeTruthy();
+    expect(screen.getByText(/Superintendencia de Industria y Comercio/)).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'notificaciones@urbify.app' })).toBeTruthy();
+  });
 });

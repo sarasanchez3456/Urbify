@@ -61,8 +61,23 @@ export function Privacidad() {
       </p>
       <h2>4. Tus derechos</h2>
       <p>
-        Puedes pedir que corrijamos o borremos tus datos. [Pendiente: canal y plazos, conforme a la Ley 1581 de 2012;
-        confirmar con el profesor.]
+        Tratamos tus datos personales conforme a la Ley 1581 de 2012 (régimen general de protección de datos personales
+        en Colombia) y sus decretos reglamentarios. Como titular de los datos tienes derecho a:
+      </p>
+      <ul>
+        <li>Conocer, actualizar y rectificar tus datos.</li>
+        <li>Pedir prueba de la autorización que nos diste para tratarlos.</li>
+        <li>Saber cómo los hemos usado.</li>
+        <li>Revocar la autorización y pedir que suprimamos tus datos, salvo que debamos conservarlos por una obligación legal.</li>
+        <li>
+          Presentar una queja ante la Superintendencia de Industria y Comercio si consideras que no respetamos tus
+          derechos.
+        </li>
+      </ul>
+      <p>
+        Para ejercer estos derechos escríbenos a <a href={`mailto:${CORREO_CONTACTO}`}>{CORREO_CONTACTO}</a> desde el
+        correo de tu cuenta, indicando tu nombre y qué necesitas. Responderemos las consultas en un máximo de 10 días
+        hábiles y los reclamos en un máximo de 15 días hábiles.
       </p>
     </PaginaLegal>
   );
@@ -75,7 +90,19 @@ export function Contacto() {
       <p>
         Correo de contacto: <a href={`mailto:${CORREO_CONTACTO}`}>{CORREO_CONTACTO}</a>
       </p>
-      <p>[Pendiente: horario de atención y si habrá formulario de contacto.]</p>
+      <h2>Para ayudarte más rápido</h2>
+      <p>Explica tu problema con el mayor detalle posible e incluye:</p>
+      <ul>
+        <li>Tu nombre y el correo de tu cuenta.</li>
+        <li>Qué pasó y en qué momento (fecha y hora aproximadas).</li>
+        <li>El servicio o la solicitud involucrada, si la hay.</li>
+        <li>Capturas de pantalla, si puedes.</li>
+      </ul>
+      <h2>Horario de atención</h2>
+      <p>
+        Atendemos de lunes a viernes, de 8:00 a. m. a 6:00 p. m. (hora de Colombia). Respondemos en un máximo de 2 días
+        hábiles.
+      </p>
     </PaginaLegal>
   );
 }
