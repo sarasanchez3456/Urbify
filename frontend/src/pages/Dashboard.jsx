@@ -104,7 +104,7 @@ export default function Dashboard() {
   return (
     <DashboardLayout>
       <div className="in">
-        <header className="in-cabecera">
+        <header className="in-cabecera" data-tour="cliente-bienvenida">
           <p>{fechaDeHoy()}</p>
           <h2>{saludo()}{primerNombre ? `, ${primerNombre}` : ''}</h2>
         </header>
@@ -115,7 +115,7 @@ export default function Dashboard() {
         {estado === 'listo' && esCliente && (
           <div className="in-grid">
             <div className="in-columna">
-              <section className="in-tarjeta in-buscar" aria-label="Buscar un servicio">
+              <section className="in-tarjeta in-buscar" aria-label="Buscar un servicio" data-tour="cliente-buscador">
                 <h2>¿Qué necesitas hoy?</h2>
                 <form onSubmit={buscar}>
                   <label className="in-solo-lectores" htmlFor="in-q">Buscar un servicio</label>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -21,7 +21,10 @@ import {
 
 import NotificationBell from './NotificationBell';
 import SelectorModo from './SelectorModo';
+import BotonAyuda from './ayuda/BotonAyuda';
+import MenuAyuda from './ayuda/MenuAyuda';
 import './DashboardLayout.css';
+import './ayuda/Ayuda.css';
 
 export default function DashboardLayout({ children, titulo, subtitulo }) {
   const { usuario, logout } = useAuth();
@@ -29,6 +32,54 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const sidebarRef = useRef(null);
+  const sidebarObjetivoRef = useRef(false);
+
+  useEffect(() => {
+    sidebarObjetivoRef.current = sidebarOpen;
+  }, [sidebarOpen]);
+
+  const controlarSidebarTour = useCallback((debeAbrir) => {
+    if (!window.matchMedia('(max-width: 1023px)').matches || sidebarObjetivoRef.current === debeAbrir) {
+      return Promise.resolve();
+    }
+
+    sidebarObjetivoRef.current = debeAbrir;
+    const sidebar = sidebarRef.current;
+    if (!sidebar) {
+      setSidebarOpen(debeAbrir);
+      return Promise.resolve();
+    }
+
+    return new Promise((resolver) => {
+      let resuelto = false;
+      let timeoutRespaldo;
+      const terminar = () => {
+        if (resuelto) return;
+        resuelto = true;
+        window.clearTimeout(timeoutRespaldo);
+        sidebar.removeEventListener('transitionend', alTerminar);
+        sidebar.removeEventListener('transitioncancel', terminar);
+        resolver();
+      };
+      const alTerminar = (evento) => {
+        if (evento.target === sidebar && ['transform', 'translate'].includes(evento.propertyName)) terminar();
+      };
+
+      sidebar.addEventListener('transitionend', alTerminar);
+      sidebar.addEventListener('transitioncancel', terminar);
+      timeoutRespaldo = window.setTimeout(terminar, 500);
+      setSidebarOpen(debeAbrir);
+
+      requestAnimationFrame(() => {
+        const estilos = window.getComputedStyle(sidebar);
+        const duracion = parseFloat(estilos.transitionDuration) || 0;
+        const retraso = parseFloat(estilos.transitionDelay) || 0;
+        if (duracion + retraso === 0) requestAnimationFrame(terminar);
+      });
+    });
+  }, []);
 
   const isActive = (path) => location.pathname === path;
 
@@ -36,11 +87,11 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
     { path: '/admin', label: 'Panel de administración', icon: LayoutDashboard, roles: ['admin'] },
     { path: '/dashboard', label: 'Inicio', icon: LayoutDashboard, roles: ['cliente', 'proveedor'] },
     { path: '/perfil', label: 'Mi Perfil', icon: User, roles: ['cliente', 'proveedor', 'admin'] },
-    { path: '/mis-solicitudes', label: usuario?.rol === 'proveedor' ? 'Notificaciones' : 'Mis Solicitudes', icon: ClipboardList, roles: ['cliente', 'proveedor'] },
+    { path: '/mis-solicitudes', label: usuario?.rol === 'proveedor' ? 'Notificaciones' : 'Mis Solicitudes', icon: ClipboardList, roles: ['cliente', 'proveedor'], tourId: 'nav-mis-solicitudes' },
     { path: '/mis-servicios', label: 'Mis Servicios', icon: Wrench, roles: ['proveedor'] },
     { path: '/mi-agenda', label: 'Mi agenda', icon: CalendarDays, roles: ['proveedor'] },
     { path: '/ingresos', label: 'Billetera', icon: Wallet, roles: ['proveedor'] },
-    { path: '/buscar', label: 'Buscar Servicios', icon: Search, roles: ['cliente'] },
+    { path: '/buscar', label: 'Buscar Servicios', icon: Search, roles: ['cliente'], tourId: 'nav-buscar-servicios' },
   ].filter((item) => item.roles.includes(usuario?.rol));
 
   const handleLogout = () => {
@@ -55,6 +106,7 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
       )}
 
       <aside
+        ref={sidebarRef}
         className={`dl-aside fixed lg:static inset-y-0 left-0 z-50 w-64 flex flex-col transition-transform duration-300 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
@@ -64,7 +116,7 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
           <span className="dl-logo-texto">Urbify</span>
         </Link>
 
-        <nav className="dl-nav" aria-label="Menú principal">
+        <nav className="dl-nav" aria-label="Menú principal" data-tour="navegacion-principal">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -75,6 +127,7 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
                 onClick={() => setSidebarOpen(false)}
                 className={`dl-nav-link${active ? ' is-on' : ''}`}
                 aria-current={active ? 'page' : undefined}
+                data-tour={item.tourId}
               >
                 <Icon size={20} />
                 <span>{item.label}</span>
@@ -121,11 +174,32 @@ export default function DashboardLayout({ children, titulo, subtitulo }) {
             <NotificationBell />
 
             <div className="relative">
+              <BotonAyuda
+                abierto={helpOpen}
+                onClick={() => {
+                  setHelpOpen((abierto) => !abierto);
+                  setProfileOpen(false);
+                }}
+              />
+              <MenuAyuda
+                abierto={helpOpen}
+                onCerrar={() => setHelpOpen(false)}
+                usuario={usuario}
+                rutaActual={location.pathname}
+                controlarSidebarTour={controlarSidebarTour}
+              />
+            </div>
+
+            <div className="relative">
               <button
-                onClick={() => setProfileOpen(!profileOpen)}
+                onClick={() => {
+                  setProfileOpen((abierto) => !abierto);
+                  setHelpOpen(false);
+                }}
                 className="dl-perfil"
                 aria-haspopup="menu"
                 aria-expanded={profileOpen}
+                data-tour="perfil-usuario"
               >
                 <div className="dl-avatar">
                   {usuario?.nombre?.charAt(0)?.toUpperCase() || 'U'}
