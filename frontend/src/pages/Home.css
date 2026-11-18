@@ -577,8 +577,10 @@
   gap: 28px;
 }
 
-.footer-links span {
+.footer-links span,
+.footer-links a {
   font-family: 'Fira Sans', sans-serif;
+  text-decoration: none;
   font-size: 0.85rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
@@ -588,8 +590,14 @@
   transition: color 0.2s;
 }
 
-.footer-links span:hover {
+.footer-links span:hover,
+.footer-links a:hover {
   color: oklch(0.40 0.18 255);
+}
+
+.footer-links a:focus-visible {
+  outline: 3px solid oklch(0.72 0.13 200);
+  outline-offset: 4px;
 }
 
 .footer-copy {
