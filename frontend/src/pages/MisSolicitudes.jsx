@@ -32,7 +32,7 @@ function textoEstado(sol, esCliente) {
   }
 }
 
-function Fila({ sol, esCliente, ocupada, esPrimeraVisible, esPrimeraCalificable, onDetalle, onCalificar, onAccion,onCambio }) {
+function Fila({ sol, esCliente, ocupada, esPrimeraVisible, esPrimeraCalificable, onDetalle, onCalificar, onAccion,onCambio, onIniciar }) {
   const contraparte = esCliente
     ? `${sol.proveedor_nombre || ''} ${sol.proveedor_apellido || ''}`.trim()
     : `${sol.cliente_nombre || ''} ${sol.cliente_apellido || ''}`.trim();
