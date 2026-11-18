@@ -2,8 +2,8 @@ import { Link } from 'react-router-dom';
 import './Legal.css';
 
 // Páginas legales y de contacto (issue #75).
-// Mismo correo que usa el backend para enviar las notificaciones (EMAIL_FROM por defecto).
-const CORREO_CONTACTO = 'notificaciones@urbify.app';
+// Correo de contacto de Urbify (cuenta de Gmail del equipo).
+const CORREO_CONTACTO = 'urbify.notificaciones@gmail.com';
 
 function PaginaLegal({ titulo, children }) {
   return (
