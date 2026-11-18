@@ -13,6 +13,20 @@ const SECCIONES = [
 ];
 const POR_PAGINA = 10;
 const ROLES = { cliente: 'Cliente', proveedor: 'Proveedor', admin: 'Administrador' };
+
+// `rol` es solo cómo se registró la persona (no cambia). Con el doble modo, una cuenta registrada como cliente puede
+// además ofrecer servicios (`es_proveedor`): se muestran las dos etiquetas para no ocultar esa capacidad.
+const rolesDe = (u) => {
+  if (u?.rol === 'admin') return ['admin'];
+  if (u?.rol === 'cliente') return u.es_proveedor ? ['cliente', 'proveedor'] : ['cliente'];
+  return [u?.rol || 'cliente'];
+};
+const textoRoles = (u) => rolesDe(u).map((r) => ROLES[r]).join(' + ');
+const Etiquetas = ({ u }) => (
+  <span className="ad-etiquetas">
+    {rolesDe(u).map((r) => <span key={r} className={`ad-etiqueta ad-etiqueta--${r}`}>{ROLES[r]}</span>)}
+  </span>
+);
 const COLORES_ESTADO = {
   pendiente: 'oklch(0.80 0.14 85)', aceptada: 'oklch(0.62 0.15 250)', en_proceso: 'oklch(0.60 0.17 300)',
   completada: 'oklch(0.62 0.14 155)', cancelada: 'oklch(0.62 0.17 25)',
@@ -143,7 +157,7 @@ function Resumen({ ir }) {
         return (
           <div className="ad-pila">
             <div className="ad-tarjeta ad-kpis">
-              <div><small>Usuarios</small><b>{totalUsu}</b><span>{datos.usuarios_por_rol.cliente} clientes · {datos.usuarios_por_rol.proveedor} proveedores</span></div>
+              <div><small>Usuarios</small><b>{totalUsu}</b><span>{datos.usuarios_por_rol.cliente} clientes · {datos.cuentas_por_capacidad_y_modo.con_capacidad_proveedor} proveedores{datos.cuentas_por_capacidad_y_modo.con_ambos_modos > 0 ? ` (${datos.cuentas_por_capacidad_y_modo.con_ambos_modos} con ambos modos)` : ''}</span></div>
               <div><small>Servicios</small><b>{datos.servicios.total}</b><span>{datos.servicios.disponibles} disponibles</span></div>
               <div><small>Solicitudes</small><b>{totalSol}</b><span>{e.completada} completadas</span></div>
               <div><small>Calificación media</small><b>{datos.calificaciones.total ? String(datos.calificaciones.media).replace('.', ',') : '—'}</b><span>{datos.calificaciones.total} calificaciones</span></div>
@@ -220,7 +234,7 @@ function DetalleUsuario({ id, onCerrar, onCambio }) {
     <PanelLateral onCerrar={onCerrar} etiqueta="Detalle del usuario" ancho={480}>
       <div className="pl-cabecera">
         <div className="pl-cabecera-fila">
-          <span className={`ad-etiqueta ad-etiqueta--${datos?.rol || 'cliente'}`}>{ROLES[datos?.rol] || 'Usuario'}</span>
+          {datos ? <Etiquetas u={datos} /> : <span className="ad-etiqueta">Usuario</span>}
           <button type="button" className="pl-cerrar" onClick={onCerrar} aria-label="Cerrar" data-autofocus>×</button>
         </div>
         <h2 className="pl-titulo">{datos ? nombre(datos.nombre, datos.apellido) : 'Cargando...'}</h2>
@@ -244,7 +258,7 @@ function DetalleUsuario({ id, onCerrar, onCambio }) {
               <h3>Actividad</h3>
               <dl className="ad-datos">
                 <div><dt>Como cliente</dt><dd>{datos.solicitudes_como_cliente} solicitudes</dd></div>
-                {datos.rol === 'proveedor' && (
+                {datos.es_proveedor && (
                   <>
                     <div><dt>Como proveedor</dt><dd>{datos.solicitudes_como_proveedor} solicitudes</dd></div>
                     <div><dt>Servicios</dt><dd>{datos.servicios}</dd></div>
@@ -295,7 +309,10 @@ function Usuarios({ filtroInicial }) {
   const [abierto, setAbierto] = useState(null);
 
   const filtrados = useMemo(() => (datos || []).filter((u) => (
-    (!rol || (rol === 'sus' ? !u.activo : u.rol === rol))
+    (!rol || (rol === 'sus' ? !u.activo
+      : rol === 'proveedor' ? Boolean(u.es_proveedor) // incluye a quien se registró como cliente y ahora ofrece servicios
+        : rol === 'ambos' ? (u.rol === 'cliente' && Boolean(u.es_proveedor))
+          : u.rol === rol))
     && (!q || sinTildes(`${u.nombre} ${u.apellido} ${u.correo}`).includes(sinTildes(q)))
   )), [datos, rol, q]);
   const filas = filtrados.slice(pagina * POR_PAGINA, pagina * POR_PAGINA + POR_PAGINA);
@@ -305,9 +322,9 @@ function Usuarios({ filtroInicial }) {
       <div className="ad-tarjeta">
         <div className="ad-herramientas">
           <input className="ad-buscar" placeholder="Buscar por nombre o correo" aria-label="Buscar usuario" value={q} onChange={(e) => { setQ(e.target.value); setPagina(0); }} />
-          <button type="button" className="ad-btn" onClick={() => exportarCsv('usuarios.csv', ['Nombre', 'Correo', 'Teléfono', 'Rol', 'Estado', 'Registro'], filtrados.map((u) => [nombre(u.nombre, u.apellido), u.correo, u.telefono, ROLES[u.rol], u.activo ? 'Activo' : 'Suspendido', u.fecha_creacion]))}>Exportar CSV</button>
+          <button type="button" className="ad-btn" onClick={() => exportarCsv('usuarios.csv', ['Nombre', 'Correo', 'Teléfono', 'Rol', 'Estado', 'Registro'], filtrados.map((u) => [nombre(u.nombre, u.apellido), u.correo, u.telefono, textoRoles(u), u.activo ? 'Activo' : 'Suspendido', u.fecha_creacion]))}>Exportar CSV</button>
         </div>
-        <Chips etiqueta="Filtrar por rol" valor={rol} onElegir={(v) => { setRol(v); setPagina(0); }} opciones={[['', 'Todos'], ['cliente', 'Clientes'], ['proveedor', 'Proveedores'], ['admin', 'Administradores'], ['sus', 'Suspendidos']]} />
+        <Chips etiqueta="Filtrar por rol" valor={rol} onElegir={(v) => { setRol(v); setPagina(0); }} opciones={[['', 'Todos'], ['cliente', 'Clientes'], ['proveedor', 'Proveedores'], ['ambos', 'Con ambos modos'], ['admin', 'Administradores'], ['sus', 'Suspendidos']]} />
         {filas.length === 0 ? <p className="ad-vacio-interno">No hay usuarios con esos filtros.</p> : (
           <div className="ad-tabla-caja">
             <table>
@@ -321,7 +338,7 @@ function Usuarios({ filtroInicial }) {
                         <span><b>{nombre(u.nombre, u.apellido)}</b><small>{u.correo}</small></span>
                       </button>
                     </td>
-                    <td><span className={`ad-etiqueta ad-etiqueta--${u.rol}`}>{ROLES[u.rol]}</span></td>
+                    <td><Etiquetas u={u} /></td>
                     <td className="ad-num">{u.telefono || '—'}</td>
                     <td><span className={`ad-est${u.activo ? '' : ' is-no'}`}><i />{u.activo ? 'Activo' : 'Suspendido'}</span></td>
                     <td className="ad-suave">{fechaRelativa(u.fecha_creacion)}</td>

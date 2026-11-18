@@ -1,0 +1,2 @@
+# El script de Docker se ejecuta en Linux: necesita finales de línea LF aunque Git esté en Windows.
+*.sh text eol=lf

@@ -18,8 +18,12 @@ const migrar = () => spawnSync(process.execPath, ['src/scripts/migrate.js'], {
 
 test('migraciones sobre una base existente (MySQL real)', async (t) => {
   await prepararBase(NOMBRE);
-  const conn = await mysql.createConnection({ host: DB.host, port: DB.port, user: DB.user, password: DB.password, database: NOMBRE, multipleStatements: true, charset: 'utf8mb4' });
+  const conn = await mysql.createConnection({ host: DB.host, port: DB.port, user: DB.user, password: DB.password, database: NOMBRE, multipleStatements: true, charset: 'utf8mb4', ssl: DB.ssl });
   t.after(async () => { await conn.query(`DROP DATABASE IF EXISTS \`${NOMBRE}\``); await conn.end(); });
+  // TiDB no permite borrar columnas que están en un índice compuesto: no se puede armar la "base antigua" de esta prueba. En TiDB
+  // la base siempre nace con el esquema actual, así que migrar una base antigua no aplica.
+  const [[version]] = await conn.query('SELECT VERSION() AS v');
+  if (/tidb/i.test(String(version.v))) return t.skip('no aplica a TiDB (la base nace con el esquema actual)');
 
   // ── Se deja la base "como era antes": sin las tablas, columnas, índices y claves foráneas que se agregaron después.
   const [fks] = await conn.query(
@@ -27,6 +31,9 @@ test('migraciones sobre una base existente (MySQL real)', async (t) => {
       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'notificaciones' AND COLUMN_NAME = 'solicitud_id' AND REFERENCED_TABLE_NAME = 'solicitudes'`, [NOMBRE]);
   for (const { n } of fks) await conn.query(`ALTER TABLE notificaciones DROP FOREIGN KEY \`${n}\``);
   await conn.query('DROP INDEX idx_notificaciones_solicitud ON notificaciones');
+  // Algunos motores (TiDB) no dejan borrar una columna que forma parte de un índice compuesto: primero el índice.
+  // (En MySQL ese índice también sostiene una clave foránea y no se puede borrar solo: se ajusta al borrar la columna.)
+  await conn.query('DROP INDEX idx_notificaciones_usuario_modo ON notificaciones').catch(() => {});
   await conn.query('ALTER TABLE notificaciones DROP COLUMN tipo, DROP COLUMN solicitud_id, DROP COLUMN modo');
   await conn.query('ALTER TABLE usuarios DROP CHECK chk_usuarios_modo_activo');
   await conn.query('DROP INDEX idx_usuarios_proveedor_activo ON usuarios');

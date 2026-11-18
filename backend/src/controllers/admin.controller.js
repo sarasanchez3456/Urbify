@@ -18,6 +18,7 @@ exports.resumen = async (req, res, next) => {
       query('SELECT rol, COUNT(*) AS total FROM usuarios GROUP BY rol'),
       query(`SELECT
                COALESCE(SUM(es_proveedor = 1), 0) AS con_capacidad_proveedor,
+               COALESCE(SUM(rol = 'cliente' AND es_proveedor = 1), 0) AS con_ambos_modos,
                COALESCE(SUM(modo_activo = 'cliente'), 0) AS en_modo_cliente,
                COALESCE(SUM(modo_activo = 'proveedor'), 0) AS en_modo_proveedor,
                COALESCE(SUM(rol = 'admin'), 0) AS administradores
@@ -55,6 +56,8 @@ exports.resumen = async (req, res, next) => {
       // distingue capacidades y modo efectivo sin cambiar ese contrato.
       cuentas_por_capacidad_y_modo: {
         con_capacidad_proveedor: Number(cuentas.con_capacidad_proveedor),
+        // Cuentas registradas como cliente que además ofrecen servicios (tienen los dos modos).
+        con_ambos_modos: Number(cuentas.con_ambos_modos),
         en_modo_cliente: Number(cuentas.en_modo_cliente),
         en_modo_proveedor: Number(cuentas.en_modo_proveedor),
         administradores: Number(cuentas.administradores),

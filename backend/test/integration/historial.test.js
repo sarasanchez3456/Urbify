@@ -31,9 +31,10 @@ test('historial y cambio de estado atómicos (API real + MySQL)', async (t) => {
     assert.equal(await filasHistorial(id), 4);
   });
 
-  await t.test('si falla el historial, el estado NO cambia (rollback) y luego se puede reintentar', async () => {
+  await t.test('si falla el historial, el estado NO cambia (rollback) y luego se puede reintentar', async (st) => {
     const id = await solicitudEn('pendiente', { cliente, proveedor, servicioId, fecha: fechaColombia(20, '13:00') });
     const quitar = await hacerFallar(pool, 'solicitud_historial', "NEW.estado_nuevo = 'aceptada'");
+    if (!quitar) return st.skip('este motor (TiDB) no permite fallar solo algunas filas');
     try {
       const r = await api('PUT', `/solicitudes/${id}/estado`, { token: proveedor.token, body: { estado: 'aceptada' } });
       assert.equal(r.status, 500);
@@ -48,9 +49,10 @@ test('historial y cambio de estado atómicos (API real + MySQL)', async (t) => {
     assert.equal(await filasHistorial(id), 2);
   });
 
-  await t.test('si falla el historial al crear, la solicitud tampoco se crea', async () => {
+  await t.test('si falla el historial al crear, la solicitud tampoco se crea', async (st) => {
     const antes = await contar(pool, 'SELECT COUNT(*) AS n FROM solicitudes');
     const quitar = await hacerFallar(pool, 'solicitud_historial', "NEW.estado_nuevo = 'pendiente'");
+    if (!quitar) return st.skip('este motor (TiDB) no permite fallar solo algunas filas');
     try {
       const r = await solicitar(cliente, servicioId, fechaColombia(21, '09:00'));
       assert.equal(r.status, 500);
@@ -63,11 +65,12 @@ test('historial y cambio de estado atómicos (API real + MySQL)', async (t) => {
     assert.equal(ok.status, 201);
   });
 
-  await t.test('si falla el historial al cancelar, se conserva también el pedido de cambio de fecha pendiente', async () => {
+  await t.test('si falla el historial al cancelar, se conserva también el pedido de cambio de fecha pendiente', async (st) => {
     const id = await solicitudEn('aceptada', { cliente, proveedor, servicioId, fecha: fechaColombia(22, '09:00') });
     const p = await api('POST', `/solicitudes/${id}/reprogramaciones`, { token: cliente.token, body: { fecha_propuesta: fechaColombia(23, '09:00') } });
     assert.equal(p.status, 201);
     const quitar = await hacerFallar(pool, 'solicitud_historial', "NEW.estado_nuevo = 'cancelada'");
+    if (!quitar) return st.skip('este motor (TiDB) no permite fallar solo algunas filas');
     try {
       const r = await api('PUT', `/solicitudes/${id}/estado`, { token: proveedor.token, body: { estado: 'cancelada' } });
       assert.equal(r.status, 500);

@@ -124,6 +124,8 @@ Antes de comenzar, asegúrate de tener instalados:
 
 > ¿Quieres publicar Urbify en internet (Vercel + backend + MySQL + correo)? Mira la [guía de despliegue](docs/DESPLIEGUE.md).
 >
+> ¿Ya está publicado y quieres **actualizarlo**? Un comando: `scripts/desplegar-vercel.ps1` (ver [actualizar el sitio](docs/DESPLIEGUE_VERCEL.md#actualizar-el-sitio-publicado)).
+>
 > ¿Vas a **presentar** Urbify? Un comando lo levanta todo y comprueba que funcione: [guía de presentación](docs/PRESENTACION.md) (`scripts/presentacion.ps1`).
 
 ### Paso 1 — Clonar el repositorio
@@ -300,6 +302,10 @@ Push a main
 - ✅ Que la **infraestructura Docker** está correctamente definida
 - ❌ Ningún error llega silenciosamente a la rama principal
 
+### 🧪 Pruebas automáticas del frontend
+
+`npm test` (desde `frontend/`) corre las pruebas con **Vitest** y un navegador simulado; no necesitan backend ni base de datos. Cubren la sesión del navegador (solo se guarda el token), el interceptor de Axios (token, 401, tokens vencidos), `AuthContext` (el registro no inicia sesión, la verificación sí, modo cliente/proveedor) y la pantalla del código de verificación (mayúsculas, 6 caracteres, errores, reenvío). Corren en el CI antes de compilar.
+
 ### 🧪 Pruebas automáticas del backend
 
 | Comando (desde `backend/`) | Qué ejecuta | Necesita MySQL |
@@ -330,6 +336,8 @@ El backend lee `backend/.env.<NODE_ENV>` (si existe) y luego `backend/.env`; las
 | `EMAIL_FROM` | opcional | **obligatoria** |
 | `GMAIL_USER`, `GMAIL_APP_PASSWORD` | opcionales | correo gratis con una cuenta de Gmail y su "contraseña de aplicación"; si están, se usan en lugar de Resend |
 | `RESEND_API_KEY` | opcional | alternativa a Gmail (con dominio propio verificado). Sin Gmail ni Resend no se envían correos (en development el código de verificación se imprime en la consola) |
+| `DB_SSL`, `DB_POOL_SIZE` | `false`, `10` | `DB_SSL=true` si la base exige TLS (TiDB, Aiven...); `DB_POOL_SIZE=3` en Vercel (un pool por instancia) |
+| `AVISOS_EN_VIVO` | `true` | se apaga solo en Vercel (la web consulta cada 30 s); `true`/`false` para forzarlo |
 | `BODY_LIMIT` | `100kb` | `100kb` (tamaño máximo del JSON) |
 | `TRUST_PROXY` | `0` | nº de proxys delante de la API (Nginx del compose = `1`) |
 | `FORCE_HTTPS` | `false` | `true` redirige a HTTPS y activa HSTS (requiere `TRUST_PROXY>=1`) |
@@ -384,7 +392,7 @@ Si el correo ya existe, ese usuario se promueve a `admin`. En una base de datos 
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | `/api/health` | Estado del servidor; con `?deep=1` consulta también la base de datos y responde `503` si no contesta |
+| GET | `/api/health` | Estado del servidor; con `?deep=1` consulta también la base de datos y responde `503` si no contesta. Limitado por IP como las lecturas públicas (`429` al superarlo) |
 | POST | `/api/auth/registro` | Registro (`cliente` o `proveedor`): crea la cuenta SIN verificar y envía un código al correo (no devuelve token) |
 | POST | `/api/auth/verificar-correo` | Verifica el código de 6 caracteres (MAYÚSCULAS y números) y abre la sesión |
 | POST | `/api/auth/reenviar-codigo` | Pide un código nuevo (espera de 1 minuto entre envíos) |

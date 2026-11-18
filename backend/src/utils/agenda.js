@@ -113,6 +113,12 @@ async function motivoNoDisponible(db, proveedorId, inicioMs, excluirSolicitudId 
 async function conReservaDeProveedor(proveedorId, fn) {
   const conn = await pool.getConnection();
   try {
+    // READ COMMITTED: cada lectura ve lo ya confirmado por otras transacciones. Así, una vez que esta transacción
+    // consigue el bloqueo del proveedor (la reserva anterior ya terminó), las consultas de agenda ven la hora que
+    // acaba de ocupar esa reserva. Con el aislamiento por defecto, motores como TiDB (instantánea tomada al empezar)
+    // no la veían y dos clientes podían reservar la misma hora. En MySQL el resultado es el mismo, porque el
+    // bloqueo del proveedor ya ordena las reservas. Solo afecta a la siguiente transacción de esta conexión.
+    await conn.query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
     await conn.beginTransaction();
     await conn.execute('SELECT id FROM usuarios WHERE id = ? FOR UPDATE', [proveedorId]);
     const resultado = await fn(conn);

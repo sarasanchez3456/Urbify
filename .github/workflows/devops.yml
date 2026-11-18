@@ -66,6 +66,11 @@ jobs:
           echo "✅ Sintaxis del backend válida"
         working-directory: ./backend
 
+      - name: "📜 Validar el contrato de la API (docs/openapi.yaml)"
+        # Un error en el contrato (YAML inválido, propiedades mal escritas, referencias rotas) hace fallar el CI.
+        # Las advertencias de estilo (por ejemplo, operaciones sin operationId) no lo bloquean.
+        run: npx --yes @redocly/cli@2.79.0 lint docs/openapi.yaml --extends minimal
+
       - name: "🧪 Pruebas unitarias del backend"
         run: npm test
         working-directory: ./backend
@@ -101,6 +106,11 @@ jobs:
 
       - name: "📦 Instalar dependencias del frontend"
         run: npm ci
+        working-directory: ./frontend
+
+      - name: "🧪 Pruebas del frontend (Vitest)"
+        # Sesión, interceptor de Axios, AuthContext y la pantalla del código de verificación. Un fallo bloquea el CI.
+        run: npm test
         working-directory: ./frontend
 
       - name: "🏗️ Compilar el frontend con Vite (build de producción)"

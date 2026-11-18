@@ -1,6 +1,8 @@
 # Guía de despliegue de Urbify (Vercel + backend + MySQL)
 
 > Preparada el 2026-11-12. Los precios y límites de los servicios cambian: **verifícalos en la página oficial antes de contratar** (se marca cada dato dudoso).
+> **Camino elegido para publicar (Vercel + TiDB + Gmail, todo gratis): [docs/DESPLIEGUE_VERCEL.md](DESPLIEGUE_VERCEL.md).** Esta guía queda como comparación de alternativas.
+
 
 ## Respuesta corta
 
@@ -96,6 +98,7 @@ La app usa `HashRouter` (`/#/buscar`), así que **no hace falta ninguna regla de
 - **Vercel Hobby:** solo uso personal y no comercial. Para cobrar a usuarios reales hay que pasar a Pro. Las variables `VITE_*` solo se leen al compilar.
 - **Render (gratis):** el servicio se duerme tras 15 minutos sin tráfico (la primera petición tarda cerca de 1 minuto) y **bloquea el SMTP**. Para quitar el bloqueo hay que pasar a un plan de pago (~7 USD/mes). Fuente: changelog de Render sobre puertos SMTP.
 - **MySQL gratis:** Aiven retiró su plan gratuito de MySQL; PlanetScale y Railway tienen información contradictoria. **Confirmar en sus páginas de precios** antes de decidir.
+- **TiDB Cloud Starter (probado el 2026-11-17):** capa gratis sin tarjeta, compatible con MySQL. Las pruebas de integración de Urbify pasan completas contra TiDB (120 de 124; 4 se omiten porque TiDB no tiene triggers ni aplica restricciones CHECK, o porque parte de una base antigua). Requiere `DB_SSL=true`, puerto `4000` y un usuario con prefijo (`xxxx.root`). Para correr las pruebas contra TiDB: `scripts` locales con las variables en un archivo FUERA del repositorio. Vigilar la cuota gratis (5 GiB por instancia); si se pasa, deja de aceptar conexiones.
 - **Dominio:** ~10–11 USD al año; es **pago anual**, no único.
 
 ## 6. Pendiente de decidir por el equipo

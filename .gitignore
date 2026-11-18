@@ -14,3 +14,7 @@ stitch_urbify_interactive_service_marketplace/
 # Logs de ejecución y scripts locales (pueden contener credenciales/datos)
 *.log
 backend/create_user.js
+
+# Copias de seguridad de la base de datos (llevan datos personales)
+respaldos/
+*.sql.gz
