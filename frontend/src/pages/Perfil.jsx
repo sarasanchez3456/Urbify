@@ -6,6 +6,7 @@ import DashboardLayout from '../components/DashboardLayout';
 import CambiarContrasena from '../components/CambiarContrasena';
 import OfrecerServicios from '../components/OfrecerServicios';
 import EliminarCuenta from '../components/EliminarCuenta';
+import CampoDireccion from '../components/CampoDireccion';
 import { logError } from '../utils/log';
 import { geocodificarDireccion, estaDentroDeColombia } from '../utils/colombia';
 import './Perfil.css';
@@ -54,6 +55,8 @@ export default function Perfil() {
   const rol = usuario?.rol;
 
   const [form, setForm] = useState(VACIO);
+  const [coordsGuardadas, setCoordsGuardadas] = useState(null);
+  const [coords, setCoords] = useState(null); // {lat, lng} de la dirección confirmada en el mapa
   const [guardado, setGuardado] = useState(VACIO); // lo que hay en el servidor, para detectar cambios
   const [cuenta, setCuenta] = useState({ correo: '', fecha_creacion: null });
   const [resumen, setResumen] = useState(null);
@@ -75,6 +78,9 @@ export default function Perfil() {
         const u = res.data;
         setForm(desdeUsuario(u));
         setGuardado(desdeUsuario(u));
+        const c = u.latitud != null && u.longitud != null ? { lat: Number(u.latitud), lng: Number(u.longitud) } : null;
+        setCoords(c);
+        setCoordsGuardadas(c);
         setCuenta({ correo: u.correo || '', fecha_creacion: u.fecha_creacion || null });
         setEstado('listo');
         // Perfiles con dirección pero sin ubicación en el mapa (guardados antes de este arreglo): se ubican solos,
@@ -84,7 +90,10 @@ export default function Perfil() {
           geocodificarDireccion(direccion)
             .then((encontrados) => {
               const primero = encontrados.find((r) => estaDentroDeColombia(r.lat, r.lon));
-              if (primero) return api.put('/auth/perfil', { direccion, latitud: primero.lat, longitud: primero.lon });
+              if (primero) {
+                setCoords({ lat: primero.lat, lng: primero.lon });
+                return api.put('/auth/perfil', { direccion, latitud: primero.lat, longitud: primero.lon });
+              }
               return null;
             })
             .catch((e) => logError(e));
@@ -169,6 +178,7 @@ export default function Perfil() {
 
   const descartar = () => {
     setForm(guardado);
+    setCoords(coordsGuardadas);
     setErrorGuardar('');
   };
 
@@ -178,12 +188,23 @@ export default function Perfil() {
     setGuardando(true);
     setErrorGuardar('');
     try {
-      // Si la dirección cambió se ubica en el mapa: así el profesional aparece en la búsqueda y en el mapa del cliente.
-      // Sin esto las coordenadas se quedaban en la dirección vieja (o vacías) y el mapa no lo mostraba.
+      // Un profesional debe tener su dirección confirmada en el mapa (elegida de la lista): sin eso los clientes no lo
+      // encuentran cerca. Un cliente puede dejarla vacía o sin confirmar (entonces se intenta ubicar sola).
       const direccion = form.direccion.trim();
       let ubicacion = {};
       let lugar = null;
-      if (direccion && direccion !== guardado.direccion) {
+      if (rol === 'proveedor' && !direccion) {
+        setErrorGuardar('Escribe tu dirección (calle, barrio y ciudad): los clientes cercanos te encuentran por ella.');
+        setGuardando(false);
+        return;
+      }
+      if (coords) {
+        ubicacion = { latitud: coords.lat, longitud: coords.lng };
+      } else if (direccion && rol === 'proveedor') {
+        setErrorGuardar('Elige tu dirección de la lista de opciones para ubicarla en el mapa. Escribe calle, barrio y ciudad.');
+        setGuardando(false);
+        return;
+      } else if (direccion && direccion !== guardado.direccion) {
         const encontrados = await geocodificarDireccion(direccion).catch(() => []);
         const primero = encontrados.find((r) => estaDentroDeColombia(r.lat, r.lon));
         if (primero) {
@@ -212,6 +233,11 @@ export default function Perfil() {
           };
       setForm(nuevo);
       setGuardado(nuevo);
+      if (u && u.latitud != null && u.longitud != null) {
+        const c = { lat: Number(u.latitud), lng: Number(u.longitud) };
+        setCoords(c);
+        setCoordsGuardadas(c);
+      }
       actualizarUsuario({ nombre: nuevo.nombre, apellido: nuevo.apellido });
       if (lugar === '') mostrarAviso('Perfil actualizado, pero no pudimos ubicar la dirección en el mapa. Escribe calle, barrio y ciudad.');
       else if (lugar) mostrarAviso(`Perfil actualizado. Te ubicamos en: ${lugar}`);
@@ -327,14 +353,15 @@ export default function Perfil() {
                   </div>
                   <div className="pf-field">
                     <label className="pf-label" htmlFor="pf-direccion">Dirección</label>
-                    <input
+                    <CampoDireccion
                       id="pf-direccion"
                       className="pf-input"
-                      maxLength={255}
-                      autoComplete="street-address"
-                      placeholder="Calle, barrio y ciudad (ej. Calle 52A #56-42, Medellín)"
                       value={form.direccion}
-                      onChange={cambiar('direccion')}
+                      onTexto={(t) => setForm((f) => ({ ...f, direccion: t }))}
+                      onUbicacion={(u) => setCoords(u)}
+                      lat={coords?.lat}
+                      lng={coords?.lng}
+                      requerida={rol === 'proveedor'}
                     />
                   </div>
                 </section>

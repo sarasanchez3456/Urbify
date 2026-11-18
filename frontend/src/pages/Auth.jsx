@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import RecuperarContrasena from '../components/RecuperarContrasena';
 import VerificarCorreo from '../components/VerificarCorreo';
+import CampoDireccion from '../components/CampoDireccion';
 import './Auth.css';
 
 export default function Auth() {
@@ -108,6 +109,10 @@ export default function Auth() {
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
+    if (regForm.rol === 'proveedor' && (!regForm.direccion.trim() || regForm.latitud == null)) {
+      setError('Como profesional debes escribir tu dirección (calle, barrio y ciudad) y elegirla de la lista, para que los clientes cercanos te encuentren en el mapa.');
+      return;
+    }
     setCargando(true);
     try {
       const datos = await registrar(regForm);
@@ -344,12 +349,14 @@ export default function Auth() {
                   </div>
                   <div className="auth-field">
                     <label htmlFor="reg_address"><MapPin size={14} /> Dirección</label>
-                    <input
+                    <CampoDireccion
                       id="reg_address"
-                      name="direccion"
-                      placeholder="Calle, barrio"
                       value={regForm.direccion}
-                      onChange={handleRegChange}
+                      onTexto={(t) => setRegForm((f) => ({ ...f, direccion: t }))}
+                      onUbicacion={(u) => setRegForm((f) => ({ ...f, latitud: u ? u.lat : undefined, longitud: u ? u.lng : undefined }))}
+                      lat={regForm.latitud}
+                      lng={regForm.longitud}
+                      requerida={regForm.rol === 'proveedor'}
                     />
                   </div>
                 </div>
