@@ -20,7 +20,7 @@ import AdminPanel from './pages/AdminPanel';
 
 const inicioDe = (usuario) => (usuario?.rol === 'admin' ? '/admin' : '/dashboard');
 
-function RutaProtegida({ children, rol }) {
+export function RutaProtegida({ children, rol }) {
   const { usuario, cargando } = useAuth();
   if (cargando) return null;
   if (!usuario) return <Navigate to="/login" />;
