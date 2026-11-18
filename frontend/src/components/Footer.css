@@ -1,0 +1,82 @@
+/* Pie de página público. Prefijo "ft-". */
+.ft {
+  --ft-p: oklch(0.40 0.18 255);
+  --ft-ink: oklch(0.25 0.06 240);
+  --ft-soft: oklch(0.42 0.04 240);
+  --ft-line: oklch(0.40 0.18 255 / 0.12);
+
+  position: relative;
+  z-index: 10;
+  margin-top: 48px;
+  padding: 32px clamp(20px, 4vw, 52px) 24px;
+  border-top: 1px solid var(--ft-line);
+  background: oklch(0.995 0.004 80 / 0.94);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.ft-contenido {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.ft-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+
+.ft-logo span:first-child { color: oklch(0.20 0.08 240); }
+.ft-logo span:last-child { color: var(--ft-p); }
+
+.ft-marca p {
+  max-width: 22rem;
+  margin: 8px 0 0;
+  color: var(--ft-soft);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.ft-enlaces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.ft-enlaces a {
+  padding: 8px 10px;
+  border-radius: 9px;
+  color: var(--ft-ink);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+}
+
+.ft-enlaces a:hover { background: oklch(0.40 0.18 255 / 0.08); color: var(--ft-p); }
+
+.ft-enlaces a:focus-visible,
+.ft-logo:focus-visible {
+  outline: 3px solid oklch(0.72 0.13 200);
+  outline-offset: 2px;
+}
+
+.ft-derechos {
+  max-width: 1120px;
+  margin: 24px auto 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--ft-line);
+  color: var(--ft-soft);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 640px) {
+  .ft-contenido { flex-direction: column; }
+  .ft-enlaces { flex-direction: column; width: 100%; }
+}

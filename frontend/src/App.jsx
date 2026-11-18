@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
+import { Footer } from './components/Footer';
 import { Background } from './components/Background';
 import { setOnUnauthorized } from './api/axios';
 
@@ -17,6 +18,7 @@ import NoEncontrada from './pages/NoEncontrada';
 import Ingresos from './pages/Ingresos';
 import Dashboard from './pages/Dashboard';
 import AdminPanel from './pages/AdminPanel';
+import { Terminos, Privacidad, Contacto } from './pages/Legal';
 
 const inicioDe = (usuario) => (usuario?.rol === 'admin' ? '/admin' : '/dashboard');
 
@@ -58,6 +60,9 @@ export default function App() {
           <Route path="/" element={usuario ? <Navigate to={inicioDe(usuario)} /> : <Home />} />
           <Route path="/login" element={<Auth />} />
           <Route path="/registro" element={<Auth />} />
+          <Route path="/terminos" element={<Terminos />} />
+          <Route path="/privacidad" element={<Privacidad />} />
+          <Route path="/contacto" element={<Contacto />} />
           <Route path="/buscar" element={<Buscar />} />
           {/* El mapa ahora vive dentro de Buscar */}
           <Route path="/mapa" element={<Navigate to="/buscar" replace />} />
@@ -125,6 +130,9 @@ export default function App() {
           <Route path="*" element={<NoEncontrada />} />
         </Routes>
       </main>
+
+      {/* La página de inicio ya trae su propio pie (con los mismos enlaces), así que no se repite ahí. */}
+      {!esDashboard && !isAuth && location.pathname !== '/' && <Footer />}
     </div>
   );
 }

@@ -1,0 +1,45 @@
+/* Páginas de términos, privacidad y contacto. Prefijo "lg-". */
+.lg {
+  max-width: 760px;
+  min-height: 60vh;
+  margin: 0 auto;
+  padding: 32px clamp(20px, 4vw, 32px) 24px;
+  color: oklch(0.32 0.05 240);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  line-height: 1.65;
+}
+
+.lg h1 {
+  margin: 0 0 12px;
+  color: oklch(0.25 0.06 240);
+  font: 700 clamp(1.8rem, 4vw, 2.4rem) 'Playfair Display', serif;
+}
+
+.lg h2 {
+  margin: 28px 0 6px;
+  color: oklch(0.25 0.06 240);
+  font: 700 1.15rem 'Playfair Display', serif;
+}
+
+.lg p { margin: 0 0 10px; }
+
+.lg-borrador {
+  padding: 10px 14px;
+  border: 1px solid oklch(0.80 0.12 85);
+  border-radius: 10px;
+  background: oklch(0.96 0.05 90);
+  color: oklch(0.38 0.08 70);
+  font-size: 0.88rem;
+}
+
+.lg-volver { margin-top: 28px; }
+
+.lg-volver a {
+  color: oklch(0.40 0.18 255);
+  font-weight: 600;
+}
+
+.lg-volver a:focus-visible {
+  outline: 3px solid oklch(0.72 0.13 200);
+  outline-offset: 2px;
+}
