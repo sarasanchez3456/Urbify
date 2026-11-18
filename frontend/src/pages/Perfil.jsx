@@ -6,6 +6,7 @@ import DashboardLayout from '../components/DashboardLayout';
 import CambiarContrasena from '../components/CambiarContrasena';
 import OfrecerServicios from '../components/OfrecerServicios';
 import { logError } from '../utils/log';
+import { geocodificarDireccion, estaDentroDeColombia } from '../utils/colombia';
 import './Perfil.css';
 
 const CAMPOS = ['nombre', 'apellido', 'telefono', 'direccion'];
@@ -74,6 +75,18 @@ export default function Perfil() {
         setGuardado(desdeUsuario(u));
         setCuenta({ correo: u.correo || '', fecha_creacion: u.fecha_creacion || null });
         setEstado('listo');
+        // Perfiles con dirección pero sin ubicación en el mapa (guardados antes de este arreglo): se ubican solos,
+        // para que el profesional aparezca en el mapa del cliente sin tener que volver a escribir su dirección.
+        const direccion = (u.direccion || '').trim();
+        if (direccion && (u.latitud == null || u.longitud == null)) {
+          geocodificarDireccion(direccion)
+            .then((encontrados) => {
+              const primero = encontrados.find((r) => estaDentroDeColombia(r.lat, r.lon));
+              if (primero) return api.put('/auth/perfil', { direccion, latitud: primero.lat, longitud: primero.lon });
+              return null;
+            })
+            .catch((e) => logError(e));
+        }
       })
       .catch((err) => {
         logError('Error al cargar perfil:', err);
@@ -149,7 +162,7 @@ export default function Perfil() {
   const mostrarAviso = (texto) => {
     setAviso(texto);
     clearTimeout(temporizadorAviso.current);
-    temporizadorAviso.current = setTimeout(() => setAviso(''), 2800);
+    temporizadorAviso.current = setTimeout(() => setAviso(''), texto.length > 30 ? 7000 : 2800);
   };
 
   const descartar = () => {
@@ -163,11 +176,27 @@ export default function Perfil() {
     setGuardando(true);
     setErrorGuardar('');
     try {
+      // Si la dirección cambió se ubica en el mapa: así el profesional aparece en la búsqueda y en el mapa del cliente.
+      // Sin esto las coordenadas se quedaban en la dirección vieja (o vacías) y el mapa no lo mostraba.
+      const direccion = form.direccion.trim();
+      let ubicacion = {};
+      let lugar = null;
+      if (direccion && direccion !== guardado.direccion) {
+        const encontrados = await geocodificarDireccion(direccion).catch(() => []);
+        const primero = encontrados.find((r) => estaDentroDeColombia(r.lat, r.lon));
+        if (primero) {
+          ubicacion = { latitud: primero.lat, longitud: primero.lon };
+          lugar = primero.display_name.split(',').slice(0, 3).join(',').trim();
+        } else {
+          lugar = '';
+        }
+      }
       const res = await api.put('/auth/perfil', {
         nombre: form.nombre.trim(),
         apellido: form.apellido.trim(),
         telefono: form.telefono.trim(),
-        direccion: form.direccion.trim(),
+        direccion,
+        ...ubicacion,
       });
       // El servidor devuelve el perfil guardado (con el teléfono normalizado): es la fuente de verdad.
       const u = res.data?.usuario;
@@ -182,7 +211,9 @@ export default function Perfil() {
       setForm(nuevo);
       setGuardado(nuevo);
       actualizarUsuario({ nombre: nuevo.nombre, apellido: nuevo.apellido });
-      mostrarAviso('Perfil actualizado');
+      if (lugar === '') mostrarAviso('Perfil actualizado, pero no pudimos ubicar la dirección en el mapa. Escribe calle, barrio y ciudad.');
+      else if (lugar) mostrarAviso(`Perfil actualizado. Te ubicamos en: ${lugar}`);
+      else mostrarAviso('Perfil actualizado');
     } catch (err) {
       logError('Error al actualizar perfil:', err);
       setErrorGuardar(err.response?.data?.error || 'No se pudo guardar el perfil. Intenta de nuevo.');
@@ -299,7 +330,7 @@ export default function Perfil() {
                       className="pf-input"
                       maxLength={255}
                       autoComplete="street-address"
-                      placeholder="Calle y barrio"
+                      placeholder="Calle, barrio y ciudad (ej. Calle 52A #56-42, Medellín)"
                       value={form.direccion}
                       onChange={cambiar('direccion')}
                     />

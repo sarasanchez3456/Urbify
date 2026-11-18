@@ -5,6 +5,9 @@ const { motivosDeColumna } = require('../utils/motivosCalificacion');
 const { errorDeDireccion } = require('../utils/direccion');
 const { conReservaDeProveedor, motivoNoDisponible, parsearFecha, aFechaMysqlUtc } = require('../utils/agenda');
 const { registrarHistorial } = require('../utils/historial');
+const { cancelarVencidas } = require('../utils/vencidas');
+
+const ANTICIPACION_CANCELAR_HORAS = 2;
 const { sqlSoloConContacto } = require('../utils/privacidad');
 const { codigoInicioObligatorio } = require('../config/env');
 const {
@@ -159,6 +162,7 @@ exports.crearSolicitud = async (req, res, next) => {
 
 exports.misSolicitudesComoCliente = async (req, res, next) => {
   try {
+    await cancelarVencidas();
     const [solicitudes] = await query(
       `SELECT sol.*, s.titulo AS servicio_titulo, COALESCE(sol.tarifa_acordada, s.tarifa) AS tarifa,
        u.nombre AS proveedor_nombre, u.apellido AS proveedor_apellido, u.foto_url AS proveedor_foto,
@@ -183,6 +187,7 @@ exports.misSolicitudesComoCliente = async (req, res, next) => {
 
 exports.misSolicitudesComoProveedor = async (req, res, next) => {
   try {
+    await cancelarVencidas();
     const [solicitudes] = await query(
       `SELECT sol.*, s.titulo AS servicio_titulo, COALESCE(sol.tarifa_acordada, s.tarifa) AS tarifa,
        u.nombre AS cliente_nombre, u.apellido AS cliente_apellido, u.foto_url AS cliente_foto,
@@ -219,6 +224,9 @@ exports.actualizarEstadoSolicitud = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { estado } = req.body;
+
+    // Si ya pasó la hora de la cita, la solicitud se cancela sola antes de intentar cambiarla.
+    await cancelarVencidas({ forzar: true });
 
     const estadosValidos = Object.keys(transicionesValidas);
     if (!estadosValidos.includes(estado)) {
@@ -261,8 +269,17 @@ exports.actualizarEstadoSolicitud = async (req, res, next) => {
       return res.status(403).json({ error: 'Como cliente solo puedes cancelar la solicitud' });
     }
 
-    if (esCliente && solicitudActual.estado !== 'pendiente') {
-      return res.status(400).json({ error: 'Solo puedes cancelar solicitudes en estado pendiente' });
+    // El cliente cancela mientras la solicitud está pendiente, o aceptada si faltan al menos ANTICIPACION_CANCELAR_HORAS
+    // para la cita (después ya hay un profesional en camino: debe pedir un cambio de fecha o escribirle).
+    if (esCliente && !['pendiente', 'aceptada'].includes(solicitudActual.estado)) {
+      return res.status(400).json({ error: 'Solo puedes cancelar solicitudes pendientes o aceptadas' });
+    }
+    if (esCliente && solicitudActual.estado === 'aceptada' && solicitudActual.fecha_servicio
+      && new Date(solicitudActual.fecha_servicio).getTime() - Date.now() < ANTICIPACION_CANCELAR_HORAS * 3600 * 1000) {
+      return res.status(400).json({
+        error: `Faltan menos de ${ANTICIPACION_CANCELAR_HORAS} horas para la cita y ya no se puede cancelar. Escríbele al profesional o pídele otra fecha.`,
+        codigo: 'cancelacion_tardia',
+      });
     }
 
     const transicionesPermitidas = transicionesValidas[solicitudActual.estado];

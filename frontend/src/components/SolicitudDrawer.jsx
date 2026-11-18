@@ -8,7 +8,7 @@ import CalificarClientePanel from './CalificarClientePanel';
 import { TarjetaCodigoCliente, IniciarConCodigo } from './CodigoInicio';
 import {
   ETIQUETAS_ESTADO, ETIQUETA_MOTIVO, PASOS, TIPO_TARIFA_LARGO, estadoDelPaso, estaSinCalificar, formatearDinero, fechaServicioLarga,
-  fechaRelativa, fechaHoraCorta, iniciales, horaMensaje, etiquetaDia, claveDia,
+  fechaRelativa, fechaHoraCorta, iniciales, horaMensaje, etiquetaDia, claveDia, clientePuedeCancelar, ANTICIPACION_CANCELAR_HORAS,
 } from '../utils/solicitudes';
 import { logError } from '../utils/log';
 import './SolicitudPaneles.css';
@@ -377,7 +377,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
           />
         ) : confirmando ? (
           <div className="sp-confirmar">
-            <p>¿Cancelar esta solicitud? No se puede deshacer.</p>
+            <p>{solicitud.estado === 'aceptada' ? '¿Cancelar esta cita? Se avisará a la otra persona y no se puede deshacer.' : '¿Cancelar esta solicitud? No se puede deshacer.'}</p>
             <div>
               <button type="button" className="pl-boton pl-boton--peligro-solido" onClick={() => cambiar('cancelada')} disabled={procesando} data-autofocus>
                 {procesando ? 'Cancelando...' : 'Sí, cancelar'}
@@ -424,8 +424,14 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
               <Link className="pl-boton" to={`/buscar?categoria_id=${solicitud.servicio_categoria_id}`} onClick={onCerrar}>Ver otros profesionales</Link>
             )}
 
-            {esCliente && solicitud.estado === 'pendiente' && (
-              <button type="button" className="pl-boton pl-boton--peligro" onClick={() => setConfirmando(true)} data-tour="mis-solicitudes-cancelar">Cancelar solicitud</button>
+            {esCliente && clientePuedeCancelar(solicitud) && (
+              <button type="button" className="pl-boton pl-boton--peligro" onClick={() => setConfirmando(true)} data-tour="mis-solicitudes-cancelar">{solicitud.estado === 'aceptada' ? 'Cancelar cita' : 'Cancelar solicitud'}</button>
+            )}
+            {esCliente && solicitud.estado === 'aceptada' && !clientePuedeCancelar(solicitud) && (
+              <p className="sp-nota">Faltan menos de {ANTICIPACION_CANCELAR_HORAS} horas para la cita: ya no se puede cancelar. Escríbele al profesional o pídele otra fecha.</p>
+            )}
+            {!esCliente && solicitud.estado === 'aceptada' && (
+              <button type="button" className="pl-boton pl-boton--peligro" onClick={() => setConfirmando(true)}>Cancelar cita</button>
             )}
           </>
         )}
