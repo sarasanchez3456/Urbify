@@ -50,6 +50,11 @@ jobs:
         run: npm ci
         working-directory: ./backend
 
+      - name: "🧹 Lint del backend (ESLint)"
+        # Un error de lint bloquea la integración; las advertencias se muestran pero no bloquean.
+        run: npm run lint
+        working-directory: ./backend
+
       - name: "✅ Verificar que el servidor arranca correctamente"
         run: |
           # Creamos un .env temporal con valores de prueba
@@ -108,8 +113,13 @@ jobs:
         run: npm ci
         working-directory: ./frontend
 
+      - name: "🧹 Lint del frontend (ESLint)"
+        # Un error de lint bloquea la integración; las advertencias se muestran pero no bloquean.
+        run: npm run lint
+        working-directory: ./frontend
+
       - name: "🧪 Pruebas del frontend (Vitest)"
-        # Sesión, interceptor de Axios, AuthContext y la pantalla del código de verificación. Un fallo bloquea el CI.
+        # Sesión, Axios, AuthContext, rutas protegidas y formularios (login, registro, código, ofrecer servicios). Un fallo bloquea el CI.
         run: npm test
         working-directory: ./frontend
 
