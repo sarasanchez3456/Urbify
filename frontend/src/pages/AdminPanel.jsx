@@ -38,7 +38,9 @@ const sinTildes = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, ''
 function exportarCsv(archivo, columnas, filas) {
   const celda = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const texto = [columnas.join(','), ...filas.map((f) => f.map(celda).join(','))].join('\n');
-  const url = URL.createObjectURL(new Blob([`﻿${texto}`], { type: 'text/csv;charset=utf-8' }));
+  // BOM (U+FEFF) al inicio para que Excel abra el CSV con tildes y eñes bien.
+  const bom = String.fromCharCode(0xfeff);
+  const url = URL.createObjectURL(new Blob([bom + texto], { type: 'text/csv;charset=utf-8' }));
   const a = document.createElement('a');
   a.href = url;
   a.download = archivo;

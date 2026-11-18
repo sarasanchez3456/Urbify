@@ -11,10 +11,6 @@ const defaultGlobeConfig = {
   ]
 };
 
-function lerp(start, end, factor) {
-  return start + (end - start) * factor;
-}
-
 function parsePercent(str) {
   return parseFloat(str.replace('%', ''));
 }

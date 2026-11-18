@@ -50,6 +50,11 @@ jobs:
         run: npm ci
         working-directory: ./backend
 
+      - name: "🧹 Lint del backend (ESLint)"
+        # Un error de lint bloquea la integración; las advertencias se muestran pero no bloquean.
+        run: npm run lint
+        working-directory: ./backend
+
       - name: "✅ Verificar que el servidor arranca correctamente"
         run: |
           # Creamos un .env temporal con valores de prueba
@@ -106,6 +111,11 @@ jobs:
 
       - name: "📦 Instalar dependencias del frontend"
         run: npm ci
+        working-directory: ./frontend
+
+      - name: "🧹 Lint del frontend (ESLint)"
+        # Un error de lint bloquea la integración; las advertencias se muestran pero no bloquean.
+        run: npm run lint
         working-directory: ./frontend
 
       - name: "🧪 Pruebas del frontend (Vitest)"

@@ -8,7 +8,6 @@ function mantenerVivo(promesa, contexto = 'Tarea en segundo plano') {
   const segura = Promise.resolve(promesa).catch((err) => console.error(`${contexto}:`, err?.message || err));
   if (process.env.VERCEL) {
     try {
-      // eslint-disable-next-line global-require
       require('@vercel/functions').waitUntil(segura);
     } catch (err) {
       console.error('No se pudo registrar la tarea con waitUntil:', err.message);

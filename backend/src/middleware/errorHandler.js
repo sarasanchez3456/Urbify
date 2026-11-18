@@ -26,7 +26,7 @@ function estadoDe(err) {
   return codigo ? MYSQL[codigo] : null;
 }
 
-// eslint-disable-next-line no-unused-vars
+// Express reconoce el manejador de errores por sus 4 parámetros: `next` debe quedarse aunque no se use.
 function errorHandler(err, req, res, next) {
   // Cuerpo demasiado grande o JSON mal formado: errores del cliente.
   if (err.type === 'entity.too.large') return res.status(413).json({ error: 'El cuerpo de la petición es demasiado grande' });
