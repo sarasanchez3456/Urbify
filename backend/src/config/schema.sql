@@ -94,6 +94,10 @@ CREATE TABLE IF NOT EXISTS solicitudes (
   fecha_servicio   DATETIME,
   estado           VARCHAR(20) DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'aceptada', 'en_proceso', 'completada', 'cancelada')),
   correo_enviado   BOOLEAN DEFAULT 0,
+  -- Código de inicio del servicio (issue #57): NO se guarda el código, solo la sal con la que el servidor lo deriva
+  -- (HMAC con una clave del servidor) y los intentos fallidos del proveedor. NULL = todavía no se generó.
+  codigo_inicio_sal      CHAR(32) NULL,
+  codigo_inicio_intentos TINYINT UNSIGNED NOT NULL DEFAULT 0,
   FOREIGN KEY (cliente_id)   REFERENCES usuarios(id),
   FOREIGN KEY (proveedor_id) REFERENCES usuarios(id),
   FOREIGN KEY (servicio_id)  REFERENCES servicios(id),

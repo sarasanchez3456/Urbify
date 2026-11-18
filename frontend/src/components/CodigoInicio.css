@@ -1,0 +1,77 @@
+/* Código de inicio del servicio (issue #57). Usa los botones y avisos del panel lateral (pl-*). */
+.ci-tarjeta {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 14px;
+  background: oklch(0.95 0.03 250 / 0.6);
+  border: 1px solid oklch(0.40 0.18 255 / 0.18);
+}
+
+.ci-tarjeta--bloqueada {
+  background: oklch(0.55 0.2 25 / 0.06);
+  border-color: oklch(0.55 0.2 25 / 0.25);
+}
+
+.ci-tarjeta h3 {
+  margin: 0;
+}
+
+.ci-codigo {
+  margin: 0;
+  font: 700 2.2rem 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: 0.18em;
+  font-variant-numeric: tabular-nums;
+  color: var(--primary, oklch(0.40 0.18 255));
+}
+
+.ci-texto,
+.ci-nota {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.ci-nota {
+  color: var(--destructive, #dc2626);
+}
+
+.ci-form {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
+.ci-form label {
+  display: grid;
+  gap: 2px;
+  font-size: 0.9rem;
+}
+
+.ci-form label span {
+  color: var(--muted-foreground, oklch(0.45 0.04 240));
+}
+
+.ci-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border, oklch(0.40 0.18 255 / 0.12));
+  background: var(--input-background, #fff);
+  font: 700 1.6rem 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: 0.3em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.ci-input:focus-visible {
+  outline: 2px solid var(--primary, oklch(0.40 0.18 255));
+  outline-offset: 1px;
+}
+
+.ci-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}

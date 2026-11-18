@@ -216,7 +216,7 @@ export default function MiAgenda() {
                   {guardando ? 'Guardando...' : 'Guardar horario'}
                 </button>
                 {hayCambios && <button type="button" className="ag-btn" onClick={() => setPorDia(JSON.parse(guardado))} disabled={guardando}>Descartar cambios</button>}
-                {sinDias && hayCambios && <p className="ag-error" role="alert">Activa al menos un día. Para volver al horario por defecto usa "Borrar mi horario".</p>}
+                {sinDias && hayCambios && <p className="ag-error" role="alert">Activa al menos un día. Para volver al horario por defecto usa «Borrar mi horario».</p>}
                 {configurado && !hayCambios && (
                   <button type="button" className="ag-btn ag-btn--peligro" onClick={() => guardar([])} disabled={guardando}>Borrar mi horario</button>
                 )}

@@ -98,6 +98,17 @@ const serProveedorLimiter = crearLimitador({
   ventanaMs: HORA_MS, max: cfg.serProveedor, mensaje: 'Demasiados intentos de activar el modo proveedor. Intenta de nuevo más tarde.', key: usuario,
 });
 
+// Código de inicio del servicio (issue #57), por USUARIO y por hora. Además del bloqueo de cada código tras 5 fallos,
+// frena a un proveedor que pruebe códigos en muchas solicitudes y a un cliente que genere códigos nuevos sin parar.
+const intentosCodigoInicio = crearLimitador({
+  ventanaMs: HORA_MS, max: cfg.codigoInicioIntentos, mensaje: 'Demasiados intentos con el código de inicio. Intenta de nuevo más tarde.', key: usuario,
+});
+// Solo cuenta los intentos de iniciar el servicio (los demás cambios de estado no usan código).
+const codigoInicioLimiter = (req, res, next) => (req.body?.estado === 'en_proceso' ? intentosCodigoInicio(req, res, next) : next());
+const renovarCodigoInicioLimiter = crearLimitador({
+  ventanaMs: HORA_MS, max: cfg.codigoInicioRenovar, mensaje: 'Generaste demasiados códigos nuevos. Intenta de nuevo más tarde.', key: usuario,
+});
+
 // Login: tres límites en cadena. Los dos por cuenta solo cuentan los intentos fallidos,
 // así un inicio de sesión correcto no consume cupo.
 //  1) por IP (cualquier intento): frena el barrido de muchas cuentas desde un origen.
@@ -131,4 +142,5 @@ const loginLimiters = [
 module.exports = {
   globalLimiter, publicLimiter, registroLimiter, loginLimiters, olvidoLimiters, restablecerLimiters,
   limitadoresVerificacion, limitadoresEnvioCodigo, cambioModoLimiter, serProveedorLimiter,
+  codigoInicioLimiter, renovarCodigoInicioLimiter,
 };

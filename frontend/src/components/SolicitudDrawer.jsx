@@ -5,6 +5,7 @@ import PanelLateral from './PanelLateral';
 import ReprogramarPanel from './ReprogramarPanel';
 import ReportarPanel from './ReportarPanel';
 import CalificarClientePanel from './CalificarClientePanel';
+import { TarjetaCodigoCliente, IniciarConCodigo } from './CodigoInicio';
 import {
   ETIQUETAS_ESTADO, ETIQUETA_MOTIVO, PASOS, TIPO_TARIFA_LARGO, estadoDelPaso, estaSinCalificar, formatearDinero, fechaServicioLarga,
   fechaRelativa, fechaHoraCorta, iniciales, horaMensaje, etiquetaDia, claveDia,
@@ -159,9 +160,12 @@ function ChatSolicitud({ solicitud, rol, onVolver, onCerrar }) {
 
 // ── Detalle de la solicitud ──────────────────────────────────────────────────
 // Panel lateral con el seguimiento, los datos de la visita, el chat y las acciones de cada rol.
-export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEstado, onCalificar, onResponderCambio, onCambioPedido, onReporteEnviado, onClienteCalificado, vistaInicial = 'detalle' }) {
+export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEstado, onCalificar, onResponderCambio, onCambioPedido, onReporteEnviado, onClienteCalificado, vistaInicial = 'detalle', pedirCodigoAlAbrir = false }) {
   const [vista, setVista] = useState(vistaInicial); // 'detalle' | 'chat' | 'reprogramar' | 'reportar'
   const [confirmando, setConfirmando] = useState(false);
+  // Proveedor: escribiendo el código de inicio que le dice el cliente (issue #57).
+  const pideCodigo = rol === 'proveedor' && solicitud.codigo_inicio_obligatorio !== false;
+  const [pidiendoCodigo, setPidiendoCodigo] = useState(pedirCodigoAlAbrir && pideCodigo && solicitud.estado === 'aceptada');
   const [procesando, setProcesando] = useState(false);
   const esCliente = rol === 'cliente';
   const contraparte = datosContraparte(solicitud, rol);
@@ -181,13 +185,16 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
   }, [solicitud.id, solicitud.estado]);
   const fechaDelPaso = (i) => historial?.find((h) => h.estado_nuevo === ESTADO_DE_PASO[i])?.fecha || '';
 
-  const cambiar = async (estado) => {
-    if (procesando) return;
+  const cambiar = async (estado, extra) => {
+    if (procesando) return false;
     setProcesando(true);
-    await onCambiarEstado(solicitud.id, estado);
+    const ok = await onCambiarEstado(solicitud.id, estado, extra);
     setProcesando(false);
     setConfirmando(false);
+    if (ok) setPidiendoCodigo(false);
+    return ok;
   };
+  const iniciarServicio = () => (pideCodigo ? setPidiendoCodigo(true) : cambiar('en_proceso'));
 
   // Cambio de fecha pedido por el cliente y todavía sin respuesta del profesional.
   const cambioPendiente = solicitud.reprogramacion_id ? { id: solicitud.reprogramacion_id, fecha: solicitud.reprogramacion_fecha } : null;
@@ -209,7 +216,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
     }
     const t = setTimeout(() => document.querySelector('.pl-panel [data-autofocus]')?.focus(), 0);
     return () => clearTimeout(t);
-  }, [vista, confirmando]);
+  }, [vista, confirmando, pidiendoCodigo]);
 
   const textoPaso = (i) => {
     const e = estadoDelPaso(solicitud.estado, i);
@@ -264,6 +271,8 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
       </div>
 
       <div className="pl-cuerpo">
+        {esCliente && solicitud.estado === 'aceptada' && <TarjetaCodigoCliente solicitudId={solicitud.id} />}
+
         {cambioPendiente && ['pendiente', 'aceptada'].includes(solicitud.estado) && (
           <div className="sp-cambio" role="status">
             {esCliente ? (
@@ -360,7 +369,13 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
       )}
 
       <div className="pl-pie">
-        {confirmando ? (
+        {pidiendoCodigo && solicitud.estado === 'aceptada' ? (
+          <IniciarConCodigo
+            procesando={procesando}
+            onIniciar={(codigo) => cambiar('en_proceso', { codigo })}
+            onCancelar={() => setPidiendoCodigo(false)}
+          />
+        ) : confirmando ? (
           <div className="sp-confirmar">
             <p>¿Cancelar esta solicitud? No se puede deshacer.</p>
             <div>
@@ -386,7 +401,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
               </>
             )}
             {!esCliente && solicitud.estado === 'aceptada' && (
-              <button type="button" className="pl-boton pl-boton--principal" onClick={() => cambiar('en_proceso')} disabled={procesando}>Iniciar servicio</button>
+              <button type="button" className="pl-boton pl-boton--principal" onClick={iniciarServicio} disabled={procesando}>Iniciar servicio</button>
             )}
             {!esCliente && solicitud.estado === 'en_proceso' && (
               <button type="button" className="pl-boton pl-boton--principal" onClick={() => cambiar('completada')} disabled={procesando}>Marcar completada</button>

@@ -6,6 +6,10 @@ const { errorDeDireccion } = require('../utils/direccion');
 const { conReservaDeProveedor, motivoNoDisponible, parsearFecha, aFechaMysqlUtc } = require('../utils/agenda');
 const { registrarHistorial } = require('../utils/historial');
 const { sqlSoloConContacto } = require('../utils/privacidad');
+const { codigoInicioObligatorio } = require('../config/env');
+const {
+  MAX_INTENTOS, nuevaSal, derivarCodigo, codigoCorrecto, normalizarCodigo, sinDatosDeCodigo,
+} = require('../utils/codigoInicio');
 
 exports.crearSolicitud = async (req, res, next) => {
   try {
@@ -171,7 +175,7 @@ exports.misSolicitudesComoCliente = async (req, res, next) => {
        ORDER BY sol.fecha_solicitud DESC`,
       [req.usuarioId]
     );
-    res.json(solicitudes.map((s) => ({ ...s, calificacion_motivos: motivosDeColumna(s.calificacion_motivos) })));
+    res.json(solicitudes.map((s) => ({ ...sinDatosDeCodigo(s), calificacion_motivos: motivosDeColumna(s.calificacion_motivos) })));
   } catch (err) {
     return next(err);
   }
@@ -195,7 +199,9 @@ exports.misSolicitudesComoProveedor = async (req, res, next) => {
        ORDER BY sol.fecha_solicitud DESC`,
       [req.usuarioId]
     );
-    res.json(solicitudes);
+    // El proveedor nunca recibe la sal ni los intentos del código de inicio (aunque sin la clave no sirvan de nada).
+    // `codigo_inicio_obligatorio` le dice a la web si al iniciar debe pedir el código al proveedor.
+    res.json(solicitudes.map((s) => ({ ...sinDatosDeCodigo(s), codigo_inicio_obligatorio: codigoInicioObligatorio })));
   } catch (err) {
     return next(err);
   }
@@ -272,12 +278,42 @@ exports.actualizarEstadoSolicitud = async (req, res, next) => {
     // respuesta a un cambio de fecha de la misma solicitud se atienden uno detrás de otro (sin bloqueos cruzados).
     // El estado anterior va en el WHERE: si otra petición cambió la solicitud entre la lectura y la escritura, la
     // transición ya no es válida y no se aplica.
-    const aplicado = await conReservaDeProveedor(solicitudActual.proveedor_id, async (conn) => {
-      const [actualizada] = await conn.execute(
-        'UPDATE solicitudes SET estado = ? WHERE id = ? AND estado = ?',
-        [estado, id, solicitudActual.estado]
-      );
-      if (actualizada.affectedRows === 0) return false;
+    // Iniciar el servicio exige el código que el cliente le dice al proveedor al llegar (issue #57).
+    const pideCodigo = estado === 'en_proceso' && codigoInicioObligatorio;
+    const codigo = pideCodigo ? normalizarCodigo(req.body.codigo) : '';
+    if (pideCodigo && !codigo) {
+      return res.status(400).json({ error: 'Escribe el código de inicio que te da el cliente', codigo: 'codigo_inicio_requerido' });
+    }
+
+    const resultado = await conReservaDeProveedor(solicitudActual.proveedor_id, async (conn) => {
+      if (pideCodigo) {
+        // El código se comprueba dentro de la misma transacción que el cambio de estado y con la fila bloqueada: dos
+        // intentos simultáneos se atienden uno detrás de otro y cada fallo cuenta (no se pueden probar códigos en paralelo).
+        const [[fila]] = await conn.execute(
+          'SELECT estado, codigo_inicio_sal, codigo_inicio_intentos FROM solicitudes WHERE id = ? FOR UPDATE',
+          [id]
+        );
+        if (!fila || fila.estado !== solicitudActual.estado) return { aplicado: false };
+        if (fila.codigo_inicio_intentos >= MAX_INTENTOS) return { codigo: 'bloqueado' };
+        if (!codigoCorrecto(id, fila.codigo_inicio_sal, codigo)) {
+          const intentos = fila.codigo_inicio_intentos + 1;
+          // El fallo se guarda (la transacción se confirma igual): así cuenta aunque el proveedor no vuelva a intentar.
+          await conn.execute('UPDATE solicitudes SET codigo_inicio_intentos = ? WHERE id = ?', [intentos, id]);
+          return { codigo: intentos >= MAX_INTENTOS ? 'recien_bloqueado' : 'incorrecto', restantes: MAX_INTENTOS - intentos };
+        }
+      }
+
+      // Al aceptar se genera la sal del código de inicio (y se reinician los intentos).
+      const [actualizada] = estado === 'aceptada'
+        ? await conn.execute(
+          'UPDATE solicitudes SET estado = ?, codigo_inicio_sal = ?, codigo_inicio_intentos = 0 WHERE id = ? AND estado = ?',
+          [estado, nuevaSal(), id, solicitudActual.estado]
+        )
+        : await conn.execute(
+          'UPDATE solicitudes SET estado = ? WHERE id = ? AND estado = ?',
+          [estado, id, solicitudActual.estado]
+        );
+      if (actualizada.affectedRows === 0) return { aplicado: false };
 
       await registrarHistorial(conn, Number(id), solicitudActual.estado, estado, req.usuarioId);
 
@@ -285,9 +321,32 @@ exports.actualizarEstadoSolicitud = async (req, res, next) => {
       if (['en_proceso', 'completada', 'cancelada'].includes(estado)) {
         await conn.execute("UPDATE reprogramaciones SET estado = 'cancelada', fecha_respuesta = NOW() WHERE solicitud_id = ? AND estado = 'pendiente'", [id]);
       }
-      return true;
+      return { aplicado: true };
     });
-    if (!aplicado) {
+
+    if (resultado.codigo === 'incorrecto') {
+      return res.status(400).json({
+        error: `El código de inicio no es correcto. Te quedan ${resultado.restantes} intento${resultado.restantes === 1 ? '' : 's'}.`,
+        codigo: 'codigo_inicio_incorrecto',
+        intentos_restantes: resultado.restantes,
+      });
+    }
+    if (resultado.codigo === 'bloqueado' || resultado.codigo === 'recien_bloqueado') {
+      if (resultado.codigo === 'recien_bloqueado') {
+        // Se avisa al cliente una sola vez, cuando se bloquea: debe generar un código nuevo desde su solicitud.
+        await query(
+          "INSERT INTO notificaciones (tipo, solicitud_id, usuario_id, modo, mensaje) VALUES ('solicitud', ?, ?, 'cliente', ?)",
+          [solicitudActual.id, solicitudActual.cliente_id,
+            `Se bloqueó el código de inicio de "${solicitudActual.servicio_titulo}" por demasiados intentos. Si el proveedor ya llegó, genera un código nuevo desde Mis Solicitudes.`]
+        ).catch((e) => console.error('Error al avisar del código bloqueado:', e));
+      }
+      return res.status(400).json({
+        error: 'El código de inicio se bloqueó por demasiados intentos. Pide al cliente que genere uno nuevo.',
+        codigo: 'codigo_inicio_bloqueado',
+        intentos_restantes: 0,
+      });
+    }
+    if (!resultado.aplicado) {
       return res.status(409).json({ error: 'La solicitud cambió de estado, vuelve a consultarla' });
     }
 
@@ -468,6 +527,70 @@ exports.listarHistorial = async (req, res, next) => {
       [solicitud.id]
     );
     res.json(historial);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+// ── Código de inicio del servicio (issue #57) ──
+// Solo el CLIENTE de la solicitud, en modo cliente y mientras la solicitud está aceptada, puede ver o renovar su código.
+// El proveedor nunca puede consultarlo: lo recibe de palabra del cliente cuando llega.
+async function solicitudDelClienteAceptada(req, res) {
+  const solicitud = await solicitudDelParticipante(req.params.id, req.usuarioId, req.usuarioRol, res);
+  if (!solicitud) return null;
+  if (solicitud.cliente_id !== req.usuarioId) {
+    res.status(403).json({ error: 'Solo el cliente de la solicitud puede ver su código de inicio' });
+    return null;
+  }
+  const [[fila]] = await query('SELECT estado, codigo_inicio_sal, codigo_inicio_intentos FROM solicitudes WHERE id = ?', [solicitud.id]);
+  if (fila.estado !== 'aceptada') {
+    res.status(409).json({ error: 'El código de inicio solo está disponible mientras la solicitud está aceptada', codigo: 'codigo_inicio_no_disponible' });
+    return null;
+  }
+  return { id: solicitud.id, ...fila };
+}
+
+const respuestaCodigo = (id, sal, intentos) => ({
+  codigo: derivarCodigo(id, sal),
+  intentos_restantes: Math.max(0, MAX_INTENTOS - intentos),
+  bloqueado: intentos >= MAX_INTENTOS,
+  obligatorio: codigoInicioObligatorio,
+});
+
+exports.verCodigoInicio = async (req, res, next) => {
+  try {
+    const s = await solicitudDelClienteAceptada(req, res);
+    if (!s) return;
+    let sal = s.codigo_inicio_sal;
+    if (!sal) {
+      // Solicitudes aceptadas antes de existir esta función: la sal se crea la primera vez que el cliente la pide.
+      // `IS NULL` en el WHERE: si dos pestañas la piden a la vez, ambas terminan mostrando la misma.
+      await query("UPDATE solicitudes SET codigo_inicio_sal = ? WHERE id = ? AND estado = 'aceptada' AND codigo_inicio_sal IS NULL", [nuevaSal(), s.id]);
+      [[{ codigo_inicio_sal: sal }]] = await query('SELECT codigo_inicio_sal FROM solicitudes WHERE id = ?', [s.id]);
+    }
+    res.set('Cache-Control', 'no-store');
+    res.json(respuestaCodigo(s.id, sal, s.codigo_inicio_intentos));
+  } catch (err) {
+    return next(err);
+  }
+};
+
+// Genera un código nuevo (el anterior deja de servir) y reinicia los intentos: para cuando se bloqueó o el cliente
+// cree que alguien más lo vio.
+exports.renovarCodigoInicio = async (req, res, next) => {
+  try {
+    const s = await solicitudDelClienteAceptada(req, res);
+    if (!s) return;
+    const sal = nuevaSal();
+    const [r] = await query(
+      "UPDATE solicitudes SET codigo_inicio_sal = ?, codigo_inicio_intentos = 0 WHERE id = ? AND estado = 'aceptada'",
+      [sal, s.id]
+    );
+    if (r.affectedRows === 0) {
+      return res.status(409).json({ error: 'La solicitud cambió de estado, vuelve a consultarla' });
+    }
+    res.set('Cache-Control', 'no-store');
+    res.json(respuestaCodigo(s.id, sal, 0));
   } catch (err) {
     return next(err);
   }

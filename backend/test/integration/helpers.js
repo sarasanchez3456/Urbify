@@ -68,6 +68,7 @@ async function arrancarServidor(extraEnv = {}) {
       RATE_LIMIT_VERIFY_IP_PER_HOUR: '100000', RATE_LIMIT_VERIFY_EMAIL_PER_HOUR: '100000',
       RATE_LIMIT_SEND_CODE_IP_PER_HOUR: '100000', RATE_LIMIT_SEND_CODE_EMAIL_PER_HOUR: '100000',
       RATE_LIMIT_MODE_SWITCH_PER_HOUR: '100000', RATE_LIMIT_BECOME_PROVIDER_PER_HOUR: '100000',
+      RATE_LIMIT_START_CODE_PER_HOUR: '100000', RATE_LIMIT_START_CODE_RENEW_PER_HOUR: '100000',
       // Sin proveedor de correo: el servidor imprime los códigos en su consola y las pruebas los leen de ahí.
       RESEND_API_KEY: '', GMAIL_USER: '', GMAIL_APP_PASSWORD: '',
       ...extraEnv,
@@ -179,6 +180,13 @@ const diaSemana = (fechaIso) => new Date(`${fechaIso.slice(0, 10)}T12:00:00Z`).g
 const solicitar = (cliente, servicioId, fecha, extra = {}) =>
   api('POST', '/solicitudes', { token: cliente.token, body: { servicio_id: servicioId, descripcion: 'Prueba', fecha_servicio: fecha, ...extra } });
 
+// Código de inicio que ve el cliente en su solicitud aceptada (issue #57).
+async function codigoInicioDe(cliente, solicitudId) {
+  const r = await api('GET', `/solicitudes/${solicitudId}/codigo-inicio`, { token: cliente.token });
+  if (r.status !== 200) throw new Error(`No se pudo leer el código de inicio: ${r.status} ${JSON.stringify(r.body)}`);
+  return r.body.codigo;
+}
+
 // Crea una solicitud y la deja en el estado pedido recorriendo transiciones válidas.
 async function solicitudEn(estado, { cliente, proveedor, servicioId, fecha }) {
   const r = await solicitar(cliente, servicioId, fecha);
@@ -186,7 +194,9 @@ async function solicitudEn(estado, { cliente, proveedor, servicioId, fecha }) {
   const id = r.body.solicitud.id;
   const ruta = { pendiente: [], aceptada: ['aceptada'], en_proceso: ['aceptada', 'en_proceso'], completada: ['aceptada', 'en_proceso', 'completada'] }[estado];
   for (const e of ruta) {
-    const c = await api('PUT', `/solicitudes/${id}/estado`, { token: proveedor.token, body: { estado: e } });
+    // Iniciar el servicio exige el código que el cliente ve en su solicitud (issue #57).
+    const body = e === 'en_proceso' ? { estado: e, codigo: await codigoInicioDe(cliente, id) } : { estado: e };
+    const c = await api('PUT', `/solicitudes/${id}/estado`, { token: proveedor.token, body });
     if (c.status !== 200) throw new Error(`Transición a ${e} falló: ${c.status} ${JSON.stringify(c.body)}`);
   }
   return id;
@@ -230,7 +240,7 @@ const contar = async (pool, sql, params = []) => Number((await pool.execute(sql,
 module.exports = {
   DB, URL_BASE, prepararBase, abrirPool, arrancarServidor, api, registrar, registrarSinVerificar, codigoEnviadoA, lineasDeLogs,
   volverAdmin, crearServicio,
-  fechaColombia, diaSemana, solicitar, solicitudEn, iniciarEntorno, hacerFallar, contar,
+  fechaColombia, diaSemana, solicitar, solicitudEn, codigoInicioDe, iniciarEntorno, hacerFallar, contar,
 };
 
 // ¿Es TiDB (y no MySQL)? Algunas pruebas simulan fallos con triggers o parten de una base antigua, y no aplican allí.
