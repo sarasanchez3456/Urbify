@@ -3,7 +3,7 @@
 // cambio de modo pertenece a la issue #46 y deliberadamente no existe aún.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { api, registrar, crearServicio, fechaColombia, solicitar, solicitudEn, iniciarEntorno, volverAdmin, contar } = require('./helpers');
+const { api, registrar, crearServicio, fechaColombia, solicitar, solicitudEn, codigoInicioDe, iniciarEntorno, volverAdmin, contar } = require('./helpers');
 
 async function fijarModo(pool, usuarioId, modo, { actualizarSesion = true } = {}) {
   await pool.execute('UPDATE usuarios SET modo_activo = ? WHERE id = ?', [modo, usuarioId]);
@@ -96,7 +96,8 @@ test('doble modo: migración lógica, autorización, privacidad y reputaciones s
     assert.equal(r.status, 201);
     const solicitudCliente = r.body.solicitud.id;
     for (const estado of ['aceptada', 'en_proceso', 'completada']) {
-      assert.equal((await api('PUT', `/solicitudes/${solicitudCliente}/estado`, { token: otroProveedor.token, body: { estado } })).status, 200);
+      const body = estado === 'en_proceso' ? { estado, codigo: await codigoInicioDe(doble, solicitudCliente) } : { estado };
+      assert.equal((await api('PUT', `/solicitudes/${solicitudCliente}/estado`, { token: otroProveedor.token, body })).status, 200);
     }
     assert.equal((await api('POST', '/calificaciones/cliente', { token: otroProveedor.token, body: { solicitud_id: solicitudCliente, puntuacion: 4 } })).status, 201);
     assert.equal(await contar(pool, 'SELECT COUNT(*) AS n FROM calificaciones WHERE proveedor_id = ?', [doble.id]), 1);

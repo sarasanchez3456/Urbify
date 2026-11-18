@@ -338,6 +338,7 @@ El backend lee `backend/.env.<NODE_ENV>` (si existe) y luego `backend/.env`; las
 | `RESEND_API_KEY` | opcional | alternativa a Gmail (con dominio propio verificado). Sin Gmail ni Resend no se envían correos (en development el código de verificación se imprime en la consola) |
 | `DB_SSL`, `DB_POOL_SIZE` | `false`, `10` | `DB_SSL=true` si la base exige TLS (TiDB, Aiven...); `DB_POOL_SIZE=3` en Vercel (un pool por instancia) |
 | `AVISOS_EN_VIVO` | `true` | se apaga solo en Vercel (la web consulta cada 30 s); `true`/`false` para forzarlo |
+| `CODIGO_INICIO_OBLIGATORIO` | `true` | el proveedor necesita el código de 6 dígitos del cliente para iniciar el servicio (issue #57); `false` mientras una app (p. ej. la móvil) no lo soporte |
 | `BODY_LIMIT` | `100kb` | `100kb` (tamaño máximo del JSON) |
 | `TRUST_PROXY` | `0` | nº de proxys delante de la API (Nginx del compose = `1`) |
 | `FORCE_HTTPS` | `false` | `true` redirige a HTTPS y activa HSTS (requiere `TRUST_PROXY>=1`) |
@@ -356,6 +357,7 @@ Cuando se supera un límite la API responde `429` con `{"error", "bloqueado": tr
 | Verificación de correo, intentos de código: por IP / por correo | `RATE_LIMIT_VERIFY_IP_PER_HOUR` / `RATE_LIMIT_VERIFY_EMAIL_PER_HOUR` | `30` / `10` por hora |
 | Envío de códigos (registro y reenvío): por IP / por correo | `RATE_LIMIT_SEND_CODE_IP_PER_HOUR` / `RATE_LIMIT_SEND_CODE_EMAIL_PER_HOUR` | `15` / `5` por hora |
 | Doble modo, por usuario: cambios de modo / activaciones como proveedor | `RATE_LIMIT_MODE_SWITCH_PER_HOUR` / `RATE_LIMIT_BECOME_PROVIDER_PER_HOUR` | `30` / `10` por hora |
+| Código de inicio, por usuario: intentos de iniciar un servicio / códigos nuevos generados | `RATE_LIMIT_START_CODE_PER_HOUR` / `RATE_LIMIT_START_CODE_RENEW_PER_HOUR` | `30` / `10` por hora |
 | Login, por IP (cualquier intento) | `RATE_LIMIT_LOGIN_IP` | `30` por ventana |
 | Login, intentos **fallidos** a una misma cuenta desde una misma IP | `RATE_LIMIT_LOGIN_ACCOUNT_IP` | `5` por ventana |
 | Login, intentos **fallidos** a una cuenta desde cualquier IP | `RATE_LIMIT_LOGIN_ACCOUNT` | `20` por ventana |

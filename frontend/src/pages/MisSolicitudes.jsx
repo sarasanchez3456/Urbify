@@ -32,7 +32,7 @@ function textoEstado(sol, esCliente) {
   }
 }
 
-function Fila({ sol, esCliente, ocupada, onDetalle, onCalificar, onAccion, onCambio }) {
+function Fila({ sol, esCliente, ocupada, onDetalle, onCalificar, onAccion, onCambio, onIniciar }) {
   const contraparte = esCliente
     ? `${sol.proveedor_nombre || ''} ${sol.proveedor_apellido || ''}`.trim()
     : `${sol.cliente_nombre || ''} ${sol.cliente_apellido || ''}`.trim();
@@ -87,7 +87,7 @@ function Fila({ sol, esCliente, ocupada, onDetalle, onCalificar, onAccion, onCam
           </>
         )}
         {!esCliente && sol.estado === 'aceptada' && !cambioPendiente && (
-          <button type="button" className="ms-btn ms-btn--principal" disabled={ocupada} onClick={() => onAccion(sol.id, 'en_proceso')}>Iniciar servicio</button>
+          <button type="button" className="ms-btn ms-btn--principal" disabled={ocupada} onClick={() => onIniciar(sol)}>Iniciar servicio</button>
         )}
         {!esCliente && sol.estado === 'en_proceso' && (
           <button type="button" className="ms-btn ms-btn--principal" disabled={ocupada} onClick={() => onAccion(sol.id, 'completada')}>Marcar completada</button>
@@ -110,6 +110,7 @@ export default function MisSolicitudes() {
   const [calificandoId, setCalificandoId] = useState(null);
   const [accionandoId, setAccionandoId] = useState(null);
   const [abrirEnChat, setAbrirEnChat] = useState(false);
+  const [pedirCodigo, setPedirCodigo] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const chatSolicitado = searchParams.get('chat');
@@ -168,9 +169,10 @@ export default function MisSolicitudes() {
 
   // Cambia el estado de una solicitud (el proveedor acepta, rechaza, inicia o completa; el cliente cancela
   // una pendiente). El servidor valida quién puede hacer cada cambio; si falla se muestra su mensaje.
-  const cambiarEstado = useCallback(async (id, nuevo) => {
+  // `extra` lleva el código de inicio al pasar a en_proceso (issue #57).
+  const cambiarEstado = useCallback(async (id, nuevo, extra = {}) => {
     try {
-      await api.put(`/solicitudes/${id}/estado`, { estado: nuevo });
+      await api.put(`/solicitudes/${id}/estado`, { estado: nuevo, ...extra });
       window.dispatchEvent(new Event('notificacion_actualizada'));
       const mensajes = {
         aceptada: 'Solicitud aceptada',
@@ -215,6 +217,16 @@ export default function MisSolicitudes() {
     setAccionandoId(sol.id);
     await responderCambio(sol, accion);
     setAccionandoId(null);
+  };
+
+  // Iniciar el servicio pide el código que le dice el cliente: se escribe en el detalle de la solicitud.
+  const iniciar = (sol) => {
+    if (sol.codigo_inicio_obligatorio === false) {
+      accionar(sol.id, 'en_proceso');
+      return;
+    }
+    setPedirCodigo(true);
+    setAbiertaId(sol.id);
   };
 
   const abrirCalificar = (id) => {
@@ -313,6 +325,7 @@ export default function MisSolicitudes() {
                       onCalificar={abrirCalificar}
                       onAccion={accionar}
                       onCambio={accionarCambio}
+                      onIniciar={iniciar}
                     />
                   ))}
                 </div>
@@ -330,7 +343,8 @@ export default function MisSolicitudes() {
           solicitud={abierta}
           rol={esCliente ? 'cliente' : 'proveedor'}
           vistaInicial={abrirEnChat ? 'chat' : 'detalle'}
-          onCerrar={() => { setAbiertaId(null); setAbrirEnChat(false); }}
+          pedirCodigoAlAbrir={pedirCodigo}
+          onCerrar={() => { setAbiertaId(null); setAbrirEnChat(false); setPedirCodigo(false); }}
           onCambiarEstado={cambiarEstado}
           onCalificar={(s) => abrirCalificar(s.id)}
           onResponderCambio={responderCambio}

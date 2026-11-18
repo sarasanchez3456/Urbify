@@ -769,6 +769,14 @@ paths:
         `aceptada` → `en_proceso`|`cancelada`; `en_proceso` → `completada`; `completada` y `cancelada`
         son finales. El cliente solo puede cancelar y solo en `pendiente`. Si otra petición cambió el
         estado en paralelo responde 409.
+
+        **Código de inicio (issue #57):** para pasar de `aceptada` a `en_proceso` el proveedor debe enviar
+        `codigo`, el código de 6 dígitos que el cliente ve en `GET /solicitudes/{id}/codigo-inicio` y le dice
+        al llegar. Se valida en la misma transacción que el cambio de estado. Errores (400, con `codigo`):
+        `codigo_inicio_requerido`, `codigo_inicio_incorrecto` (con `intentos_restantes`) y
+        `codigo_inicio_bloqueado` (tras 5 fallos; el cliente debe generar uno nuevo). Los intentos de
+        iniciar se limitan además por usuario (`RATE_LIMIT_START_CODE_PER_HOUR`, 429). Con
+        `CODIGO_INICIO_OBLIGATORIO=false` el código no se pide.
       x-roles: [cliente, proveedor]
       requestBody:
         required: true
@@ -779,13 +787,53 @@ paths:
               required: [estado]
               properties:
                 estado: { $ref: '#/components/schemas/EstadoSolicitud' }
+                codigo:
+                  description: Código de inicio (obligatorio para `en_proceso`). Se aceptan espacios o guiones.
+                  oneOf:
+                    - { type: string, maxLength: 20, example: '482913' }
+                    - { type: integer }
       responses:
         '200': { $ref: '#/components/responses/Mensaje' }
-        '400': { $ref: '#/components/responses/BadRequest' }
+        '400':
+          description: Datos inválidos, transición no permitida o código de inicio que falta, es incorrecto o está bloqueado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorCodigoInicio' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /solicitudes/{id}/codigo-inicio:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Solicitudes]
+      summary: Ver el código de inicio del servicio (solo el cliente)
+      description: |
+        Solo el cliente de la solicitud, en modo cliente y mientras la solicitud está `aceptada`. El proveedor
+        nunca puede consultarlo. El código no se guarda: el servidor lo deriva con HMAC (clave del servidor y
+        una sal propia de la solicitud), por eso siempre devuelve el mismo hasta que se genere uno nuevo.
+        Responde con `Cache-Control: no-store`.
+      x-roles: [cliente]
+      responses:
+        '200': { $ref: '#/components/responses/CodigoInicio' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    post:
+      tags: [Solicitudes]
+      summary: Generar un código de inicio nuevo (solo el cliente)
+      description: El código anterior deja de servir y los intentos se reinician. Limitado por usuario (`RATE_LIMIT_START_CODE_RENEW_PER_HOUR`).
+      x-roles: [cliente]
+      responses:
+        '200': { $ref: '#/components/responses/CodigoInicio' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
   /solicitudes/{id}/historial:
     parameters:
       - $ref: '#/components/parameters/Id'
@@ -1554,6 +1602,18 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
+    CodigoInicio:
+      description: Código de inicio del servicio
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [codigo, intentos_restantes, bloqueado, obligatorio]
+            properties:
+              codigo: { type: string, pattern: '^[0-9]{6}$', example: '482913' }
+              intentos_restantes: { type: integer, minimum: 0, maximum: 5 }
+              bloqueado: { type: boolean, description: 'true tras 5 fallos del proveedor: hay que generar uno nuevo' }
+              obligatorio: { type: boolean, description: 'false si el servidor no exige el código (CODIGO_INICIO_OBLIGATORIO=false)' }
     TooManyRequests:
       description: Límite de peticiones superado
       headers:
@@ -1573,6 +1633,15 @@ components:
       required: [error]
       properties:
         error: { type: string }
+    ErrorCodigoInicio:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        codigo:
+          type: string
+          enum: [codigo_inicio_requerido, codigo_inicio_incorrecto, codigo_inicio_bloqueado]
+        intentos_restantes: { type: integer, minimum: 0, maximum: 4 }
     ErrorLimite:
       type: object
       required: [error, bloqueado, minutos_restantes]
