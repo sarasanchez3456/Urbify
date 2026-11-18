@@ -119,7 +119,7 @@ jobs:
         working-directory: ./frontend
 
       - name: "🧪 Pruebas del frontend (Vitest)"
-        # Sesión, interceptor de Axios, AuthContext y la pantalla del código de verificación. Un fallo bloquea el CI.
+        # Sesión, Axios, AuthContext, rutas protegidas y formularios (login, registro, código, ofrecer servicios). Un fallo bloquea el CI.
         run: npm test
         working-directory: ./frontend
 
