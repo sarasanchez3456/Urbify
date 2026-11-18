@@ -117,6 +117,22 @@ Después, volver al proyecto de la API y poner en `CORS_ORIGIN` la dirección de
 - [ ] La consola del navegador no muestra errores de CORS ni de política de seguridad.
 - [ ] Las notificaciones se actualizan (cada 30 s).
 
+## Despliegue automático (GitHub Actions)
+
+Cada vez que se fusiona un PR a `main`, el CI (`.github/workflows/devops.yml`) corre las pruebas y, **solo si todas pasan**, el job **🚀 Desplegar en Vercel** publica la API y la página y comprueba que respondan. Funciona para cualquiera que fusione al repositorio: no depende de un computador ni de Docker.
+
+**Configuración (una sola vez, la hace quien administra el repositorio):**
+1. En Vercel: avatar → Account Settings → **Tokens** → crear `github-ci` (alcance All Projects).
+2. En GitHub: repositorio → Settings → Secrets and variables → Actions → **New repository secret**: nombre `VERCEL_TOKEN`, valor el token.
+3. Los identificadores del equipo y de los proyectos están en el workflow (no son secretos).
+
+**Qué NO hace:**
+- No migra la base de datos. Si un cambio toca las tablas, antes se corre `scripts\desplegar-vercel.ps1 -Migrar` (necesita `tidb.env`).
+- No cambia variables de entorno: siguen en el panel de Vercel.
+- Si el token vence o se revoca, el job falla con un mensaje claro. Renovarlo y actualizar el secreto.
+
+El script `scripts\desplegar-vercel.ps1` sigue sirviendo para publicar a mano o para las migraciones.
+
 ## Actualizar el sitio publicado
 
 Flujo para cada cambio:
