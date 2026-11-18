@@ -317,7 +317,7 @@ export default function Home() {
               <Link to="/contacto">Contacto</Link>
             </div>
             <div className="footer-copy">
-              © 2026 Urbify · Servicios Urbanos del Futuro
+              © {new Date().getFullYear()} Urbify · Servicios Urbanos del Futuro
             </div>
           </div>
         </footer>

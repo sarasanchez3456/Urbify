@@ -32,10 +32,15 @@ export function Terminos() {
       </p>
       <h2>3. Solicitudes y cancelaciones</h2>
       <p>
-        Las solicitudes pasan por estados (pendiente, aceptada, en proceso, completada o cancelada). Puedes cancelar una
-        solicitud mientras esté pendiente o aceptada, es decir, antes de que empiece el servicio. En esos mismos estados,
-        cliente y proveedor pueden proponer una nueva fecha (reprogramación), que la otra parte acepta o rechaza. Procura
+        Las solicitudes pasan por estados (pendiente, aceptada, en proceso, completada o cancelada). Como cliente puedes
+        cancelar una solicitud mientras esté pendiente; el proveedor puede cancelarla mientras esté pendiente o
+        aceptada, es decir, antes de que empiece el servicio. Como cliente también puedes proponer una nueva fecha
+        (reprogramación) mientras la solicitud esté pendiente o aceptada, y el proveedor la acepta o la rechaza. Procura
         avisar con tiempo para no afectar el trabajo de la otra persona.
+      </p>
+      <p>
+        Para empezar el servicio, la plataforma puede pedir al proveedor un código que el cliente le da al llegar. Así
+        ambas partes confirman que el servicio comenzó.
       </p>
       <h2>4. Calificaciones</h2>
       <p>
@@ -57,7 +62,7 @@ export function Privacidad() {
       <p>Para crear tu cuenta, mostrarte profesionales cercanos, gestionar tus solicitudes y enviarte avisos del servicio.</p>
       <h2>3. Quién los ve</h2>
       <p>
-        Tu teléfono y tu dirección solo se comparten con la otra parte de una solicitud en curso. Para funcionar usamos
+        Tu teléfono y tu dirección solo se comparten con la otra parte de una solicitud aceptada, en proceso o completada. Para funcionar usamos
         servicios de terceros, como el envío de correos (códigos de verificación y avisos) y los mapas para ubicar
         direcciones; solo reciben los datos necesarios para esa tarea. No vendemos tus datos.
       </p>

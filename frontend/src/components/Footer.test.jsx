@@ -46,6 +46,18 @@ describe('páginas legales', () => {
     expect(screen.getByText(/lunes a viernes, de 8:00 a\. m\. a 6:00 p\. m\./i)).toBeTruthy();
   });
 
+  it('Términos describe las reglas reales: el cliente cancela solo si está pendiente y propone la fecha', () => {
+    enRuta(<Terminos />);
+    expect(screen.getByText(/Como cliente puedes\s+cancelar una solicitud mientras esté pendiente/i)).toBeTruthy();
+    expect(screen.getByText(/Como cliente también puedes proponer una nueva fecha/i)).toBeTruthy();
+    expect(screen.getByText(/código que el cliente le da al llegar/i)).toBeTruthy();
+  });
+
+  it('Privacidad dice en qué estados se comparte el contacto', () => {
+    enRuta(<Privacidad />);
+    expect(screen.getByText(/solicitud aceptada, en proceso o completada/i)).toBeTruthy();
+  });
+
   it('Privacidad cita la Ley 1581 de 2012 y el canal para ejercer los derechos', () => {
     enRuta(<Privacidad />);
     expect(screen.getByText(/Ley 1581 de 2012/)).toBeTruthy();
