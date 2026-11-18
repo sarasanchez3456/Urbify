@@ -143,7 +143,11 @@ module.exports = {
   solicitudEstado: {
     type: 'object',
     required: ['estado'],
-    properties: { estado: { type: 'string', enum: ['pendiente', 'aceptada', 'en_proceso', 'completada', 'cancelada'] } },
+    properties: {
+      estado: { type: 'string', enum: ['pendiente', 'aceptada', 'en_proceso', 'completada', 'cancelada'] },
+      // Código de inicio (issue #57): obligatorio para pasar a en_proceso. Se aceptan espacios o guiones ("123 456").
+      codigo: { type: ['string', 'number'], maxLength: 20 },
+    },
   },
   mensajeCrear: {
     type: 'object',

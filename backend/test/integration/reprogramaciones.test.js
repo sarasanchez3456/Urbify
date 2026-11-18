@@ -1,7 +1,7 @@
 // Issue #37 (reprogramaciones): pedir, aceptar, rechazar y cancelar un cambio de fecha, con sus choques y concurrencia.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { api, registrar, crearServicio, fechaColombia, solicitudEn, solicitar, iniciarEntorno, contar } = require('./helpers');
+const { api, registrar, crearServicio, fechaColombia, solicitudEn, solicitar, codigoInicioDe, iniciarEntorno, contar } = require('./helpers');
 
 const aMysql = (iso) => new Date(iso).toISOString().slice(0, 19).replace('T', ' ');
 
@@ -114,7 +114,7 @@ test('reprogramaciones de citas (API real + MySQL)', async (t) => {
   await t.test('al iniciar o cancelar la solicitud, el cambio pendiente se cancela solo', async () => {
     const id = await solicitudEn('aceptada', { ...base, fecha: fechaColombia(81, '10:00') });
     const rid = (await proponer(id, fechaColombia(82, '10:00'))).body.reprogramacion.id;
-    const ep = await api('PUT', `/solicitudes/${id}/estado`, { token: proveedor.token, body: { estado: 'en_proceso' } });
+    const ep = await api('PUT', `/solicitudes/${id}/estado`, { token: proveedor.token, body: { estado: 'en_proceso', codigo: await codigoInicioDe(cliente, id) } });
     assert.equal(ep.status, 200);
     assert.equal(await estadoReprog(rid), 'cancelada');
   });

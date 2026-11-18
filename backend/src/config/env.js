@@ -197,6 +197,9 @@ const rateLimit = {
   // Doble modo, por USUARIO y por hora: cambios de modo y activaciones como proveedor.
   cambioModo: entero('RATE_LIMIT_MODE_SWITCH_PER_HOUR', 30, { min: 1 }),
   serProveedor: entero('RATE_LIMIT_BECOME_PROVIDER_PER_HOUR', 10, { min: 1 }),
+  // Código de inicio del servicio, por USUARIO y por hora: intentos de iniciar con código y códigos nuevos pedidos.
+  codigoInicioIntentos: entero('RATE_LIMIT_START_CODE_PER_HOUR', 30, { min: 1 }),
+  codigoInicioRenovar: entero('RATE_LIMIT_START_CODE_RENEW_PER_HOUR', 10, { min: 1 }),
   // Intentos de login (cualquier resultado) por IP.
   loginIp: entero('RATE_LIMIT_LOGIN_IP', 30, { min: 1 }),
   // Intentos fallidos contra una misma cuenta desde una misma IP.
@@ -224,6 +227,9 @@ const config = {
   // entorno sin servidor (Vercel), donde la conexión se cortaría y se reabriría sin parar. Se apagan solos allí y la web
   // consulta cada 30 segundos. Se puede forzar con AVISOS_EN_VIVO=true/false.
   avisosEnVivo: booleano('AVISOS_EN_VIVO', !process.env.VERCEL),
+  // Código de inicio del servicio (issue #57): el proveedor necesita el código que le dice el cliente para pasar una
+  // solicitud a `en_proceso`. Se puede apagar (false) mientras una app cliente (p. ej. la móvil) aún no lo soporte.
+  codigoInicioObligatorio: booleano('CODIGO_INICIO_OBLIGATORIO', true),
 };
 
 if (config.forceHttps && config.trustProxy === 0) {

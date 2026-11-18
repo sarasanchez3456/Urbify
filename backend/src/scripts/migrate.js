@@ -21,6 +21,8 @@ const COLUMNAS = [
   { tabla: 'usuarios', nombre: 'modo_activo', ddl: 'modo_activo VARCHAR(20) NULL' },
   { tabla: 'solicitudes', nombre: 'tarifa_acordada', ddl: 'tarifa_acordada DECIMAL(10,2) NULL' },
   { tabla: 'solicitudes', nombre: 'tipo_tarifa_acordada', ddl: 'tipo_tarifa_acordada VARCHAR(20) NULL' },
+  { tabla: 'solicitudes', nombre: 'codigo_inicio_sal', ddl: 'codigo_inicio_sal CHAR(32) NULL' },
+  { tabla: 'solicitudes', nombre: 'codigo_inicio_intentos', ddl: 'codigo_inicio_intentos TINYINT UNSIGNED NOT NULL DEFAULT 0' },
   { tabla: 'calificaciones', nombre: 'motivos', ddl: 'motivos VARCHAR(120) NULL' },
   { tabla: 'calificaciones', nombre: 'oculta', ddl: 'oculta BOOLEAN NOT NULL DEFAULT 0' },
   // Las notificaciones existentes se mantienen y reciben el tipo por defecto "general".
