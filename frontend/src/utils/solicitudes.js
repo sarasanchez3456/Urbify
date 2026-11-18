@@ -152,3 +152,12 @@ export function claveDia(iso) {
   const d = fechaValida(iso);
   return d ? new Intl.DateTimeFormat('en-CA', { timeZone: ZONA }).format(d) : '';
 }
+
+// El cliente puede cancelar una cita aceptada hasta 2 horas antes (igual que en el servidor); una pendiente, siempre.
+export const ANTICIPACION_CANCELAR_HORAS = 2;
+export function clientePuedeCancelar(solicitud, ahoraMs = Date.now()) {
+  if (solicitud.estado === 'pendiente') return true;
+  if (solicitud.estado !== 'aceptada') return false;
+  if (!solicitud.fecha_servicio) return true;
+  return new Date(solicitud.fecha_servicio).getTime() - ahoraMs >= ANTICIPACION_CANCELAR_HORAS * 3600 * 1000;
+}

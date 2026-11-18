@@ -767,7 +767,7 @@ paths:
       description: |
         Solo las partes de la solicitud. Transiciones: `pendiente` → `aceptada`|`cancelada`;
         `aceptada` → `en_proceso`|`cancelada`; `en_proceso` → `completada`; `completada` y `cancelada`
-        son finales. El cliente solo puede cancelar y solo en `pendiente`. Si otra petición cambió el
+        son finales. El cliente solo puede cancelar: en `pendiente`, o en `aceptada` si faltan al menos 2 horas para la cita (si no, responde 400 con `codigo: cancelacion_tardia`). El proveedor puede cancelar en `pendiente` y en `aceptada`. Las solicitudes `pendiente` o `aceptada` cuya hora de visita ya pasó (más 30 minutos de tolerancia, `AUTO_CANCEL_TOLERANCIA_MIN`) se cancelan solas: se avisa a ambas partes y queda un registro en la auditoría. Si otra petición cambió el
         estado en paralelo responde 409.
 
         **Código de inicio (issue #57):** para pasar de `aceptada` a `en_proceso` el proveedor debe enviar

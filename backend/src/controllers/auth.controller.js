@@ -512,13 +512,23 @@ exports.actualizarPerfil = async (req, res, next) => {
       if (!telefonoLimpio) return res.status(400).json({ error: MENSAJE_TELEFONO });
     }
 
+    // Si la dirección cambia pero no llegan coordenadas nuevas, las anteriores ya no corresponden a ella: se borran
+    // (así el profesional no aparece en el mapa en un sitio donde ya no está). Con coordenadas nuevas, se guardan.
+    const [filaActual] = await query('SELECT direccion FROM usuarios WHERE id = ?', [req.usuarioId]);
+    const actual = filaActual[0];
+    const direccionCambio = typeof direccion === 'string' && direccion.trim() !== '' && direccion.trim() !== (actual?.direccion || '');
+    const sinCoordenadasNuevas = (latitud === undefined || latitud === null) && (longitud === undefined || longitud === null);
+    const borrarCoordenadas = direccionCambio && sinCoordenadasNuevas;
+
     await query(
       `UPDATE usuarios SET nombre = COALESCE(?, nombre), apellido = COALESCE(?, apellido),
        telefono = COALESCE(?, telefono), direccion = COALESCE(?, direccion),
-       latitud = COALESCE(?, latitud), longitud = COALESCE(?, longitud),
+       latitud = ${borrarCoordenadas ? 'NULL' : 'COALESCE(?, latitud)'}, longitud = ${borrarCoordenadas ? 'NULL' : 'COALESCE(?, longitud)'},
        foto_url = COALESCE(?, foto_url), oficio = COALESCE(?, oficio)
        WHERE id = ?`,
-      [nombre, apellido, telefonoLimpio, direccion, latitud, longitud, foto_url, oficio, req.usuarioId]
+      borrarCoordenadas
+        ? [nombre, apellido, telefonoLimpio, direccion, foto_url, oficio, req.usuarioId]
+        : [nombre, apellido, telefonoLimpio, direccion, latitud, longitud, foto_url, oficio, req.usuarioId]
     );
 
     const [usuarios] = await query(
