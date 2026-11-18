@@ -36,8 +36,8 @@ describe('páginas legales', () => {
 
   it('Contacto muestra el correo como enlace mailto', () => {
     enRuta(<Contacto />);
-    const enlace = screen.getByRole('link', { name: 'notificaciones@urbify.app' });
-    expect(enlace.getAttribute('href')).toBe('mailto:notificaciones@urbify.app');
+    const enlace = screen.getByRole('link', { name: 'urbify.notificaciones@gmail.com' });
+    expect(enlace.getAttribute('href')).toBe('mailto:urbify.notificaciones@gmail.com');
   });
 
   it('Contacto pide detalle del problema e indica el horario', () => {
@@ -62,6 +62,6 @@ describe('páginas legales', () => {
     enRuta(<Privacidad />);
     expect(screen.getByText(/Ley 1581 de 2012/)).toBeTruthy();
     expect(screen.getByText(/Superintendencia de Industria y Comercio/)).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'notificaciones@urbify.app' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'urbify.notificaciones@gmail.com' })).toBeTruthy();
   });
 });
