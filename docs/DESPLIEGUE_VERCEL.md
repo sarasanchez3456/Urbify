@@ -158,6 +158,28 @@ mysqldump -h <host-tidb> -P 4000 -u <usuario> -p --ssl-mode=VERIFY_IDENTITY urbi
 
 ⚠️ Opciones del comando según la versión de `mysqldump` instalada.
 
+## Copias de seguridad de la base de datos
+
+TiDB Cloud Starter (plan gratis) **no garantiza copias automáticas**: la copia la hacemos nosotros.
+
+```bash
+# Crear una copia (queda en D:/urbify/respaldos, FUERA del repositorio)
+CA_PEM=D:/ruta/norton-ca.pem scripts/respaldo-bd.sh D:/urbify/tidb.env D:/urbify/respaldos
+```
+
+(`CA_PEM` solo hace falta si un antivirus como Norton intercepta la conexión cifrada.)
+
+```bash
+# Restaurar: ENSAYA SIEMPRE en una base desechable. Sobre la real, borra lo que haya hoy.
+CONFIRMAR=si scripts/restaurar-bd.sh <copia.sql.gz> <archivo-con-datos-de-la-base-destino>
+```
+
+Cosas a saber:
+- Cada copia tiene **datos personales** (correos y contraseñas cifradas): no se sube a Git (`respaldos/` y `*.sql.gz` están en `.gitignore`) ni se manda por chat.
+- TiDB no admite `--single-transaction`; la copia no es una foto exacta si alguien escribe justo mientras corre. Hazla con poco movimiento (por ejemplo, antes de la presentación).
+- TiDB nombra todas las claves foráneas `fk_1`, y MySQL lo rechaza al restaurar. `restaurar-bd.sh` les quita el nombre (MySQL pone nombres únicos; las relaciones quedan iguales).
+- Ensayado el 2026-11-17: copia de TiDB restaurada en un MySQL 8 desechable, con 16 tablas, 28 claves foráneas y los mismos conteos de filas.
+
 ## Seguridad
 
 Secretos solo en las variables de Vercel (o en archivos fuera del repositorio), `CORS_ORIGIN` con direcciones exactas (nunca `*`), `DB_SSL=true`, cuenta de Gmail exclusiva de Urbify y contraseña de aplicación revocable. Más detalles en `docs/DESPLIEGUE.md`.
