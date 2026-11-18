@@ -4,6 +4,7 @@ import { iniciarTourInicioCliente } from '../../tours/cliente/inicio';
 import { iniciarTourBuscarServicios } from '../../tours/cliente/buscarServicios';
 import { iniciarTourMisSolicitudes } from '../../tours/cliente/misSolicitudes';
 import { iniciarTourPerfilCliente } from '../../tours/cliente/perfil';
+import { iniciarTourSolicitarServicio } from '../../tours/cliente/solicitarServicio';
 
 export default function MenuAyuda({ abierto, onCerrar, usuario, rutaActual, controlarSidebarTour }) {
   useEffect(() => {
@@ -36,7 +37,12 @@ export default function MenuAyuda({ abierto, onCerrar, usuario, rutaActual, cont
       iniciar: iniciarTourPerfilCliente,
     },
   };
-  const recorrido = usuario?.rol === 'cliente' ? recorridos[rutaActual] : null;
+  const esDetalleServicio = /^\/servicio\/[^/]+$/.test(rutaActual);
+  const recorrido = usuario?.rol === 'cliente'
+    ? (esDetalleServicio
+      ? { titulo: 'Detalle y solicitud de servicio', iniciar: iniciarTourSolicitarServicio }
+      : recorridos[rutaActual])
+    : null;
   const iniciarTour = () => {
     onCerrar();
     recorrido?.iniciar();
