@@ -16,11 +16,17 @@ const ROLES = { cliente: 'Cliente', proveedor: 'Proveedor', admin: 'Administrado
 
 // `rol` es solo cómo se registró la persona (no cambia). Con el doble modo, una cuenta registrada como cliente puede
 // además ofrecer servicios (`es_proveedor`): se muestran las dos etiquetas para no ocultar esa capacidad.
+// Cualquier cuenta (no admin) puede trabajar como cliente; las que ofrecen servicios (también las registradas como
+// proveedor) tienen además el modo proveedor. `modo_activo` es el modo con el que la persona empieza su sesión.
 const rolesDe = (u) => {
   if (u?.rol === 'admin') return ['admin'];
-  if (u?.rol === 'cliente') return u.es_proveedor ? ['cliente', 'proveedor'] : ['cliente'];
-  return [u?.rol || 'cliente'];
+  return u?.es_proveedor || u?.rol === 'proveedor' ? ['cliente', 'proveedor'] : ['cliente'];
 };
+const modoDe = (u) => (u?.rol === 'admin' ? null : (u?.modo_activo === 'proveedor' ? 'proveedor' : 'cliente'));
+// Una cuenta que se registró pero aún no escribió su código de verificación no está activa todavía.
+const estadoDe = (u) => (u?.correo_verificado === 0 || u?.correo_verificado === false
+  ? { clave: 'pendiente', texto: 'Sin verificar' }
+  : (u?.activo ? { clave: 'activo', texto: 'Activo' } : { clave: 'suspendido', texto: 'Suspendido' }));
 const textoRoles = (u) => rolesDe(u).map((r) => ROLES[r]).join(' + ');
 const Etiquetas = ({ u }) => (
   <span className="ad-etiquetas">
@@ -220,6 +226,18 @@ function Resumen({ ir }) {
 function DetalleUsuario({ id, onCerrar, onCambio }) {
   const { datos, error, cargar } = useDatos(`/admin/usuarios/${id}`);
   const [confirmando, setConfirmando] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
+  const eliminar = async (motivo) => {
+    try {
+      await api.delete(`/admin/usuarios/${id}`, { data: { motivo } });
+      setEliminando(false);
+      onCambio();
+      onCerrar();
+      return null;
+    } catch (err) {
+      return err.response?.data?.error || 'No se pudo eliminar la cuenta.';
+    }
+  };
   const cambiar = async (motivo) => {
     try {
       await api.put(`/admin/usuarios/${id}/estado`, { activo: !datos.activo, motivo });
@@ -252,7 +270,8 @@ function DetalleUsuario({ id, onCerrar, onCambio }) {
                 <div><dt>Teléfono</dt><dd>{datos.telefono || '—'}</dd></div>
                 {datos.direccion && <div><dt>Dirección</dt><dd>{datos.direccion}</dd></div>}
                 {datos.oficio && <div><dt>Oficio</dt><dd>{datos.oficio}</dd></div>}
-                <div><dt>Estado</dt><dd><span className={`ad-est${datos.activo ? '' : ' is-no'}`}><i />{datos.activo ? 'Activo' : 'Suspendido'}</span></dd></div>
+                {modoDe(datos) && <div><dt>Modo actual</dt><dd>{ROLES[modoDe(datos)]}</dd></div>}
+                <div><dt>Estado</dt><dd><span className={`ad-est${estadoDe(datos).clave === 'activo' ? '' : estadoDe(datos).clave === 'pendiente' ? ' is-pend' : ' is-no'}`}><i />{estadoDe(datos).texto}</span></dd></div>
                 <div><dt>Registro</dt><dd>{fechaHoraCorta(datos.fecha_creacion)}</dd></div>
               </dl>
             </div>
@@ -286,7 +305,19 @@ function DetalleUsuario({ id, onCerrar, onCambio }) {
           <button type="button" className={`pl-boton ${datos.activo ? 'pl-boton--peligro' : 'pl-boton--principal'}`} onClick={() => setConfirmando(true)}>
             {datos.activo ? 'Suspender cuenta' : 'Reactivar cuenta'}
           </button>
+          <button type="button" className="pl-boton pl-boton--peligro" onClick={() => setEliminando(true)}>Eliminar cuenta</button>
         </div>
+      )}
+      {eliminando && datos && (
+        <Confirmar
+          titulo={`Eliminar a ${datos.nombre}`}
+          texto="Se borrarán sus datos personales y se cerrarán sus sesiones. Si tiene historial de solicitudes se conserva sin sus datos; si tiene solicitudes abiertas no se podrá eliminar. No se puede deshacer."
+          confirmar="Eliminar"
+          peligro
+          conMotivo
+          onCancelar={() => setEliminando(false)}
+          onConfirmar={eliminar}
+        />
       )}
       {confirmando && datos && (
         <Confirmar
@@ -312,9 +343,10 @@ function Usuarios({ filtroInicial }) {
 
   const filtrados = useMemo(() => (datos || []).filter((u) => (
     (!rol || (rol === 'sus' ? !u.activo
-      : rol === 'proveedor' ? Boolean(u.es_proveedor) // incluye a quien se registró como cliente y ahora ofrece servicios
-        : rol === 'ambos' ? (u.rol === 'cliente' && Boolean(u.es_proveedor))
-          : u.rol === rol))
+      : rol === 'sin_verificar' ? !u.correo_verificado
+        : rol === 'proveedor' ? Boolean(u.es_proveedor) // incluye a quien se registró como cliente y ahora ofrece servicios
+          : rol === 'ambos' ? (u.rol === 'cliente' && Boolean(u.es_proveedor))
+            : u.rol === rol))
     && (!q || sinTildes(`${u.nombre} ${u.apellido} ${u.correo}`).includes(sinTildes(q)))
   )), [datos, rol, q]);
   const filas = filtrados.slice(pagina * POR_PAGINA, pagina * POR_PAGINA + POR_PAGINA);
@@ -324,13 +356,13 @@ function Usuarios({ filtroInicial }) {
       <div className="ad-tarjeta">
         <div className="ad-herramientas">
           <input className="ad-buscar" placeholder="Buscar por nombre o correo" aria-label="Buscar usuario" value={q} onChange={(e) => { setQ(e.target.value); setPagina(0); }} />
-          <button type="button" className="ad-btn" onClick={() => exportarCsv('usuarios.csv', ['Nombre', 'Correo', 'Teléfono', 'Rol', 'Estado', 'Registro'], filtrados.map((u) => [nombre(u.nombre, u.apellido), u.correo, u.telefono, textoRoles(u), u.activo ? 'Activo' : 'Suspendido', u.fecha_creacion]))}>Exportar CSV</button>
+          <button type="button" className="ad-btn" onClick={() => exportarCsv('usuarios.csv', ['Nombre', 'Correo', 'Teléfono', 'Rol', 'Estado', 'Registro'], filtrados.map((u) => [nombre(u.nombre, u.apellido), u.correo, u.telefono, textoRoles(u), estadoDe(u).texto, u.fecha_creacion]))}>Exportar CSV</button>
         </div>
-        <Chips etiqueta="Filtrar por rol" valor={rol} onElegir={(v) => { setRol(v); setPagina(0); }} opciones={[['', 'Todos'], ['cliente', 'Clientes'], ['proveedor', 'Proveedores'], ['ambos', 'Con ambos modos'], ['admin', 'Administradores'], ['sus', 'Suspendidos']]} />
+        <Chips etiqueta="Filtrar por rol" valor={rol} onElegir={(v) => { setRol(v); setPagina(0); }} opciones={[['', 'Todos'], ['cliente', 'Clientes'], ['proveedor', 'Proveedores'], ['ambos', 'Con ambos modos'], ['admin', 'Administradores'], ['sus', 'Suspendidos'], ['sin_verificar', 'Sin verificar']]} />
         {filas.length === 0 ? <p className="ad-vacio-interno">No hay usuarios con esos filtros.</p> : (
           <div className="ad-tabla-caja">
             <table>
-              <thead><tr><th>Usuario</th><th>Rol</th><th>Teléfono</th><th>Estado</th><th>Registro</th></tr></thead>
+              <thead><tr><th>Usuario</th><th>Cuenta</th><th>Modo actual</th><th>Teléfono</th><th>Estado</th><th>Registro</th></tr></thead>
               <tbody>
                 {filas.map((u) => (
                   <tr key={u.id}>
@@ -341,8 +373,9 @@ function Usuarios({ filtroInicial }) {
                       </button>
                     </td>
                     <td><Etiquetas u={u} /></td>
+                    <td>{modoDe(u) ? ROLES[modoDe(u)] : '—'}</td>
                     <td className="ad-num">{u.telefono || '—'}</td>
-                    <td><span className={`ad-est${u.activo ? '' : ' is-no'}`}><i />{u.activo ? 'Activo' : 'Suspendido'}</span></td>
+                    <td><span className={`ad-est${estadoDe(u).clave === 'activo' ? '' : estadoDe(u).clave === 'pendiente' ? ' is-pend' : ' is-no'}`}><i />{estadoDe(u).texto}</span></td>
                     <td className="ad-suave">{fechaRelativa(u.fecha_creacion)}</td>
                   </tr>
                 ))}

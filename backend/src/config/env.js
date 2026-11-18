@@ -197,6 +197,7 @@ const rateLimit = {
   // Doble modo, por USUARIO y por hora: cambios de modo y activaciones como proveedor.
   cambioModo: entero('RATE_LIMIT_MODE_SWITCH_PER_HOUR', 30, { min: 1 }),
   serProveedor: entero('RATE_LIMIT_BECOME_PROVIDER_PER_HOUR', 10, { min: 1 }),
+  eliminarCuenta: entero('RATE_LIMIT_DELETE_ACCOUNT_PER_HOUR', 5, { min: 1 }),
   // Código de inicio del servicio, por USUARIO y por hora: intentos de iniciar con código y códigos nuevos pedidos.
   codigoInicioIntentos: entero('RATE_LIMIT_START_CODE_PER_HOUR', 30, { min: 1 }),
   codigoInicioRenovar: entero('RATE_LIMIT_START_CODE_RENEW_PER_HOUR', 10, { min: 1 }),

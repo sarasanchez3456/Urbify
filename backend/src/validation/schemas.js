@@ -60,6 +60,11 @@ module.exports = {
     properties: { oficio: texto(100, { obligatorio: true }), categoria_id: id },
     numericos: ['categoria_id'],
   },
+  eliminarCuenta: {
+    type: 'object',
+    required: ['contrasena'],
+    properties: { contrasena: { type: 'string', minLength: 1, maxLength: 128 } },
+  },
   cambiarModo: {
     type: 'object',
     required: ['modo'],
