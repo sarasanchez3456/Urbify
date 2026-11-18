@@ -98,6 +98,11 @@ const serProveedorLimiter = crearLimitador({
   ventanaMs: HORA_MS, max: cfg.serProveedor, mensaje: 'Demasiados intentos de activar el modo proveedor. Intenta de nuevo más tarde.', key: usuario,
 });
 
+// Eliminar la propia cuenta pide la contraseña: se limita por usuario para que una sesión robada no la pruebe sin freno.
+const eliminarCuentaLimiter = crearLimitador({
+  ventanaMs: HORA_MS, max: cfg.eliminarCuenta, mensaje: 'Demasiados intentos de eliminar la cuenta. Intenta de nuevo más tarde.', key: usuario,
+});
+
 // Código de inicio del servicio (issue #57), por USUARIO y por hora. Además del bloqueo de cada código tras 5 fallos,
 // frena a un proveedor que pruebe códigos en muchas solicitudes y a un cliente que genere códigos nuevos sin parar.
 const intentosCodigoInicio = crearLimitador({
@@ -142,5 +147,5 @@ const loginLimiters = [
 module.exports = {
   globalLimiter, publicLimiter, registroLimiter, loginLimiters, olvidoLimiters, restablecerLimiters,
   limitadoresVerificacion, limitadoresEnvioCodigo, cambioModoLimiter, serProveedorLimiter,
-  codigoInicioLimiter, renovarCodigoInicioLimiter,
+  eliminarCuentaLimiter, codigoInicioLimiter, renovarCodigoInicioLimiter,
 };

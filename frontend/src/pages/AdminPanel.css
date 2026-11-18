@@ -246,6 +246,7 @@
 .ad-est { display: inline-flex; gap: 7px; align-items: center; font-size: 0.86rem; }
 .ad-est i { width: 8px; height: 8px; border-radius: 50%; background: oklch(0.60 0.14 155); }
 .ad-est.is-no i { background: var(--ad-bad); }
+.ad-est.is-pend i { background: oklch(0.75 0.13 80); }
 
 .ad-enlace {
   border: 0;

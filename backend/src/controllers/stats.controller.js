@@ -1,10 +1,14 @@
 const db = require('../config/db');
+const { SQL_SIN_ELIMINADAS } = require('../utils/eliminarCuenta');
+
+// Solo cuentan las cuentas con el correo verificado y no eliminadas (ver admin.controller.js).
+const CUENTAS_REALES = `correo_verificado = 1 AND ${SQL_SIN_ELIMINADAS}`;
 
 // Estadísticas completas del sistema (RF-17 / CU-11). Solo administrador.
 exports.getStatsAdmin = async (req, res, next) => {
   try {
     const [usuariosPorRol] = await db.query(
-      'SELECT rol, COUNT(*) AS total FROM usuarios GROUP BY rol'
+      `SELECT rol, COUNT(*) AS total FROM usuarios WHERE ${CUENTAS_REALES} GROUP BY rol`
     );
     const [cuentasPorCapacidadYModo] = await db.query(
       `SELECT
@@ -13,7 +17,7 @@ exports.getStatsAdmin = async (req, res, next) => {
          COALESCE(SUM(modo_activo = 'cliente'), 0) AS en_modo_cliente,
          COALESCE(SUM(modo_activo = 'proveedor'), 0) AS en_modo_proveedor,
          COALESCE(SUM(rol = 'admin'), 0) AS administradores
-       FROM usuarios`
+       FROM usuarios WHERE ${CUENTAS_REALES}`
     );
     const [servicios] = await db.query(
       'SELECT COUNT(*) AS total, COALESCE(SUM(disponible = 1), 0) AS disponibles FROM servicios'
@@ -61,7 +65,7 @@ exports.getStatsAdmin = async (req, res, next) => {
 exports.getStats = async (req, res, next) => {
   try {
     const [proveedores] = await db.query(
-      'SELECT COUNT(*) AS total FROM usuarios WHERE es_proveedor = 1 AND activo = 1'
+      'SELECT COUNT(*) AS total FROM usuarios WHERE es_proveedor = 1 AND activo = 1 AND correo_verificado = 1'
     );
     const [solicitudesCompletadas] = await db.query(
       "SELECT COUNT(*) AS total FROM solicitudes WHERE estado = 'completada'"

@@ -5,6 +5,11 @@ const { registrarAuditoria, motivoValido } = require('../utils/auditoria');
 const { enTransaccion } = require('../utils/transaccion');
 const { conReservaDeProveedor } = require('../utils/agenda');
 const { registrarHistorial } = require('../utils/historial');
+const { eliminarCuenta, SQL_SIN_ELIMINADAS } = require('../utils/eliminarCuenta');
+
+// Cuentas que cuentan en las cifras del panel: con el correo verificado (quien se registró y no escribió su código
+// aún no es una cuenta activa) y sin las ya eliminadas (anonimizadas).
+const CUENTAS_REALES = `correo_verificado = 1 AND ${SQL_SIN_ELIMINADAS}`;
 
 const ERROR_MOTIVO = { error: 'Escribe un motivo de entre 10 y 300 caracteres.' };
 const nombreDe = (u) => `${u.nombre} ${u.apellido}`.trim();
@@ -15,14 +20,14 @@ exports.resumen = async (req, res, next) => {
     const semanas = [4, 8, 12].includes(Number(req.query.semanas)) ? Number(req.query.semanas) : 8;
 
     const [[roles], [[cuentas]], [servicios], [estados], [calif]] = await Promise.all([
-      query('SELECT rol, COUNT(*) AS total FROM usuarios GROUP BY rol'),
+      query(`SELECT rol, COUNT(*) AS total FROM usuarios WHERE ${CUENTAS_REALES} GROUP BY rol`),
       query(`SELECT
                COALESCE(SUM(es_proveedor = 1), 0) AS con_capacidad_proveedor,
                COALESCE(SUM(rol = 'cliente' AND es_proveedor = 1), 0) AS con_ambos_modos,
                COALESCE(SUM(modo_activo = 'cliente'), 0) AS en_modo_cliente,
                COALESCE(SUM(modo_activo = 'proveedor'), 0) AS en_modo_proveedor,
                COALESCE(SUM(rol = 'admin'), 0) AS administradores
-             FROM usuarios`),
+             FROM usuarios WHERE ${CUENTAS_REALES}`),
       query('SELECT COUNT(*) AS total, COALESCE(SUM(disponible = 1), 0) AS disponibles FROM servicios'),
       query('SELECT estado, COUNT(*) AS total FROM solicitudes GROUP BY estado'),
       query('SELECT COUNT(*) AS total, AVG(puntuacion) AS media, COALESCE(SUM(puntuacion <= 2), 0) AS bajas FROM calificaciones WHERE oculta = 0'),
@@ -36,7 +41,7 @@ exports.resumen = async (req, res, next) => {
     // Actividad por semana: la última semana es la más reciente.
     const dias = semanas * 7;
     const [[nuevosUsuarios], [nuevasSolicitudes]] = await Promise.all([
-      query('SELECT FLOOR(TIMESTAMPDIFF(DAY, fecha_creacion, NOW()) / 7) AS w, COUNT(*) AS n FROM usuarios WHERE fecha_creacion >= NOW() - INTERVAL ? DAY GROUP BY w', [dias]),
+      query('SELECT FLOOR(TIMESTAMPDIFF(DAY, fecha_creacion, NOW()) / 7) AS w, COUNT(*) AS n FROM usuarios WHERE ' + CUENTAS_REALES + ' AND fecha_creacion >= NOW() - INTERVAL ? DAY GROUP BY w', [dias]),
       query('SELECT FLOOR(TIMESTAMPDIFF(DAY, fecha_solicitud, NOW()) / 7) AS w, COUNT(*) AS n FROM solicitudes WHERE fecha_solicitud >= NOW() - INTERVAL ? DAY GROUP BY w', [dias]),
     ]);
     const porSemana = [];
@@ -48,7 +53,7 @@ exports.resumen = async (req, res, next) => {
       });
     }
 
-    const [[suspendidos]] = await query('SELECT COUNT(*) AS n FROM usuarios WHERE activo = 0');
+    const [[suspendidos]] = await query(`SELECT COUNT(*) AS n FROM usuarios WHERE activo = 0 AND ${CUENTAS_REALES}`);
     const [[reportesNuevos]] = await query("SELECT COUNT(*) AS n FROM reportes WHERE estado = 'nuevo'");
     res.json({
       usuarios_por_rol: usuarios,
@@ -84,7 +89,7 @@ exports.detalleUsuario = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
     const [usuarios] = await query(
-      'SELECT id, nombre, apellido, correo, telefono, rol, es_proveedor, modo_activo, foto_url, direccion, oficio, activo, fecha_creacion FROM usuarios WHERE id = ?',
+      'SELECT id, nombre, apellido, correo, telefono, rol, es_proveedor, modo_activo, foto_url, direccion, oficio, activo, correo_verificado, fecha_creacion FROM usuarios WHERE id = ?',
       [id]
     );
     if (usuarios.length === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -141,6 +146,39 @@ exports.cambiarEstadoUsuario = async (req, res, next) => {
       await registrarAuditoria(conn, req.usuarioId, 'usuario', activo ? 'Reactivó a' : 'Suspendió a', nombreDe(u), motivo);
     });
     res.json({ mensaje: activo ? 'Cuenta reactivada' : 'Cuenta suspendida', activo });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+// Eliminar la cuenta de otra persona: exige motivo, queda en la auditoría y sigue las mismas reglas que cuando la
+// elimina su dueño (se borra si no tiene historial; si lo tiene se anonimiza; con solicitudes abiertas no se puede).
+exports.eliminarUsuario = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const motivo = motivoValido(req.body?.motivo);
+    if (!motivo) return res.status(400).json(ERROR_MOTIVO);
+    if (id === req.usuarioId) return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta' });
+
+    const [filas] = await query(`SELECT id, nombre, apellido, correo, rol FROM usuarios WHERE id = ? AND ${SQL_SIN_ELIMINADAS}`, [id]);
+    if (filas.length === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+    const u = filas[0];
+    if (u.rol === 'admin') return res.status(403).json({ error: 'No se puede eliminar a un administrador desde la API' });
+
+    const r = await enTransaccion(async (conn) => {
+      const resultado = await eliminarCuenta(conn, id);
+      if (resultado.resultado !== 'con_solicitudes_abiertas') {
+        await registrarAuditoria(conn, req.usuarioId, 'usuario', 'Eliminó a', nombreDe(u), motivo);
+      }
+      return resultado;
+    });
+    if (r.resultado === 'con_solicitudes_abiertas') {
+      return res.status(409).json({
+        error: 'La cuenta tiene solicitudes abiertas. Cancélalas desde la sección Solicitudes (o espera a que terminen) y vuelve a intentarlo.',
+        codigo: 'solicitudes_abiertas',
+      });
+    }
+    res.json({ mensaje: 'Cuenta eliminada', resultado: r.resultado });
   } catch (err) {
     return next(err);
   }

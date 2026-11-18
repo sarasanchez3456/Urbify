@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import DashboardLayout from '../components/DashboardLayout';
 import CambiarContrasena from '../components/CambiarContrasena';
 import OfrecerServicios from '../components/OfrecerServicios';
+import EliminarCuenta from '../components/EliminarCuenta';
 import CampoDireccion from '../components/CampoDireccion';
 import { logError } from '../utils/log';
 import { geocodificarDireccion, estaDentroDeColombia } from '../utils/colombia';
@@ -64,6 +65,7 @@ export default function Perfil() {
   const [errorGuardar, setErrorGuardar] = useState('');
   const [aviso, setAviso] = useState('');
   const [cambiandoClave, setCambiandoClave] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
   const [avisoTel, setAvisoTel] = useState('');
   const temporizadorAviso = useRef(null);
   const temporizadorTel = useRef(null);
@@ -420,12 +422,16 @@ export default function Perfil() {
                 <h3>Seguridad</h3>
                 <p className="pf-sd">Te enviamos un código a tu correo para confirmar el cambio.</p>
                 <button type="button" className="pf-lnk pf-lnk-btn" onClick={() => setCambiandoClave(true)}>Cambiar contraseña →</button>
+                {usuario?.rol !== 'admin' && (
+                  <button type="button" className="pf-lnk pf-lnk-btn" onClick={() => setEliminando(true)}>Eliminar mi cuenta →</button>
+                )}
               </div>
             </aside>
           </form>
         )}
 
         {cambiandoClave && cuenta?.correo && <CambiarContrasena correo={cuenta.correo} onCerrar={() => setCambiandoClave(false)} />}
+        {eliminando && <EliminarCuenta onCerrar={() => setEliminando(false)} />}
 
         {aviso && <div className="pf-toast" role="status">{aviso}</div>}
       </div>
