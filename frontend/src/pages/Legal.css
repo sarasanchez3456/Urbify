@@ -34,12 +34,12 @@
 
 .lg-volver { margin-top: 28px; }
 
-.lg-volver a {
+.lg a {
   color: oklch(0.40 0.18 255);
   font-weight: 600;
 }
 
-.lg-volver a:focus-visible {
+.lg a:focus-visible {
   outline: 3px solid oklch(0.72 0.13 200);
   outline-offset: 2px;
 }

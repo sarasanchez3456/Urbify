@@ -3,6 +3,9 @@ import './Legal.css';
 
 // Páginas legales y de contacto (issue #75). El texto es un BORRADOR de relleno: el equipo debe aprobar la
 // versión definitiva (en especial la de privacidad, que suele apoyarse en la Ley 1581 de 2012).
+// Mismo correo que usa el backend para enviar las notificaciones (EMAIL_FROM por defecto).
+const CORREO_CONTACTO = 'notificaciones@urbify.app';
+
 function PaginaLegal({ titulo, children }) {
   return (
     <article className="lg" aria-labelledby="lg-titulo">
@@ -70,7 +73,7 @@ export function Contacto() {
     <PaginaLegal titulo="Contacto">
       <p>¿Tienes una duda, un problema con una solicitud o una sugerencia? Escríbenos.</p>
       <p>
-        Correo de soporte: <strong>[por definir por el equipo]</strong>
+        Correo de contacto: <a href={`mailto:${CORREO_CONTACTO}`}>{CORREO_CONTACTO}</a>
       </p>
       <p>[Pendiente: horario de atención y si habrá formulario de contacto.]</p>
     </PaginaLegal>

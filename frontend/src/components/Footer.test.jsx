@@ -32,4 +32,10 @@ describe('páginas legales', () => {
     expect(screen.getByRole('heading', { level: 1, name: titulo })).toBeTruthy();
     expect(screen.getByRole('note').textContent).toMatch(/borrador/i);
   });
+
+  it('Contacto muestra el correo como enlace mailto', () => {
+    enRuta(<Contacto />);
+    const enlace = screen.getByRole('link', { name: 'notificaciones@urbify.app' });
+    expect(enlace.getAttribute('href')).toBe('mailto:notificaciones@urbify.app');
+  });
 });

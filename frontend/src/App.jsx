@@ -49,6 +49,11 @@ export default function App() {
     setOnUnauthorized(() => navigate('/login'));
   }, [navigate]);
 
+  // Cada página nueva se abre desde arriba (si no, al entrar desde el pie se quedaba abajo).
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
   return (
     <div className="min-h-screen bg-[oklch(0.97_0.012_80)] text-[oklch(0.25_0.06_240)] relative overflow-x-hidden">
       <Background />
