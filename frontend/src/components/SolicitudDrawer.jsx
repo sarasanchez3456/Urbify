@@ -363,7 +363,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
           {solicitud.reporte_id ? (
             <span>Ya reportaste esta solicitud. La administración la está revisando.</span>
           ) : (
-            <button type="button" onClick={() => setVista('reportar')}>Reportar un problema con este servicio</button>
+            <button type="button" onClick={() => setVista('reportar')} data-tour="mis-solicitudes-reportar">Reportar un problema con este servicio</button>
           )}
         </div>
       )}
@@ -411,12 +411,13 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
               type="button"
               className={`pl-boton${!sinCalificar && esCliente && solicitud.estado !== 'pendiente' ? ' pl-boton--principal' : ''}`}
               onClick={() => setVista('chat')}
+              data-tour={esCliente ? 'mis-solicitudes-chat' : undefined}
             >
               Escribir a {primerNombre}
             </button>
 
             {puedeReprogramar && (
-              <button type="button" className="pl-boton" onClick={() => setVista('reprogramar')}>Reprogramar cita</button>
+              <button type="button" className="pl-boton" onClick={() => setVista('reprogramar')} data-tour="mis-solicitudes-reprogramar">Reprogramar cita</button>
             )}
 
             {esCliente && solicitud.estado === 'pendiente' && solicitud.servicio_categoria_id && (
@@ -424,7 +425,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
             )}
 
             {esCliente && solicitud.estado === 'pendiente' && (
-              <button type="button" className="pl-boton pl-boton--peligro" onClick={() => setConfirmando(true)}>Cancelar solicitud</button>
+              <button type="button" className="pl-boton pl-boton--peligro" onClick={() => setConfirmando(true)} data-tour="mis-solicitudes-cancelar">Cancelar solicitud</button>
             )}
           </>
         )}

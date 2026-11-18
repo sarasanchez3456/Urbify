@@ -8,6 +8,7 @@ import { geocodificarDireccion, coordenadasADireccion, estaDentroDeColombia } fr
 import { leerUbicacion, guardarUbicacion, distanciaKm, textoDistancia } from '../utils/ubicacion';
 import { TIPO_TARIFA_LARGO, formatearDinero, fechaServicioLarga, iniciales, fechaRelativa } from '../utils/solicitudes';
 import { logError } from '../utils/log';
+import { EVENTO_SOLICITUD_SERVICIO_ENVIADA } from '../tours/cliente/solicitarServicio';
 import './ServicioDetalle.css';
 
 const DIRECCION_VALIDA = /^[\p{L}\p{N}\s#\-.,°ºª/()']+$/u;
@@ -101,6 +102,7 @@ function FormularioSolicitud({ servicio, onEnviada }) {
         longitud: coords?.lng ?? null,
       });
       window.dispatchEvent(new Event('notificacion_actualizada'));
+      window.dispatchEvent(new CustomEvent(EVENTO_SOLICITUD_SERVICIO_ENVIADA));
       onEnviada(inicio);
     } catch (err) {
       logError('Error al enviar la solicitud:', err);
@@ -113,10 +115,10 @@ function FormularioSolicitud({ servicio, onEnviada }) {
   };
 
   return (
-    <form className="sv-form" onSubmit={enviar} noValidate>
+    <form className="sv-form" onSubmit={enviar} noValidate data-tour="servicio-detalle-solicitud">
       <h3>Pide tu cita</h3>
 
-      <label className="sv-campo">
+      <label className="sv-campo" data-tour="servicio-detalle-descripcion-solicitud">
         <span>¿Qué necesitas?</span>
         <textarea
           rows={4}
@@ -127,13 +129,13 @@ function FormularioSolicitud({ servicio, onEnviada }) {
         />
       </label>
 
-      <div className="sv-campo">
+      <div className="sv-campo" data-tour="servicio-detalle-agenda">
         <span>Día y hora</span>
         <SelectorHorario proveedorId={servicio.proveedor_id} valor={inicio} onElegir={setInicio} recarga={recarga} />
         {inicio && <p className="sv-elegida">Elegiste: <b>{fechaServicioLarga(inicio)}</b></p>}
       </div>
 
-      <div className="sv-campo sv-campo--dir">
+      <div className="sv-campo sv-campo--dir" data-tour="servicio-detalle-direccion">
         <label htmlFor="sv-direccion">Dirección del servicio</label>
         <div className="sv-dir-fila">
           <input
@@ -145,7 +147,7 @@ function FormularioSolicitud({ servicio, onEnviada }) {
             autoComplete="off"
             aria-invalid={Boolean(direccion) && Boolean(errorDireccion)}
           />
-          <button type="button" className="sv-btn sv-btn--suave" onClick={usarMiUbicacion} disabled={localizando}>
+          <button type="button" className="sv-btn sv-btn--suave" onClick={usarMiUbicacion} disabled={localizando} data-tour="servicio-detalle-ubicacion">
             {localizando ? 'Buscando...' : 'Usar mi ubicación'}
           </button>
         </div>
@@ -163,7 +165,7 @@ function FormularioSolicitud({ servicio, onEnviada }) {
 
       {error && <p className="sv-error" role="alert">{error}</p>}
 
-      <button type="submit" className="sv-btn sv-btn--principal" disabled={!puedeEnviar}>
+      <button type="submit" className="sv-btn sv-btn--principal" disabled={!puedeEnviar} data-tour="servicio-detalle-enviar">
         {enviando ? 'Enviando...' : 'Enviar solicitud'}
       </button>
       <p className="sv-ayuda sv-ayuda--centro">El profesional la acepta o la rechaza. No se cobra nada ahora.</p>
@@ -201,12 +203,12 @@ export default function ServicioDetalle() {
   const promedio = parseFloat(servicio.calificacion_promedio || 0);
 
   const contenido = (
-    <div className="sv">
+    <div className="sv" data-tour="servicio-detalle-inicio">
       <Link to="/buscar" className="sv-volver">← Volver a la búsqueda</Link>
 
       <div className="sv-grid">
         <div className="sv-principal">
-          <header className="sv-cabecera">
+          <header className="sv-cabecera" data-tour="servicio-detalle-informacion">
             <span className="sv-categoria">{servicio.categoria_nombre}</span>
             <h1>{servicio.titulo}</h1>
             <p className="sv-rating">
@@ -217,12 +219,12 @@ export default function ServicioDetalle() {
             </p>
           </header>
 
-          <section>
+          <section data-tour="servicio-detalle-descripcion">
             <h2>Descripción</h2>
             <p className="sv-texto">{servicio.descripcion || 'El profesional no agregó una descripción.'}</p>
           </section>
 
-          <section>
+          <section data-tour="servicio-detalle-calificaciones">
             <h2>Calificaciones y comentarios</h2>
             {(!servicio.comentarios || servicio.comentarios.length === 0) ? (
               <p className="sv-texto sv-suave">Aún no hay calificaciones.</p>
@@ -245,7 +247,7 @@ export default function ServicioDetalle() {
 
         <aside className="sv-lateral">
           <div className="sv-tarjeta">
-            <div className="sv-prov">
+            <div className="sv-prov" data-tour="servicio-detalle-profesional">
               <div className="sv-avatar" aria-hidden="true">{iniciales(servicio.nombre, servicio.apellido)}</div>
               <div>
                 <b>{servicio.nombre} {servicio.apellido}</b>                {servicio.telefono && <a className="sv-tel" href={`tel:${String(servicio.telefono).replace(/\s+/g, '')}`}>{servicio.telefono}</a>}
@@ -255,7 +257,7 @@ export default function ServicioDetalle() {
             {!servicio.direccion && !servicio.telefono && (
               <p className="sv-dato sv-suave">{usuario ? 'El contacto solo lo ven los clientes.' : 'Inicia sesión para ver el contacto.'}</p>
             )}
-            <div className="sv-precio">
+            <div className="sv-precio" data-tour="servicio-detalle-tarifa">
               <span>{TIPO_TARIFA_LARGO[servicio.tipo_tarifa] || 'Tarifa'}</span>
               <b>{formatearDinero(servicio.tarifa)}</b>
             </div>

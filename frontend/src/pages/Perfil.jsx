@@ -197,7 +197,7 @@ export default function Perfil() {
 
   return (
     <DashboardLayout titulo="Mi Perfil" subtitulo="Administra tu información personal">
-      <div className="pf">
+      <div className="pf" data-tour="perfil-cliente-inicio">
         {estado === 'cargando' && <div className="pf-card pf-estado">Cargando...</div>}
 
         {estado === 'error' && (
@@ -211,15 +211,16 @@ export default function Perfil() {
           <form className="pf-grid" onSubmit={handleSubmit} noValidate>
             <div>
               <div className="pf-card">
-                <div className="pf-head">
+                <div data-tour="perfil-cliente-informacion">
+                  <div className="pf-head">
                   <div className="pf-avatar" aria-hidden="true">{inicial}</div>
                   <div>
                     <h2 className="pf-name">{nombreCompleto}</h2>
                     {rol && <span className="pf-role">{ROLES[rol] || rol}</span>}
                   </div>
-                </div>
+                  </div>
 
-                <div className="pf-progress">
+                  <div className="pf-progress">
                   <div className="pf-progress-top">
                     <span>Tu perfil está al <b>{porcentaje}%</b></span>
                   </div>
@@ -227,11 +228,13 @@ export default function Perfil() {
                     <i style={{ width: `${porcentaje}%` }} />
                   </div>
                   <p>{faltan.length ? `Te falta: ${faltan.join(', ')}.` : 'Tienes todos tus datos completos.'}</p>
+                  </div>
+
                 </div>
 
                 {errorGuardar && <div className="pf-alert" role="alert">{errorGuardar}</div>}
 
-                <section className="pf-sec">
+                <section className="pf-sec" data-tour="perfil-cliente-datos">
                   <h3>Datos personales</h3>
                   <p className="pf-sd">Así te verán las personas con las que uses Urbify.</p>
                   <div className="pf-row">
@@ -266,7 +269,7 @@ export default function Perfil() {
                   </div>
                 </section>
 
-                <section className="pf-sec">
+                <section className="pf-sec" data-tour="perfil-cliente-contacto">
                   <h3>Contacto y dirección</h3>
                   <p className="pf-sd">Para coordinar tus visitas.</p>
                   <div className="pf-field">
@@ -320,7 +323,7 @@ export default function Perfil() {
                   <span>Tienes cambios sin guardar</span>
                   <div className="pf-savebar-btns">
                     <button type="button" className="pf-btn" onClick={descartar} disabled={guardando}>Descartar</button>
-                    <button type="submit" className="pf-btn pf-btn--primary" disabled={!puedeGuardar}>
+                    <button type="submit" className="pf-btn pf-btn--primary" disabled={!puedeGuardar} data-tour="perfil-cliente-guardar">
                       {guardando ? 'Guardando...' : 'Guardar cambios'}
                     </button>
                   </div>
