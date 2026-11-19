@@ -104,7 +104,7 @@ export default function Dashboard() {
   return (
     <DashboardLayout>
       <div className="in">
-        <header className="in-cabecera" data-tour="cliente-bienvenida">
+        <header className="in-cabecera" data-tour={esCliente ? 'cliente-bienvenida' : 'proveedor-bienvenida'}>
           <p>{fechaDeHoy()}</p>
           <h2>{saludo()}{primerNombre ? `, ${primerNombre}` : ''}</h2>
         </header>
@@ -180,7 +180,7 @@ export default function Dashboard() {
         {estado === 'listo' && !esCliente && (
           <div className="in-grid">
             <div className="in-columna">
-              <section className={`in-tarjeta${datos.porResponder.length > 0 ? ' in-atencion' : ''}`} aria-label="Por responder">
+              <section className={`in-tarjeta${datos.porResponder.length > 0 ? ' in-atencion' : ''}`} aria-label="Por responder" data-tour="proveedor-por-responder">
                 <h2>{datos.porResponder.length > 0 ? 'Esperan tu respuesta' : 'Todo al día'}</h2>
                 {datos.porResponder.length === 0 ? (
                   <p className="in-suave">No tienes solicitudes ni cambios de fecha por responder.</p>
@@ -196,7 +196,7 @@ export default function Dashboard() {
                 )}
               </section>
 
-              <section className="in-tarjeta" aria-label="Próximas visitas">
+              <section className="in-tarjeta" aria-label="Próximas visitas" data-tour="proveedor-proximas-visitas">
                 <div className="in-titulo-fila">
                   <h2>Próximas visitas</h2>
                   <Link to="/mis-solicitudes">Ver todas</Link>
@@ -221,14 +221,14 @@ export default function Dashboard() {
 
             <div className="in-columna">
               {!horarioConfigurado && (
-                <section className="in-tarjeta in-aviso-agenda" aria-label="Agenda">
+                <section className="in-tarjeta in-aviso-agenda" aria-label="Agenda" data-tour="proveedor-configurar-agenda">
                   <h2>Configura tu agenda</h2>
                   <p>Aún no definiste tus horas de atención, así que se ofrece de 8:00 a. m. a 6:00 p. m. todos los días.</p>
                   <Link to="/mi-agenda" className="in-btn in-btn--principal">Definir mi horario</Link>
                 </section>
               )}
 
-              <section className="in-tarjeta" aria-label="Resumen">
+              <section className="in-tarjeta" aria-label="Resumen" data-tour="proveedor-resumen">
                 <h2>Tu resumen</h2>
                 <dl className="in-cifras">
                   <div><dd>{datos.pendientes}</dd><dt>Por aceptar</dt></div>
@@ -242,7 +242,7 @@ export default function Dashboard() {
                 )}
               </section>
 
-              <section className="in-tarjeta" aria-label="Accesos">
+              <section className="in-tarjeta" aria-label="Accesos" data-tour="proveedor-accesos">
                 <h2>Accesos</h2>
                 <div className="in-accesos">
                   <Link to="/mis-servicios" className="in-btn">Mis servicios</Link>

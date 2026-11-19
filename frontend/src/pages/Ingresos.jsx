@@ -66,15 +66,15 @@ export default function Ingresos() {
 
         {datos && (
           <>
-            <div className="ig-hero">
+            <div className="ig-hero" data-tour="proveedor-ingresos-inicio">
               <span>Ingresos totales</span>
-              <b>{formatearDinero(datos.total)}</b>
+              <b data-tour="proveedor-ingresos-total">{formatearDinero(datos.total)}</b>
               <small>{completadas.length} {completadas.length === 1 ? 'trabajo completado' : 'trabajos completados'} · {nombreMesLargo(datos.mesActual.clave)}: {formatearDinero(datos.mesActual.valor)}</small>
             </div>
 
-            <div className="ig-tarjeta">
+            <div className="ig-tarjeta" data-tour="proveedor-ingresos-meses">
               <h2>Últimos 6 meses</h2>
-              <div className="ig-barras" role="img" aria-label={`Ingresos por mes: ${datos.meses.map((m) => `${nombreMes(m.clave)} ${formatearDinero(m.valor)}`).join(', ')}`}>
+              <div className="ig-barras" role="img" aria-label={`Ingresos por mes: ${datos.meses.map((m) => `${nombreMes(m.clave)} ${formatearDinero(m.valor)}`).join(', ')}`} data-tour="proveedor-ingresos-barras">
                 {datos.meses.map((m) => (
                   <div className="ig-barra" key={m.clave}>
                     <span className="ig-valor">{m.valor > 0 ? formatearDinero(m.valor) : ''}</span>
@@ -85,24 +85,24 @@ export default function Ingresos() {
               </div>
             </div>
 
-            <div className="ig-tarjeta">
+            <div className="ig-tarjeta" data-tour="proveedor-ingresos-historial">
               <h2>Historial</h2>
               {completadas.length === 0 ? (
-                <p className="ig-suave">Todavía no tienes trabajos completados. Cuando termines uno, aparecerá aquí.</p>
+                <p className="ig-suave" data-tour="proveedor-ingresos-vacio">Todavía no tienes trabajos completados. Cuando termines uno, aparecerá aquí.</p>
               ) : (
                 <ul className="ig-lista">
-                  {completadas.map((s) => (
-                    <li key={s.id}>
+                  {completadas.map((s, indice) => (
+                    <li key={s.id} data-tour={indice === 0 ? 'proveedor-ingresos-trabajo' : undefined}>
                       <div>
-                        <b>{s.servicio_titulo}</b>
+                        <b data-tour={indice === 0 ? 'proveedor-ingresos-informacion' : undefined}>{s.servicio_titulo}</b>
                         <small>{`${s.cliente_nombre || ''} ${s.cliente_apellido || ''}`.trim() || 'Cliente'} · {fechaServicioCorta(s.fecha_servicio || s.fecha_solicitud)}</small>
                       </div>
-                      <span className="ig-monto">{formatearDinero(s.tarifa)}{TIPO_TARIFA[s.tipo_tarifa_acordada] && <small>{TIPO_TARIFA[s.tipo_tarifa_acordada]}</small>}</span>
+                      <span className="ig-monto" data-tour={indice === 0 ? 'proveedor-ingresos-monto' : undefined}>{formatearDinero(s.tarifa)}{TIPO_TARIFA[s.tipo_tarifa_acordada] && <small>{TIPO_TARIFA[s.tipo_tarifa_acordada]}</small>}</span>
                     </li>
                   ))}
                 </ul>
               )}
-              <p className="ig-nota">Las tarifas por hora se cuentan como una hora; si trabajaste más, tu ingreso real puede ser mayor.</p>
+              <p className="ig-nota" data-tour="proveedor-ingresos-nota">Las tarifas por hora se cuentan como una hora; si trabajaste más, tu ingreso real puede ser mayor.</p>
             </div>
           </>
         )}

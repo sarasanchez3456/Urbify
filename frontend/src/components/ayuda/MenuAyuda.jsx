@@ -5,6 +5,12 @@ import { iniciarTourBuscarServicios } from '../../tours/cliente/buscarServicios'
 import { iniciarTourMisSolicitudes } from '../../tours/cliente/misSolicitudes';
 import { iniciarTourPerfilCliente } from '../../tours/cliente/perfil';
 import { iniciarTourSolicitarServicio } from '../../tours/cliente/solicitarServicio';
+import { iniciarTourInicioProveedor } from '../../tours/proveedor/inicio';
+import { iniciarTourMisSolicitudesProveedor } from '../../tours/proveedor/misSolicitudes';
+import { iniciarTourMisServiciosProveedor } from '../../tours/proveedor/misServicios';
+import { iniciarTourMiAgendaProveedor } from '../../tours/proveedor/miAgenda';
+import { iniciarTourIngresosProveedor } from '../../tours/proveedor/ingresos';
+import { iniciarTourPerfilProveedor } from '../../tours/proveedor/perfil';
 
 export default function MenuAyuda({ abierto, onCerrar, usuario, rutaActual, controlarSidebarTour }) {
   useEffect(() => {
@@ -19,7 +25,7 @@ export default function MenuAyuda({ abierto, onCerrar, usuario, rutaActual, cont
 
   if (!abierto) return null;
 
-  const recorridos = {
+  const recorridosCliente = {
     '/dashboard': {
       titulo: 'Inicio del cliente',
       iniciar: () => iniciarTourInicioCliente({ controlarSidebar: controlarSidebarTour }),
@@ -37,12 +43,39 @@ export default function MenuAyuda({ abierto, onCerrar, usuario, rutaActual, cont
       iniciar: iniciarTourPerfilCliente,
     },
   };
-  const esDetalleServicio = /^\/servicio\/[^/]+$/.test(rutaActual);
+  const recorridosProveedor = {
+    '/dashboard': {
+      titulo: 'Inicio del proveedor',
+      iniciar: iniciarTourInicioProveedor,
+    },
+    '/mis-solicitudes': {
+      titulo: 'Mis Solicitudes del proveedor',
+      iniciar: iniciarTourMisSolicitudesProveedor,
+    },
+    '/mis-servicios': {
+      titulo: 'Mis Servicios del proveedor',
+      iniciar: iniciarTourMisServiciosProveedor,
+    },
+    '/mi-agenda': {
+      titulo: 'Mi Agenda del proveedor',
+      iniciar: iniciarTourMiAgendaProveedor,
+    },
+    '/ingresos': {
+      titulo: 'Billetera del proveedor',
+      iniciar: iniciarTourIngresosProveedor,
+    },
+    '/perfil': {
+      titulo: 'Mi Perfil del proveedor',
+      iniciar: iniciarTourPerfilProveedor,
+    },
+  };
+  const rutaNormalizada = rutaActual.replace(/\/+$/, '') || '/';
+  const esDetalleServicio = /^\/servicio\/[^/]+$/.test(rutaNormalizada);
   const recorrido = usuario?.rol === 'cliente'
     ? (esDetalleServicio
       ? { titulo: 'Detalle y solicitud de servicio', iniciar: iniciarTourSolicitarServicio }
-      : recorridos[rutaActual])
-    : null;
+      : recorridosCliente[rutaNormalizada])
+    : usuario?.rol === 'proveedor' ? recorridosProveedor[rutaNormalizada] : null;
   const iniciarTour = () => {
     onCerrar();
     recorrido?.iniciar();
