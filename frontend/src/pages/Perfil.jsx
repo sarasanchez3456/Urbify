@@ -256,7 +256,7 @@ export default function Perfil() {
 
   return (
     <DashboardLayout titulo="Mi Perfil" subtitulo="Administra tu información personal">
-      <div className="pf" data-tour="perfil-cliente-inicio">
+      <div className="pf" data-tour={rol === 'proveedor' ? 'proveedor-perfil-inicio' : 'perfil-cliente-inicio'}>
         {estado === 'cargando' && <div className="pf-card pf-estado">Cargando...</div>}
 
         {estado === 'error' && (
@@ -270,9 +270,9 @@ export default function Perfil() {
           <form className="pf-grid" onSubmit={handleSubmit} noValidate>
             <div>
               <div className="pf-card">
-                <div data-tour="perfil-cliente-informacion">
+                <div data-tour={rol === 'proveedor' ? 'proveedor-perfil-informacion' : 'perfil-cliente-informacion'}>
                   <div className="pf-head">
-                  <div className="pf-avatar" aria-hidden="true">{inicial}</div>
+                  <div className="pf-avatar" aria-hidden="true" data-tour={rol === 'proveedor' ? 'proveedor-perfil-avatar' : undefined}>{inicial}</div>
                   <div>
                     <h2 className="pf-name">{nombreCompleto}</h2>
                     {rol && <span className="pf-role">{ROLES[rol] || rol}</span>}
@@ -293,7 +293,7 @@ export default function Perfil() {
 
                 {errorGuardar && <div className="pf-alert" role="alert">{errorGuardar}</div>}
 
-                <section className="pf-sec" data-tour="perfil-cliente-datos">
+                <section className="pf-sec" data-tour={rol === 'proveedor' ? 'proveedor-perfil-datos' : 'perfil-cliente-datos'}>
                   <h3>Datos personales</h3>
                   <p className="pf-sd">Así te verán las personas con las que uses Urbify.</p>
                   <div className="pf-row">
@@ -328,7 +328,7 @@ export default function Perfil() {
                   </div>
                 </section>
 
-                <section className="pf-sec" data-tour="perfil-cliente-contacto">
+                <section className="pf-sec" data-tour={rol === 'proveedor' ? 'proveedor-perfil-contacto' : 'perfil-cliente-contacto'}>
                   <h3>Contacto y dirección</h3>
                   <p className="pf-sd">Para coordinar tus visitas.</p>
                   <div className="pf-field">
@@ -351,7 +351,7 @@ export default function Perfil() {
                       ? <p className="pf-error" id="pf-telefono-err">{textoErrorTel}</p>
                       : <p className="pf-hint" id="pf-telefono-ayuda">Solo números, de 7 a 15.</p>}
                   </div>
-                  <div className="pf-field">
+                  <div className="pf-field" data-tour={rol === 'proveedor' ? 'proveedor-perfil-ubicacion' : undefined}>
                     <label className="pf-label" htmlFor="pf-direccion">Dirección</label>
                     <CampoDireccion
                       id="pf-direccion"
@@ -366,7 +366,7 @@ export default function Perfil() {
                   </div>
                 </section>
 
-                <section className="pf-sec">
+                <section className="pf-sec" data-tour={rol === 'proveedor' ? 'proveedor-perfil-cuenta' : undefined}>
                   <h3>Cuenta</h3>
                   <div className="pf-acc">
                     <div>
@@ -392,7 +392,7 @@ export default function Perfil() {
             </div>
 
             <aside className="pf-side">
-              <div className="pf-card">
+              <div className="pf-card" data-tour={rol === 'proveedor' ? 'proveedor-perfil-resumen' : undefined}>
                 <h3>Tu cuenta</h3>
                 <p className="pf-sd">Un vistazo a tu actividad.</p>
                 <div className="pf-st">
@@ -418,7 +418,7 @@ export default function Perfil() {
                 )}
               </div>
               <OfrecerServicios />
-              <div className="pf-card">
+              <div className="pf-card" data-tour={rol === 'proveedor' ? 'proveedor-perfil-seguridad' : undefined}>
                 <h3>Seguridad</h3>
                 <p className="pf-sd">Te enviamos un código a tu correo para confirmar el cambio.</p>
                 <button type="button" className="pf-lnk pf-lnk-btn" onClick={() => setCambiandoClave(true)}>Cambiar contraseña →</button>

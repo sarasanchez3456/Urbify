@@ -3,6 +3,10 @@ import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import DashboardLayout from '../components/DashboardLayout';
 import PanelLateral from '../components/PanelLateral';
+import {
+  EVENTO_EDITAR_SERVICIO_PROVEEDOR_ABIERTO,
+  EVENTO_NUEVO_SERVICIO_PROVEEDOR_ABIERTO,
+} from '../tours/proveedor/misServicios';
 import { formatearDinero } from '../utils/solicitudes';
 import { logError } from '../utils/log';
 import './MisServicios.css';
@@ -18,6 +22,12 @@ function PanelServicio({ servicio, categorias, onCerrar, onGuardado }) {
     : FORM_VACIO);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    window.dispatchEvent(new Event(editando
+      ? EVENTO_EDITAR_SERVICIO_PROVEEDOR_ABIERTO
+      : EVENTO_NUEVO_SERVICIO_PROVEEDOR_ABIERTO));
+  }, [editando]);
 
   const cambiar = (campo, valor) => setForm((f) => ({ ...f, [campo]: valor }));
   const tarifaNumero = Number(form.tarifa);
@@ -44,16 +54,16 @@ function PanelServicio({ servicio, categorias, onCerrar, onGuardado }) {
 
   return (
     <PanelLateral onCerrar={onCerrar} etiqueta={editando ? 'Editar servicio' : 'Nuevo servicio'} ancho={480}>
-      <form onSubmit={guardar} className="mv-form" noValidate>
-        <div className="pl-cabecera">
+      <form onSubmit={guardar} className="mv-form" noValidate data-tour={editando ? 'proveedor-servicios-editar-formulario' : 'proveedor-servicios-formulario'}>
+        <div className="pl-cabecera" data-tour={editando ? 'proveedor-servicios-editar-formulario-inicio' : 'proveedor-servicios-formulario-inicio'}>
           <div className="pl-cabecera-fila">
             <h2 className="pl-titulo">{editando ? 'Editar servicio' : 'Nuevo servicio'}</h2>
-            <button type="button" className="pl-cerrar" onClick={onCerrar} aria-label="Cerrar">×</button>
+            <button type="button" className="pl-cerrar" onClick={onCerrar} aria-label="Cerrar" data-tour={editando ? 'proveedor-servicios-editar-formulario-cerrar' : 'proveedor-servicios-formulario-cerrar'}>×</button>
           </div>
         </div>
 
         <div className="pl-cuerpo">
-          <label className="mv-campo">
+          <label className="mv-campo" data-tour={editando ? 'proveedor-servicios-editar-formulario-categoria' : 'proveedor-servicios-formulario-categoria'}>
             <span>Categoría</span>
             {editando ? (
               <input value={servicio.categoria_nombre} disabled />
@@ -65,18 +75,18 @@ function PanelServicio({ servicio, categorias, onCerrar, onGuardado }) {
             )}
           </label>
 
-          <label className="mv-campo">
+          <label className="mv-campo" data-tour={editando ? 'proveedor-servicios-editar-formulario-titulo' : 'proveedor-servicios-formulario-titulo'}>
             <span>Título</span>
             <input value={form.titulo} maxLength={150} onChange={(e) => cambiar('titulo', e.target.value)} placeholder="Ej: Reparación de fugas en baños y cocinas" data-autofocus={editando ? true : undefined} />
             {form.titulo !== '' && titulo.length < 5 && <small className="mv-error">Escribe al menos 5 letras.</small>}
           </label>
 
-          <label className="mv-campo">
+          <label className="mv-campo" data-tour={editando ? 'proveedor-servicios-editar-formulario-descripcion' : 'proveedor-servicios-formulario-descripcion'}>
             <span>Descripción <em>(opcional)</em></span>
             <textarea rows={4} maxLength={2000} value={form.descripcion} onChange={(e) => cambiar('descripcion', e.target.value)} placeholder="Qué incluye, con qué trabajas y en qué zonas atiendes." />
           </label>
 
-          <fieldset className="mv-campo">
+          <fieldset className="mv-campo" data-tour={editando ? 'proveedor-servicios-editar-formulario-tipo-tarifa' : 'proveedor-servicios-formulario-tipo-tarifa'}>
             <legend>Cómo cobras</legend>
             <div className="mv-opciones">
               {[['hora', 'Por hora'], ['fijo', 'Precio fijo']].map(([valor, texto]) => (
@@ -88,7 +98,7 @@ function PanelServicio({ servicio, categorias, onCerrar, onGuardado }) {
             </div>
           </fieldset>
 
-          <label className="mv-campo">
+          <label className="mv-campo" data-tour={editando ? 'proveedor-servicios-editar-formulario-tarifa' : 'proveedor-servicios-formulario-tarifa'}>
             <span>Tarifa (pesos)</span>
             <div className="mv-dinero">
               <b aria-hidden="true">$</b>
@@ -110,10 +120,10 @@ function PanelServicio({ servicio, categorias, onCerrar, onGuardado }) {
         </div>
 
         <div className="pl-pie">
-          <button type="submit" className="pl-boton pl-boton--principal" disabled={!valido || enviando}>
+          <button type="submit" className="pl-boton pl-boton--principal" disabled={!valido || enviando} data-tour={editando ? 'proveedor-servicios-editar-formulario-guardar' : 'proveedor-servicios-formulario-publicar'}>
             {enviando ? 'Guardando...' : editando ? 'Guardar cambios' : 'Publicar servicio'}
           </button>
-          <button type="button" className="pl-boton" onClick={onCerrar} disabled={enviando}>Cancelar</button>
+          <button type="button" className="pl-boton" onClick={onCerrar} disabled={enviando} data-tour={editando ? 'proveedor-servicios-editar-formulario-cancelar' : undefined}>Cancelar</button>
         </div>
       </form>
     </PanelLateral>
@@ -190,7 +200,7 @@ export default function MisServicios() {
 
   return (
     <DashboardLayout titulo="Mis Servicios" subtitulo="Lo que ofreces a tus clientes">
-      <div className="mv">
+      <div className="mv" data-tour="proveedor-servicios-inicio">
         {estado === 'cargando' && <div className="mv-tarjeta mv-estado">Cargando...</div>}
         {estado === 'error' && (
           <div className="mv-tarjeta mv-estado" role="alert">
@@ -205,11 +215,11 @@ export default function MisServicios() {
               <p>
                 {servicios.length === 0 ? 'Aún no has publicado servicios' : `${servicios.length} ${servicios.length === 1 ? 'servicio' : 'servicios'} · ${visibles} ${visibles === 1 ? 'visible' : 'visibles'} para los clientes`}
               </p>
-              <button type="button" className="mv-btn mv-btn--principal" onClick={() => setPanel('nuevo')}>+ Nuevo servicio</button>
+              <button type="button" className="mv-btn mv-btn--principal" onClick={() => setPanel('nuevo')} data-tour="proveedor-servicios-nuevo">+ Nuevo servicio</button>
             </div>
 
             {servicios.length === 0 && (
-              <div className="mv-tarjeta mv-estado">
+              <div className="mv-tarjeta mv-estado" data-tour="proveedor-servicios-vacio">
                 <h3>Publica tu primer servicio</h3>
                 <p>Los clientes te encuentran por lo que ofreces. Cuéntales qué haces y cuánto cobras.</p>
                 <button type="button" className="mv-btn mv-btn--principal" onClick={() => setPanel('nuevo')}>Crear servicio</button>
@@ -217,21 +227,21 @@ export default function MisServicios() {
             )}
 
             <ul className="mv-lista">
-              {servicios.map((s) => {
+              {servicios.map((s, indice) => {
                 const confirmando = confirmandoId === s.id;
                 return (
-                  <li key={s.id} className={`mv-tarjeta mv-servicio${s.disponible ? '' : ' is-pausado'}`}>
+                  <li key={s.id} className={`mv-tarjeta mv-servicio${s.disponible ? '' : ' is-pausado'}`} data-tour={indice === 0 ? 'proveedor-servicios-listado' : undefined}>
                     <div className="mv-servicio-cabecera">
                       <span className="mv-categoria">{s.categoria_nombre}</span>
-                      <label className="mv-interruptor" title={s.disponible ? 'Visible para los clientes' : 'Pausado: no aparece en las búsquedas'}>
+                      <label className="mv-interruptor" title={s.disponible ? 'Visible para los clientes' : 'Pausado: no aparece en las búsquedas'} data-tour="proveedor-servicios-visibilidad">
                         <input type="checkbox" checked={Boolean(s.disponible)} onChange={() => alternar(s)} disabled={ocupadoId === s.id} />
                         <span className="mv-interruptor-pista" aria-hidden="true" />
                         <span>{s.disponible ? 'Visible' : 'Pausado'}</span>
                       </label>
                     </div>
-                    <h3>{s.titulo}</h3>
+                    <h3 data-tour="proveedor-servicios-informacion">{s.titulo}</h3>
                     {s.descripcion && <p className="mv-descripcion">{s.descripcion}</p>}
-                    <div className="mv-precio">
+                    <div className="mv-precio" data-tour="proveedor-servicios-tarifa">
                       <b>{formatearDinero(s.tarifa)}</b>
                       <span>{s.tipo_tarifa === 'fijo' ? 'precio fijo' : 'por hora'}</span>
                     </div>
@@ -245,8 +255,8 @@ export default function MisServicios() {
                         </div>
                       </div>
                     ) : (
-                      <div className="mv-acciones">
-                        <button type="button" className="mv-btn" onClick={() => setPanel(s)}>Editar</button>
+                      <div className="mv-acciones" data-tour="proveedor-servicios-acciones">
+                        <button type="button" className="mv-btn" onClick={() => setPanel(s)} data-tour="proveedor-servicios-editar">Editar</button>
                         <Link to={`/servicio/${s.id}`} className="mv-btn">Ver como cliente</Link>
                         <button type="button" className="mv-btn mv-btn--peligro" onClick={() => setConfirmandoId(s.id)}>Eliminar</button>
                       </div>

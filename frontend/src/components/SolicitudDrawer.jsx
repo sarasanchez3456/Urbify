@@ -168,6 +168,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
   const [pidiendoCodigo, setPidiendoCodigo] = useState(pedirCodigoAlAbrir && pideCodigo && solicitud.estado === 'aceptada');
   const [procesando, setProcesando] = useState(false);
   const esCliente = rol === 'cliente';
+  const esProveedor = rol === 'proveedor';
   const contraparte = datosContraparte(solicitud, rol);
   const primerNombre = contraparte.nombre.split(' ')[0] || contraparte.etiqueta.toLowerCase();
   const cancelada = solicitud.estado === 'cancelada';
@@ -258,7 +259,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
         />
       ) : (
       <>
-      <div className="pl-cabecera">
+      <div className="pl-cabecera" data-tour={esProveedor ? 'proveedor-solicitudes-detalle-cabecera' : undefined}>
         <div className="pl-cabecera-fila">
           <span className={`sp-etiqueta-estado sp-estado--${solicitud.estado}`}>{ETIQUETAS_ESTADO[solicitud.estado] || solicitud.estado}</span>
           <button type="button" className="pl-cerrar" onClick={onCerrar} aria-label="Cerrar" data-autofocus>×</button>
@@ -274,7 +275,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
         {esCliente && solicitud.estado === 'aceptada' && <TarjetaCodigoCliente solicitudId={solicitud.id} />}
 
         {cambioPendiente && ['pendiente', 'aceptada'].includes(solicitud.estado) && (
-          <div className="sp-cambio" role="status">
+          <div className="sp-cambio" role="status" data-tour={esProveedor ? 'proveedor-solicitudes-detalle-cambio' : undefined}>
             {esCliente ? (
               <>
                 <p><b>Pediste cambiar la cita al {fechaServicioLarga(cambioPendiente.fecha)}</b> · Esperando la respuesta del profesional; mientras tanto tu cita sigue en la fecha actual.</p>
@@ -294,7 +295,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
           </div>
         )}
 
-        <div>
+        <div data-tour={esProveedor ? 'proveedor-solicitudes-detalle-seguimiento' : undefined}>
           <h3>Seguimiento</h3>
           {cancelada ? (
             <div className="pl-aviso pl-aviso--info">Esta solicitud fue cancelada.</div>
@@ -317,7 +318,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
           )}
         </div>
 
-        <div>
+        <div data-tour={esProveedor ? 'proveedor-solicitudes-detalle-cliente' : undefined}>
           <h3>{contraparte.etiqueta}</h3>
           <div className="sp-contexto">
             <div className="sp-avatar" aria-hidden="true">{iniciales(contraparte.nombre, contraparte.apellido)}</div>
@@ -335,7 +336,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
           </div>
         </div>
 
-        <div>
+        <div data-tour={esProveedor ? 'proveedor-solicitudes-detalle-datos' : undefined}>
           <h3>{esCliente ? 'Tu solicitud' : 'Lo que pidió el cliente'}</h3>
           <dl className="sp-datos">
             <div><dt>Descripción</dt><dd>{solicitud.descripcion || 'Sin descripción'}</dd></div>
@@ -368,7 +369,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
         </div>
       )}
 
-      <div className="pl-pie">
+      <div className="pl-pie" data-tour={esProveedor ? 'proveedor-solicitudes-detalle-acciones' : undefined}>
         {pidiendoCodigo && solicitud.estado === 'aceptada' ? (
           <IniciarConCodigo
             procesando={procesando}
@@ -391,7 +392,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
               <button type="button" className="pl-boton pl-boton--principal" onClick={() => onCalificar(solicitud)}>Calificar</button>
             )}
             {!esCliente && solicitud.estado === 'completada' && (solicitud.cliente_calificado === null || solicitud.cliente_calificado === undefined) && (
-              <button type="button" className="pl-boton pl-boton--principal" onClick={() => setVista('calificarCliente')}>Calificar al cliente</button>
+              <button type="button" className="pl-boton pl-boton--principal" onClick={() => setVista('calificarCliente')} data-tour="proveedor-solicitudes-detalle-calificar">Calificar al cliente</button>
             )}
 
             {!esCliente && solicitud.estado === 'pendiente' && (
@@ -411,7 +412,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
               type="button"
               className={`pl-boton${!sinCalificar && esCliente && solicitud.estado !== 'pendiente' ? ' pl-boton--principal' : ''}`}
               onClick={() => setVista('chat')}
-              data-tour={esCliente ? 'mis-solicitudes-chat' : undefined}
+              data-tour={esCliente ? 'mis-solicitudes-chat' : esProveedor ? 'proveedor-solicitudes-detalle-chat' : undefined}
             >
               Escribir a {primerNombre}
             </button>
