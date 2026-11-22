@@ -255,7 +255,7 @@ function DetalleUsuario({ id, onCerrar, onCambio }) {
       <div className="pl-cabecera">
         <div className="pl-cabecera-fila">
           {datos ? <Etiquetas u={datos} /> : <span className="ad-etiqueta">Usuario</span>}
-          <button type="button" className="pl-cerrar" onClick={onCerrar} aria-label="Cerrar" data-autofocus>×</button>
+          <button type="button" className="pl-cerrar ad-cerrar-texto" onClick={onCerrar} aria-label="Cerrar" data-autofocus>Cerrar ×</button>
         </div>
         <h2 className="pl-titulo">{datos ? nombre(datos.nombre, datos.apellido) : 'Cargando...'}</h2>
       </div>
@@ -362,7 +362,7 @@ function Usuarios({ filtroInicial }) {
         {filas.length === 0 ? <p className="ad-vacio-interno">No hay usuarios con esos filtros.</p> : (
           <div className="ad-tabla-caja">
             <table>
-              <thead><tr><th>Usuario</th><th>Cuenta</th><th>Modo actual</th><th>Teléfono</th><th>Estado</th><th>Registro</th></tr></thead>
+              <thead><tr><th>Usuario</th><th>Cuenta</th><th>Modo actual</th><th>Teléfono</th><th>Estado</th><th>Registro</th><th><span className="ad-solo-lectores">Acción</span></th></tr></thead>
               <tbody>
                 {filas.map((u) => (
                   <tr key={u.id}>
@@ -377,6 +377,7 @@ function Usuarios({ filtroInicial }) {
                     <td className="ad-num">{u.telefono || '—'}</td>
                     <td><span className={`ad-est${estadoDe(u).clave === 'activo' ? '' : estadoDe(u).clave === 'pendiente' ? ' is-pend' : ' is-no'}`}><i />{estadoDe(u).texto}</span></td>
                     <td className="ad-suave">{fechaRelativa(u.fecha_creacion)}</td>
+                    <td className="ad-der"><button type="button" className="ad-enlace" onClick={() => setAbierto(u.id)} aria-label={`Editar a ${nombre(u.nombre, u.apellido)}`}>✎ Editar</button></td>
                   </tr>
                 ))}
               </tbody>
