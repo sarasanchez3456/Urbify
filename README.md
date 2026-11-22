@@ -1,36 +1,83 @@
 <div align="center">
 
 # 🔧 Urbify
-### Plataforma de conexión entre trabajadores técnicos y clientes en Medellín
+### Plataforma que conecta a trabajadores independientes con personas que necesitan servicios para el hogar en Medellín
 
 [![Urbify CI Pipeline](https://github.com/sarasanchez3456/Urbify/actions/workflows/devops.yml/badge.svg)](https://github.com/sarasanchez3456/Urbify/actions/workflows/devops.yml)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
-![Node.js](https://img.shields.io/badge/Backend-Node.js%20v20-339933?logo=node.js&logoColor=white)
-![React](https://img.shields.io/badge/Frontend-React%2018-61DAFB?logo=react&logoColor=black)
-![MySQL](https://img.shields.io/badge/Database-MySQL%208.0-4479A1?logo=mysql&logoColor=white)
+![Node.js](https://img.shields.io/badge/Backend-Node.js%2020%20%2B%20Express-339933?logo=node.js&logoColor=white)
+![React](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-61DAFB?logo=react&logoColor=black)
+![MySQL](https://img.shields.io/badge/Base%20de%20datos-MySQL%208%20%2F%20TiDB-4479A1?logo=mysql&logoColor=white)
 
-**Ficha SENA:** 3223877 | **Programa:** ADSO | **Instructor:** Efren Moreno Valoyes
+**🌐 Página en producción:** https://urbify-web-gamma.vercel.app · **🔌 API:** https://urbify-api.vercel.app/api/health
+
+**Ficha SENA:** 3223877 · **Programa:** Análisis y Desarrollo de Software (ADSO) · **Instructor:** Jaime Zapata
 
 </div>
 
 ---
 
-## 📋 Descripción del Proyecto
+## 📑 Contenido
 
-**Urbify** es una plataforma web full-stack que conecta a trabajadores técnicos independientes (electricistas, plomeros, carpinteros, etc.) con clientes que necesitan sus servicios en la ciudad de Medellín.
-
-La plataforma permite:
-- 🔍 **Buscar** proveedores de servicios por categoría y ubicación geográfica
-- 📋 **Solicitar** servicios con seguimiento de estado en tiempo real
-- ⭐ **Calificar** proveedores tras la finalización del servicio
-- 🔒 **Autenticación segura** con JWT y protección contra fuerza bruta
-- 📧 **Notificaciones por correo** al aceptar o completar solicitudes
+1. [¿Qué es Urbify?](#-qué-es-urbify)
+2. [Qué puede hacer cada persona](#-qué-puede-hacer-cada-persona)
+3. [Arquitectura](#️-arquitectura)
+4. [Inicio rápido (Docker)](#-inicio-rápido-docker)
+5. [Infraestructura Docker](#-infraestructura-docker)
+6. [Publicación en internet](#-publicación-en-internet)
+7. [Calidad: CI, pruebas y seguridad](#-calidad-ci-pruebas-y-seguridad)
+8. [Variables de entorno](#️-variables-de-entorno)
+9. [API REST](#-api-rest)
+10. [App móvil](#-app-móvil-repositorio-aparte)
+11. [Documentación del proyecto](#-documentación-del-proyecto)
+12. [Equipo](#-equipo)
 
 ---
 
-## 🏗️ Arquitectura de Microservicios
+## 📋 ¿Qué es Urbify?
 
-La aplicación está compuesta por **3 servicios independientes**, orquestados con Docker Compose y comunicados a través de una red interna privada:
+**Urbify** es una plataforma web full-stack que conecta a trabajadores técnicos independientes (electricistas, plomeros, carpinteros, etc.) con clientes que necesitan sus servicios en el área metropolitana de Medellín. Centraliza la búsqueda, la contratación, el seguimiento y la calificación de los servicios en un solo lugar.
+
+| | |
+|---|---|
+| **Frontend** | React 18, Vite, Tailwind, React Router, Leaflet (mapas con OpenStreetMap) y Driver.js (recorridos guiados) |
+| **Backend** | Node.js 20, Express 4, API REST con JWT, bcrypt, validación con ajv y límites de peticiones |
+| **Base de datos** | MySQL 8 (local y Docker) y TiDB Cloud (producción), 16 tablas |
+| **Correo** | Gmail (SMTP) o Resend |
+| **Despliegue** | Docker Compose en local; Vercel + TiDB Cloud en producción, con despliegue automático desde GitHub Actions |
+
+---
+
+## 👥 Qué puede hacer cada persona
+
+### Cliente
+- 🔍 **Buscar** servicios por palabra y categoría, o **ver proveedores cercanos en un mapa**.
+- 📋 **Solicitar** un servicio eligiendo una **fecha y hora futuras** dentro del horario del profesional.
+- 💬 **Chatear** con el profesional dentro de cada solicitud y **pedir cambiar la fecha** (reprogramación).
+- 🔐 **Código de inicio:** el cliente ve un código de 6 dígitos que debe darle al profesional para que este pueda comenzar el servicio.
+- ⭐ **Calificar** al profesional al terminar, y **reportar** un problema.
+- 🔔 Recibir **notificaciones** (en la página y por correo) y consultar el **historial** de estados de cada solicitud.
+
+### Proveedor (profesional)
+- 🛠️ **Publicar, editar, ocultar y eliminar** sus servicios, con categoría y tarifa (por hora o fija).
+- 🗓️ Definir su **horario semanal** y ver su **agenda**; el sistema impide reservas simultáneas o fuera de horario.
+- ✅ **Aceptar o rechazar** solicitudes, iniciar el servicio con el código del cliente y marcarlo como completado.
+- 💰 Consultar sus **ingresos** y **calificar al cliente** al terminar.
+
+### Doble modo de cuenta
+Una misma cuenta (mismo correo) puede ser **cliente y proveedor**: se habilita como proveedor desde el perfil y cambia de modo con un clic. Cada sesión trabaja en un modo activo.
+
+### Administrador
+Panel con ocho secciones: **Resumen** (cifras, actividad semanal y alertas), **Usuarios** (detalle, suspender o reactivar, eliminar), **Servicios** (ocultar o mostrar), **Solicitudes** (cancelar), **Categorías** (crear, editar y eliminar), **Reseñas** (ocultar abusivas), **Reportes** (revisar y resolver) y **Auditoría** (todo lo que hace un administrador queda registrado con motivo). El rol `admin` no se crea desde el registro público: [ver Administrador](#administrador-1).
+
+### Para todas las cuentas
+Registro con **verificación del correo** (código de 6 caracteres), inicio y cierre de sesión seguros (el cierre invalida el token en el servidor), **recuperación de contraseña** por código, **eliminación de la propia cuenta** y **recorridos guiados** (botón de ayuda) para cada pantalla.
+
+---
+
+## 🏗️ Arquitectura
+
+Tres servicios independientes orquestados con Docker Compose y comunicados por una red interna privada:
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -44,7 +91,8 @@ La aplicación está compuesta por **3 servicios independientes**, orquestados c
 │           Nginx 1.25 (puerto 80)                    │
 │                                                     │
 │  • Proxy reverso: /api/* → backend:4000             │
-│  • SPA con React Router (rutas client-side)         │
+│  • Cabeceras de seguridad (CSP, X-Frame-Options...) │
+│  • SPA con React Router (rutas del lado del cliente)│
 └────────────────────────┬────────────────────────────┘
                          │  Red interna: urbify-red
                          │  (DNS: "backend")
@@ -52,10 +100,10 @@ La aplicación está compuesta por **3 servicios independientes**, orquestados c
 │           SERVICIO 2: Backend                       │
 │         Node.js 20 + Express 4 (puerto 4000)        │
 │                                                     │
-│  • API REST con 8 módulos de rutas                  │
-│  • Autenticación JWT                                │
-│  • Hashing con bcryptjs                             │
-│  • Notificaciones con Resend                        │
+│  • API REST (rutas → middleware → controladores)    │
+│  • Autenticación JWT con sesiones revocables        │
+│  • Contraseñas con bcrypt (en hilos de trabajo)     │
+│  • Correo con Gmail (SMTP) o Resend                 │
 └────────────────────────┬────────────────────────────┘
                          │  Red interna: urbify-red
                          │  (DNS: "db")
@@ -63,134 +111,96 @@ La aplicación está compuesta por **3 servicios independientes**, orquestados c
 │           SERVICIO 3: Base de Datos                 │
 │              MySQL 8.0 (puerto 3306)                │
 │                                                     │
-│  • 7 tablas relacionales (usuarios, servicios,      │
-│    solicitudes, calificaciones, notificaciones...)  │
+│  • 16 tablas relacionales con claves foráneas       │
 │  • Volumen persistente: mysql_data                  │
-│  • Schema inicializado automáticamente              │
+│  • Esquema inicializado automáticamente             │
 └─────────────────────────────────────────────────────┘
-
-           🌐 Red privada: urbify-red (bridge)
-           💾 Volumen persistente: mysql_data
 ```
 
-### Estructura del Repositorio
+En **producción** la página y la API viven en **Vercel** (la API como función sin servidor) y los datos en **TiDB Cloud**; ver [Publicación en internet](#-publicación-en-internet).
+
+### Estructura del repositorio
 
 ```
 Urbify/
-├── 📁 .github/
-│   └── 📁 workflows/
-│       └── devops.yml          ← Pipeline de CI con GitHub Actions
-├── 📁 backend/
-│   ├── Dockerfile              ← Imagen Node.js 20 Alpine
-│   ├── package.json
-│   ├── .env.example            ← Variables de entorno de referencia
-│   └── 📁 src/
-│       ├── index.js            ← Punto de entrada de la API
-│       ├── 📁 config/
-│       │   ├── db.js           ← Pool de conexiones MySQL
-│       │   └── schema.sql      ← DDL: crea las tablas al iniciar
-│       ├── 📁 routes/          ← Endpoints de la API REST
-│       ├── 📁 controllers/     ← Lógica de negocio
-│       ├── 📁 middleware/      ← Auth JWT, validaciones
-│       └── 📁 utils/
-├── 📁 frontend/
-│   ├── Dockerfile              ← Build React + Serve con Nginx
-│   ├── nginx.conf              ← Config del servidor web
-│   ├── vite.config.js
-│   └── 📁 src/
-│       ├── 📁 pages/           ← Páginas (Home, Dashboard, etc.)
-│       ├── 📁 components/      ← Componentes reutilizables
-│       ├── 📁 context/         ← AuthContext (estado global)
-│       └── 📁 api/             ← Llamadas axios al backend
-└── docker-compose.yml          ← Orquestador principal
+├── .github/workflows/devops.yml   ← CI (pruebas) y CD (despliegue a Vercel)
+├── backend/
+│   ├── Dockerfile
+│   ├── .env.example               ← Todas las variables del backend
+│   ├── test/                      ← unit/ e integration/ (MySQL real)
+│   └── src/
+│       ├── index.js               ← Exporta la app; abre el puerto solo si se ejecuta directo
+│       ├── config/                ← env.js (validación), db.js (pool), schema.sql
+│       ├── routes/                ← Endpoints, agrupados por recurso
+│       ├── middleware/            ← Auth JWT, roles, límites, validación, errores
+│       ├── controllers/           ← Lógica de negocio
+│       ├── validation/            ← Esquemas ajv de cada petición
+│       ├── utils/                 ← Agenda, correo, privacidad, historial, auditoría...
+│       └── scripts/               ← migrate.js y create-admin.js
+├── frontend/
+│   ├── Dockerfile · nginx.conf · vercel.json
+│   └── src/
+│       ├── pages/                 ← Home, Buscar, ServicioDetalle, Dashboard, MisSolicitudes,
+│       │                            MiAgenda, MisServicios, Ingresos, Perfil, AdminPanel, Legal
+│       ├── components/            ← Paneles, selector de modo, ayuda, notificaciones, mapa...
+│       ├── tours/                 ← Recorridos guiados (cliente y proveedor)
+│       ├── context/               ← AuthContext (sesión y modo activo)
+│       ├── api/                   ← Cliente axios y manejo del token
+│       └── utils/                 ← Formatos, ubicación, límites geográficos
+├── docs/                          ← Guías y contrato OpenAPI (ver Documentación)
+├── scripts/                       ← Despliegue, presentación y copias de seguridad
+└── docker-compose.yml             ← Orquestador principal
 ```
 
 ---
 
-## ✅ Requisitos Previos
+## 🚀 Inicio rápido (Docker)
 
-Antes de comenzar, asegúrate de tener instalados:
+### Requisitos
 
-| Herramienta | Versión Mínima | Descarga |
+| Herramienta | Versión mínima | Descarga |
 |---|---|---|
 | **Git** | 2.x | [git-scm.com](https://git-scm.com) |
 | **Docker Desktop** | 4.x | [docker.com/get-started](https://www.docker.com/get-started/) |
 
-> **Nota:** Docker Desktop debe estar **corriendo** antes de ejecutar cualquier comando. En Windows, verifica que el ícono de Docker en la bandeja del sistema esté activo.
+> Docker Desktop debe estar **corriendo** antes de ejecutar cualquier comando.
 
----
+### Atajos según lo que quieras hacer
 
-## 🚀 Despliegue Local (Paso a Paso)
+- 🎤 **Presentar Urbify:** un comando lo levanta todo y comprueba que funcione → [guía de presentación](docs/PRESENTACION.md) (`scripts/presentacion.ps1`).
+- 🌐 **Actualizar el sitio publicado:** se hace solo al fusionar a `main` (ver [Publicación en internet](#-publicación-en-internet)).
+- ☁️ **Publicar desde cero:** [guía de despliegue en Vercel](docs/DESPLIEGUE_VERCEL.md).
 
-> ¿Quieres publicar Urbify en internet (Vercel + backend + MySQL + correo)? Mira la [guía de despliegue](docs/DESPLIEGUE.md).
->
-> ¿Ya está publicado y quieres **actualizarlo**? Un comando: `scripts/desplegar-vercel.ps1` (ver [actualizar el sitio](docs/DESPLIEGUE_VERCEL.md#actualizar-el-sitio-publicado)).
->
-> ¿Vas a **presentar** Urbify? Un comando lo levanta todo y comprueba que funcione: [guía de presentación](docs/PRESENTACION.md) (`scripts/presentacion.ps1`).
-
-### Paso 1 — Clonar el repositorio
+### Paso 1 — Clonar
 
 ```bash
 git clone https://github.com/sarasanchez3456/Urbify.git
 cd Urbify
 ```
 
-### Paso 2 — Limpiar el entorno (contenedores y puertos huérfanos)
+### Paso 2 — Configurar las variables de entorno
 
-> Ejecuta estos comandos si ya habías intentado correr el proyecto antes, o si el puerto 3306 aparece ocupado.
-
-```bash
-# Detener y eliminar los contenedores de Urbify (si existen)
-docker compose down
-
-# Eliminar también el volumen de datos (¡CUIDADO: borra los datos de MySQL!)
-# Solo úsalo si quieres un ambiente 100% limpio
-docker compose down -v
-
-# Ver todos los contenedores activos (para identificar huérfanos)
-docker ps -a
-
-# Si el puerto 3306 está bloqueado por un contenedor diferente, eliminarlo:
-# docker stop <NOMBRE_O_ID_DEL_CONTENEDOR>
-# docker rm <NOMBRE_O_ID_DEL_CONTENEDOR>
-
-# Limpiar contenedores detenidos, redes e imágenes huérfanas (limpieza general)
-docker system prune -f
-```
-
-### Paso 3 — Configurar las variables de entorno e iniciar la aplicación
-
-`docker-compose.yml` ya no trae contraseñas ni secretos por defecto. Copia la plantilla y completa `DB_PASSWORD` y `JWT_SECRET` (ver [Variables de Entorno](#️-variables-de-entorno)):
+`docker-compose.yml` no trae contraseñas ni secretos por defecto. Copia la plantilla y completa `DB_PASSWORD` y `JWT_SECRET` (ver [Variables de entorno](#️-variables-de-entorno)):
 
 ```bash
 cp .env.example .env
 # Para trabajar en local sin HTTPS agrega también NODE_ENV=development
 ```
 
+### Paso 3 — Levantar los tres servicios
+
 ```bash
-# Un solo comando: construye las imágenes e inicia los 3 servicios en segundo plano
 docker compose up -d --build
 ```
 
-**¿Qué hace este comando?**
-- `up` → Inicia todos los servicios
-- `-d` → En segundo plano (*detached mode*)
-- `--build` → Reconstruye las imágenes Docker antes de iniciar
+`up` inicia los servicios, `-d` los deja en segundo plano y `--build` reconstruye las imágenes.
 
-### Paso 4 — Verificar que todo está corriendo
+### Paso 4 — Verificar
 
 ```bash
-# Ver el estado de los contenedores
-docker compose ps
-
-# Ver los logs en tiempo real (Ctrl+C para salir)
-docker compose logs -f
-
-# Ver solo los logs del backend
-docker compose logs -f backend
+docker compose ps              # estado de los contenedores
+docker compose logs -f backend # logs del backend (Ctrl+C para salir)
 ```
-
-**Resultado esperado:**
 
 ```
 NAME                STATUS          PORTS
@@ -199,133 +209,128 @@ urbify-backend      Up              127.0.0.1:4000->4000/tcp
 urbify-frontend     Up              0.0.0.0:80->80/tcp
 ```
 
-### Paso 5 — Acceder a la aplicación
-
 | Servicio | URL |
 |---|---|
 | 🌐 **Aplicación web** | http://localhost |
-| 🔌 **API REST** | http://localhost:4000/api/health |
-| 🐬 **MySQL** | `localhost:3306` (usuario: `root`) |
+| 🔌 **API REST** | http://localhost/api/health?deep=1 (también en `http://localhost:4000/api/health`) |
+| 🐬 **MySQL** | `localhost:3306` (usuario `root`) |
 
-### Paso 6 — Detener la aplicación
+> En desarrollo, si no hay Gmail ni Resend configurados, el código de verificación del correo **se imprime en la consola del backend**.
+
+### Paso 5 — Crear un administrador (opcional)
 
 ```bash
-# Detener los contenedores (los datos se conservan)
-docker compose down
-
-# Detener Y eliminar el volumen de datos (reinicio total)
-docker compose down -v
+docker compose exec -e ADMIN_EMAIL=admin@ejemplo.com -e ADMIN_PASSWORD='una-clave-larga-12+' backend npm run create-admin
 ```
+
+### Paso 6 — Detener
+
+```bash
+docker compose down        # conserva los datos
+docker compose down -v     # ¡borra también el volumen de MySQL!
+```
+
+<details>
+<summary>🧹 ¿El puerto 3306 está ocupado o quedaron contenedores viejos?</summary>
+
+```bash
+docker compose down           # detiene los contenedores de Urbify
+docker ps -a                  # identifica contenedores huérfanos
+docker stop <NOMBRE_O_ID> && docker rm <NOMBRE_O_ID>   # si otro contenedor usa el 3306
+docker system prune -f        # limpieza general de contenedores, redes e imágenes huérfanas
+```
+</details>
 
 ---
 
 ## 🌐 Infraestructura Docker
 
-### Red Privada: `urbify-red` (tipo bridge)
+### Red privada `urbify-red` (bridge)
+Segmento de red aislado donde solo los contenedores del `docker-compose.yml` se comunican. Dentro de la red cada servicio se alcanza por su **nombre** (el backend usa `host: db`; Nginx hace proxy a `http://backend:4000`), sin IPs estáticas. Los puertos de la base y del backend se publican solo en `127.0.0.1`; el único expuesto al exterior es el 80 del frontend.
 
-La red de tipo **bridge** crea un segmento de red privado e aislado donde solo los contenedores definidos en `docker-compose.yml` pueden comunicarse entre sí.
-
-**Ventajas clave:**
-- **Aislamiento:** Los contenedores de Urbify no pueden ser accedidos por otros contenedores en la máquina que no pertenezcan a esta red.
-- **DNS automático:** Dentro de la red, cada servicio es accesible por su **nombre** (no por IP). Así, el backend puede conectarse a MySQL simplemente usando `host: db`, y Nginx puede hacer proxy al backend usando `http://backend:4000`. No se necesitan IPs estáticas.
-
-### Volumen Persistente: `mysql_data`
-
-Un volumen nombrado en Docker es como un **disco duro externo virtual** gestionado por Docker.
-
-**¿Por qué es vital?**
-- Los contenedores son **efímeros** por diseño (si los borras, pierdes todo lo que estaba dentro).
-- El volumen `mysql_data` almacena los archivos de MySQL en el *host* de forma persistente.
-- Puedes hacer `docker compose down` y volver a levantar con `docker compose up` sin perder ningún usuario, servicio o solicitud registrada.
-- El volumen se llama `urbify_mysql_data` (el `name: urbify` del `docker-compose.yml` fija el prefijo, así que es el mismo sin importar desde qué carpeta se ejecute `docker compose`).
+### Volumen persistente `mysql_data`
+Los contenedores son efímeros; el volumen guarda los archivos de MySQL en el host. Puedes hacer `docker compose down` y volver a subir sin perder usuarios, servicios ni solicitudes. El `name: urbify` del compose fija el prefijo, así que el volumen siempre se llama `urbify_mysql_data` sin importar desde qué carpeta se ejecute.
 
 ---
 
-## 📱 App Móvil — repositorio aparte
+## ☁️ Publicación en internet
 
-La app Android **no está en este repositorio**. Vive en un repo Git independiente:
-
-> **https://github.com/sarasanchez3456/Urbify-Mobile** — Android nativo (Kotlin + Jetpack Compose)
-
-Ambos repos son **proyectos separados** pero **dependen entre sí**: la app móvil consume exactamente esta misma API REST. Si trabajas en el móvil, clona y mantén actualizados **los dos**.
-
-### Cómo se conectan
-
-| | Backend (este repo) | App móvil (`Urbify-Mobile`) |
+| Pieza | Dónde | Dirección |
 |---|---|---|
-| Se ejecuta con | `docker compose up -d` | Android Studio → emulador |
-| La app apunta a | — | `http://10.0.2.2:4000/api/` (`10.0.2.2` = `localhost` del host visto desde el emulador) |
-| Requisito | — | backend y emulador en la **misma máquina** (si el backend está en otro PC, cambiar `BASE_URL` en `RetrofitClient.kt`) |
+| Página (frontend) | Vercel, proyecto `urbify-web` | https://urbify-web-gamma.vercel.app |
+| API (backend) | Vercel, proyecto `urbify-api` (función sin servidor) | https://urbify-api.vercel.app/api |
+| Base de datos | TiDB Cloud (compatible con MySQL, conexión con TLS) | — |
+| Correo | Gmail por SMTP (puerto 587) | — |
 
-### Al clonar en limpio
+**Despliegue automático:** cada vez que se fusiona un PR a `main`, el workflow ejecuta las pruebas y, **solo si todas pasan**, publica la API y la página y comprueba que respondan (`/api/health?deep=1`, categorías y la página). Necesita el secreto `VERCEL_TOKEN` del repositorio.
 
-1. `git clone` de **este** repo → `docker compose up -d --build` → se crea una base de datos **nueva y vacía**; el `schema.sql` solo siembra las **8 categorías**, sin usuarios ni servicios.
-2. `git clone` de **`Urbify-Mobile`** → compilar y ejecutar en el emulador.
-3. Cada dev registra sus propios usuarios y datos. **Los datos que tengas localmente viven solo en tu volumen `urbify_mysql_data`, nunca en el repositorio** — nadie los recibe al clonar.
+> ⚠️ **Las migraciones de la base de datos no corren solas.** Si un cambio modifica las tablas, hay que aplicarlas aparte con `npm run migrate` o con `scripts/desplegar-vercel.ps1 -Migrar` (ver [docs/DESPLIEGUE_VERCEL.md](docs/DESPLIEGUE_VERCEL.md)).
 
-### Compatibilidad de versiones
+**Cuidados importantes**
+- **No cambies `JWT_SECRET` entre despliegues:** al cambiarlo se cierran todas las sesiones abiertas.
+- **Copias de seguridad:** TiDB Starter no las garantiza. Usa `scripts/respaldo-bd.sh` y `scripts/restaurar-bd.sh` (guardan la copia fuera del repo). Cada copia contiene datos personales: nunca la subas a Git ni la envíes por chat.
+- Si cambia la dirección de Vercel, actualiza `VITE_API_URL`, `CORS_ORIGIN` y la app móvil.
 
-Los nombres de campo del JSON (`id`, `categoria_id`, `tarifa`, …) deben coincidir entre backend y app. **Usa siempre la versión más reciente de ambos repos**: una app antigua contra un backend nuevo (o viceversa) muestra campos vacíos o falla al crear servicios/solicitudes.
+Guías: [docs/DESPLIEGUE_VERCEL.md](docs/DESPLIEGUE_VERCEL.md) (la que se usa) y [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md) (comparación de alternativas).
 
 ---
 
-## 🔄 Pipeline de CI con GitHub Actions
+## 🔄 Calidad: CI, pruebas y seguridad
 
-**Archivo:** [`.github/workflows/devops.yml`](.github/workflows/devops.yml)
-
-El pipeline se activa automáticamente con cada `push` o `pull request` a la rama `main` y ejecuta **3 jobs en paralelo/secuencia**:
+### Pipeline de GitHub Actions
+**Archivo:** [`.github/workflows/devops.yml`](.github/workflows/devops.yml). Se ejecuta con cada `push` y cada `pull request` a `main`:
 
 ```
-Push a main
+Push / PR a main
      │
-     ├──→ [Job 1] 🔍 Backend CI ──────────┐
-     │    • npm ci                         │  (en paralelo)
-     │    • node --check src/index.js      │
-     │    • npm test (unitarias)           │
-     │    • npm run test:integration       │
-     │      (con un MySQL 8 real)          │
-     │                                     │
-     ├──→ [Job 2] 🎨 Frontend CI ─────────┤
-     │    • npm ci                         │
-     │    • npm run build (Vite)           │
-     │    • Verifica carpeta dist/         │
-     │                                     │
-     └────────────────────────────────────→ [Job 3] 🐳 Docker CI
-                                              • docker compose config
-                                              • Valida sintaxis del compose
+     ├──→ 🔍 Backend ─────────  npm ci · ESLint · el servidor arranca ·
+     │                          valida docs/openapi.yaml ·
+     │                          pruebas unitarias · pruebas de integración (MySQL 8 real)
+     │
+     ├──→ 🎨 Frontend ────────  npm ci · ESLint · pruebas (Vitest) · build de Vite · existe dist/
+     │
+     ├──→ 🐳 Docker ──────────  docker compose config (valida la infraestructura)
+     │
+     └──→ 🚀 Desplegar ───────  solo en push a main y si TODO lo anterior pasó:
+                                publica API y página en Vercel y comprueba que respondan
 ```
 
-**¿Qué garantiza este pipeline?**
-- ✅ Que el código del backend tiene **sintaxis JavaScript válida**
-- ✅ Que las **pruebas automáticas** del backend pasan (ver abajo): un fallo de autorización, privacidad, reservas, historial o auditoría rompe el CI
-- ✅ Que el frontend **compila correctamente** en modo producción
-- ✅ Que la **infraestructura Docker** está correctamente definida
-- ❌ Ningún error llega silenciosamente a la rama principal
+Un error de lint, una prueba fallida o un contrato OpenAPI inválido **bloquea la integración**; nada llega roto a producción.
 
-### 🧪 Pruebas automáticas del frontend
+### Pruebas del backend (desde `backend/`)
 
-`npm test` (desde `frontend/`) corre las pruebas con **Vitest** y un navegador simulado; no necesitan backend ni base de datos. Cubren la sesión del navegador (solo se guarda el token), el interceptor de Axios (token, 401, tokens vencidos), `AuthContext` (el registro no inicia sesión, la verificación sí, modo cliente/proveedor) y la pantalla del código de verificación (mayúsculas, 6 caracteres, errores, reenvío). Corren en el CI antes de compilar.
-
-### 🧪 Pruebas automáticas del backend
-
-| Comando (desde `backend/`) | Qué ejecuta | Necesita MySQL |
+| Comando | Qué ejecuta | Necesita MySQL |
 |---|---|---|
 | `npm test` | Pruebas unitarias de funciones puras (`test/unit/`) | No |
-| `npm run test:integration` | Pruebas de integración (`test/integration/`): arrancan el servidor real y lo prueban por HTTP contra una base MySQL de pruebas que se crea sola desde `config/schema.sql` | Sí |
+| `npm run test:integration` | Pruebas de integración (`test/integration/`): arrancan el servidor real y lo prueban por HTTP contra una base MySQL de pruebas creada desde `config/schema.sql` | Sí |
 | `npm run test:todo` | Las dos anteriores | Sí |
 
-Las de integración cubren: reservas simultáneas y fuera de horario, reprogramaciones (pedir, aceptar, rechazar, cancelar y choques), autorización entre usuarios y rutas de administrador, privacidad de teléfono y dirección, notificaciones (`tipo` y `solicitud_id`), historial de estados atómico (rollback real), auditoría administrativa atómica, verificación de correo (códigos, fuerza bruta, un solo uso, enumeración, registro con el correo de otra persona) y migraciones sobre una base existente.
+Cubren: reservas simultáneas y fuera de horario, reprogramaciones, cancelaciones, autorización entre usuarios y rutas de administrador, suspensión de cuentas, privacidad de teléfono y dirección, doble modo, código de inicio del servicio, verificación de correo (códigos, fuerza bruta, un solo uso, enumeración), sesiones, notificaciones y avisos en vivo, historial de estados atómico, auditoría administrativa, eliminación de cuenta, límites de peticiones y migraciones sobre una base existente.
 
-Variables opcionales: `DB_HOST` (`127.0.0.1`), `DB_PORT` (`3306`), `DB_USER` (`root`), `DB_PASSWORD`, `TEST_DB_NAME` (`urbify_test`) y `TEST_PORT` (`4100`). **La base `TEST_DB_NAME` se borra y se recrea en cada ejecución: no apuntes a una base con datos.**
-Ejemplo con el MySQL de `docker compose up -d db`: `DB_PASSWORD=<tu clave> npm run test:integration`.
+Variables opcionales: `DB_HOST` (`127.0.0.1`), `DB_PORT` (`3306`), `DB_USER` (`root`), `DB_PASSWORD`, `TEST_DB_NAME` (`urbify_test`) y `TEST_PORT` (`4100`). **La base `TEST_DB_NAME` se borra y se recrea en cada ejecución: no apuntes a una base con datos.** Ejemplo con el MySQL de `docker compose up -d db`:
+
+```bash
+DB_PASSWORD=<tu clave> npm run test:integration
+```
+
+### Pruebas del frontend (desde `frontend/`)
+`npm test` corre **Vitest** con un navegador simulado; no necesita backend ni base de datos. Cubre la sesión del navegador (solo se guarda el token), el interceptor de Axios, `AuthContext`, la verificación del correo, el código de inicio, la eliminación de cuenta, el campo de dirección, el pie de página y utilidades de formato y ubicación. `npm run lint` ejecuta ESLint.
+
+### Seguridad
+- **Contraseñas** con bcrypt; **sesiones JWT** de 7 días guardadas en `tokens_sesion` y revocables (el cierre de sesión las elimina).
+- **Rol, modo y estado de la cuenta se leen de la base en cada petición**: una cuenta suspendida pierde el acceso de inmediato (`403 cuenta_suspendida`).
+- **Verificación del correo** con código de un solo uso y límites de intentos; la respuesta es igual exista o no la cuenta (no permite averiguar quién está registrado).
+- **Límites de peticiones** por IP, por cuenta y por acción (ver [tabla](#límites-de-peticiones-rate-limiting)); no se bloquean cuentas, para que un tercero no pueda dejar fuera a nadie.
+- **Validación de todo cuerpo** contra esquemas ajv, límite de tamaño (`413`), cabeceras de seguridad (Helmet y Nginx), CORS con orígenes exactos y HTTPS opcional (`FORCE_HTTPS`).
+- **Privacidad:** teléfono, dirección y coordenadas exactas del proveedor solo se muestran a clientes y administradores.
+- **Auditoría:** cada acción del administrador queda registrada con su motivo.
+- **Secretos** solo por variables de entorno; los `.env` están en `.gitignore`.
 
 ---
 
-## 🛠️ Variables de Entorno
+## 🛠️ Variables de entorno
 
-Plantillas sin valores reales: [`.env.example`](.env.example) (raíz, para `docker compose`) y [`backend/.env.example`](backend/.env.example) (todas las variables del backend, para ejecutarlo sin Docker).
-
-El backend lee `backend/.env.<NODE_ENV>` (si existe) y luego `backend/.env`; las variables ya definidas en el proceso (Docker, la plataforma de despliegue) tienen prioridad.
+Plantillas sin valores reales: [`.env.example`](.env.example) (raíz, para `docker compose`) y [`backend/.env.example`](backend/.env.example) (todas las variables del backend, para ejecutarlo sin Docker). El backend lee `backend/.env.<NODE_ENV>` (si existe) y luego `backend/.env`; las variables ya definidas en el proceso (Docker, la plataforma de despliegue) tienen prioridad.
 
 | Variable | development | staging / production |
 |---|---|---|
@@ -338,12 +343,13 @@ El backend lee `backend/.env.<NODE_ENV>` (si existe) y luego `backend/.env`; las
 | `RESEND_API_KEY` | opcional | alternativa a Gmail (con dominio propio verificado). Sin Gmail ni Resend no se envían correos (en development el código de verificación se imprime en la consola) |
 | `DB_SSL`, `DB_POOL_SIZE` | `false`, `10` | `DB_SSL=true` si la base exige TLS (TiDB, Aiven...); `DB_POOL_SIZE=3` en Vercel (un pool por instancia) |
 | `AVISOS_EN_VIVO` | `true` | se apaga solo en Vercel (la web consulta cada 30 s); `true`/`false` para forzarlo |
-| `CODIGO_INICIO_OBLIGATORIO` | `true` | el proveedor necesita el código de 6 dígitos del cliente para iniciar el servicio (issue #57); `false` mientras una app (p. ej. la móvil) no lo soporte |
+| `CODIGO_INICIO_OBLIGATORIO` | `true` | el proveedor necesita el código de 6 dígitos del cliente para iniciar el servicio; `false` mientras una app (p. ej. la móvil) no lo soporte |
 | `BODY_LIMIT` | `100kb` | `100kb` (tamaño máximo del JSON) |
 | `TRUST_PROXY` | `0` | nº de proxys delante de la API (Nginx del compose = `1`) |
 | `FORCE_HTTPS` | `false` | `true` redirige a HTTPS y activa HSTS (requiere `TRUST_PROXY>=1`) |
+| `VITE_API_URL` | — | solo al compilar el frontend para Vercel: dirección de la API (en Docker no se usa: el frontend llama a `/api`) |
 
-#### Límites de peticiones (rate limiting)
+### Límites de peticiones (rate limiting)
 
 Cuando se supera un límite la API responde `429` con `{"error", "bloqueado": true, "minutos_restantes"}` y las cabeceras `Retry-After`, `RateLimit` y `RateLimit-Policy`. Los valores por defecto no afectan el uso normal de la web ni de la app móvil; se ajustan por entorno:
 
@@ -351,7 +357,7 @@ Cuando se supera un límite la API responde `429` con `{"error", "bloqueado": tr
 |---|---|---|
 | Ventana de los límites generales y de login | `RATE_LIMIT_WINDOW_SECONDS` | `900` (15 min) |
 | Todas las rutas `/api` (excepto `/api/health`), por IP | `RATE_LIMIT_GLOBAL` | `1500` por ventana |
-| Lecturas públicas (búsqueda, cercanos, destacados, categorías, stats, calificaciones), por IP | `RATE_LIMIT_PUBLIC_PER_MINUTE` | `120` por minuto |
+| Lecturas públicas (búsqueda, cercanos, destacados, categorías, stats, calificaciones y `/api/health`), por IP | `RATE_LIMIT_PUBLIC_PER_MINUTE` | `120` por minuto |
 | Registro, por IP | `RATE_LIMIT_REGISTER_PER_HOUR` | `10` por hora |
 | Recuperación de contraseña: pedir código, por IP y por correo (restablecer admite el triple) | `RATE_LIMIT_RECOVERY_IP_PER_HOUR` / `RATE_LIMIT_RECOVERY_EMAIL_PER_HOUR` | `10` / `3` por hora |
 | Verificación de correo, intentos de código: por IP / por correo | `RATE_LIMIT_VERIFY_IP_PER_HOUR` / `RATE_LIMIT_VERIFY_EMAIL_PER_HOUR` | `30` / `10` por hora |
@@ -363,9 +369,9 @@ Cuando se supera un límite la API responde `429` con `{"error", "bloqueado": tr
 | Login, intentos **fallidos** a una cuenta desde cualquier IP | `RATE_LIMIT_LOGIN_ACCOUNT` | `20` por ventana |
 | Desactivar (solo desarrollo/pruebas) | `RATE_LIMIT_ENABLED=false` | activo |
 
-El antiguo bloqueo de cuenta (3 fallos = 5 min bloqueada) se eliminó: permitía que un tercero dejara fuera a cualquiera escribiendo su correo. Ahora los fallos limitan a la IP que los causa y la persona real puede entrar desde otra red; el tope por cuenta (20) solo se alcanza con un ataque distribuido. Los límites se guardan en memoria, así que valen para **una** instancia del backend; con varias hay que usar un almacén compartido (p. ej. Redis). Con `TRUST_PROXY` mal configurado todos los usuarios compartirían la IP del proxy.
+El antiguo bloqueo de cuenta (3 fallos = 5 min bloqueada) se eliminó: permitía que un tercero dejara fuera a cualquiera escribiendo su correo. Ahora los fallos limitan a la IP que los causa y la persona real puede entrar desde otra red; el tope por cuenta (20) solo se alcanza con un ataque distribuido. Los límites se guardan en memoria, así que valen para **una** instancia del backend (en Vercel pueden ser más débiles; lo crítico conserva límites por cuenta y por correo); con varias instancias hay que usar un almacén compartido (p. ej. Redis). Con `TRUST_PROXY` mal configurado todos los usuarios compartirían la IP del proxy.
 
-Los valores numéricos (límites, `TRUST_PROXY`), los booleanos (`true`/`false`, en minúsculas) y `BODY_LIMIT` (número con `b`, `kb` o `mb`, de 1 byte a 10 mb) se validan siempre: un valor inválido, un límite de `0` o una ventana fuera de rango impide arrancar, en lugar de aceptarse en silencio o dejar la API sin responder.
+Los valores numéricos, los booleanos (`true`/`false`, en minúsculas) y `BODY_LIMIT` (número con `b`, `kb` o `mb`, de 1 byte a 10 mb) se validan siempre: un valor inválido impide arrancar en lugar de aceptarse en silencio.
 
 Si en `staging`/`production` falta algo o es un valor de ejemplo, el backend **no arranca** y lista qué corregir (sin imprimir los secretos). Genera un `JWT_SECRET` con:
 
@@ -373,7 +379,7 @@ Si en `staging`/`production` falta algo o es un valor de ejemplo, el backend **n
 node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
 
-> **Seguridad:** Los archivos `.env` están en `.gitignore` y **nunca deben subirse** al repositorio. Despliega inyectando las variables desde la plataforma (secretos del proveedor), no en archivos del repo. Si el puerto 4000 del backend se expone directamente (sin Nginx/balanceador delante), deja `TRUST_PROXY=0`; con `TRUST_PROXY>=1` la IP del cliente se toma de `X-Forwarded-For`, que un cliente directo podría falsear.
+> **Seguridad:** los archivos `.env` están en `.gitignore` y **nunca deben subirse** al repositorio. Despliega inyectando las variables desde la plataforma (secretos del proveedor). Si el puerto 4000 del backend se expone directamente (sin Nginx/balanceador delante), deja `TRUST_PROXY=0`; con `TRUST_PROXY>=1` la IP del cliente se toma de `X-Forwarded-For`, que un cliente directo podría falsear.
 
 ### Administrador
 
@@ -384,42 +390,94 @@ cd backend
 ADMIN_EMAIL=admin@ejemplo.com ADMIN_PASSWORD='clave-larga-de-12+' npm run create-admin
 ```
 
-Si el correo ya existe, ese usuario se promueve a `admin`. En una base de datos anterior, ejecuta antes `npm run migrate` para que el esquema acepte el rol `admin`.
+Si el correo ya existe, ese usuario se promueve a `admin`. En una base de datos anterior, ejecuta antes `npm run migrate` para que el esquema esté al día.
 
 ---
 
-## 📡 Endpoints de la API REST
+## 📡 API REST
 
-> **Contrato completo:** [`docs/openapi.yaml`](docs/openapi.yaml) (OpenAPI 3.0) es la fuente única para backend, web y app móvil: roles por endpoint, errores, formatos y estrategia de versionado. Valídalo con `npx @redocly/cli@1 lint docs/openapi.yaml`.
+> **Contrato completo:** [`docs/openapi.yaml`](docs/openapi.yaml) (OpenAPI 3.0) es la fuente única para backend, web y app móvil: roles por endpoint, errores, formatos y versionado. Valídalo con `npx @redocly/cli@2 lint docs/openapi.yaml --extends minimal` (el CI lo hace en cada PR). Para verlo con interfaz: cárgalo en [editor.swagger.io](https://editor.swagger.io).
 
-| Método | Ruta | Descripción |
+Todas las rutas cuelgan de `/api`. Los errores siempre tienen la forma `{"error": "mensaje"}`. Resumen por recurso (los detalles, roles y códigos de respuesta están en el contrato):
+
+| Recurso | Endpoints principales |
+|---|---|
+| **Salud** | `GET /health` (con `?deep=1` consulta también la base y responde `503` si no contesta; limitado por IP) |
+| **Auth** | `POST /auth/registro` (crea la cuenta sin verificar y envía un código; no devuelve token), `/auth/verificar-correo`, `/auth/reenviar-codigo`, `/auth/login`, `/auth/logout`, `/auth/olvido-contrasena`, `/auth/restablecer-contrasena`, `GET/PUT /auth/perfil`, `/auth/ser-proveedor`, `/auth/cambiar-modo` |
+| **Categorías** | `GET /categorias` (público); crear, editar y eliminar solo `admin` |
+| **Servicios** | `GET /servicios/buscar`, `/servicios/destacados`, `/servicios/categoria/:id`, `/servicios/:id`; `GET /servicios/mios`, crear, editar y eliminar (proveedor) |
+| **Solicitudes** | Crear, listar (cliente/proveedor), `PUT /solicitudes/:id/estado`, código de inicio, historial, reprogramaciones, chat (`/mensajes`) y eliminar; `POST /reportes` |
+| **Calificaciones** | Calificar una solicitud completada, editar y eliminar; el profesional califica al cliente |
+| **Proveedores** | `GET /proveedores/cercanos`, `/proveedores/:id/agenda`, `GET/PUT /proveedores/mi-horario` |
+| **Notificaciones** | Listar, marcar leídas, eliminar y `GET /notificaciones/stream` (avisos en vivo, SSE) |
+| **Estadísticas** | `GET /stats` (cifras públicas) y `GET /stats/admin` (solo `admin`) |
+| **Administración** | `/admin/resumen`, `/admin/usuarios`, `/admin/servicios`, `/admin/solicitudes`, `/admin/resenas`, `/admin/reportes` y `/admin/auditoria` (solo `admin`) |
+
+**Privacidad:** `telefono` y `direccion` del proveedor y sus coordenadas exactas solo se devuelven a usuarios con sesión de `cliente` o `admin`; anónimos y proveedores no reciben `telefono` ni `direccion` y ven latitud/longitud redondeadas a 2 decimales (igual en `/proveedores/cercanos`, donde `distancia_km` se redondea a 0,5 km).
+
+**Fechas:** se guardan y responden en UTC (ISO 8601); una fecha enviada sin zona se interpreta como hora de Colombia (UTC-5).
+
+**Notificaciones de chat:** incluyen `tipo: "mensaje"` y `solicitud_id`; la web los usa para abrir el chat de esa solicitud.
+
+---
+
+## 📱 App móvil (repositorio aparte)
+
+La app Android **no está en este repositorio**. Vive en un repo independiente:
+
+> **https://github.com/sarasanchez3456/Urbify-Mobile** — Android nativo (Kotlin + Jetpack Compose)
+
+Son **proyectos separados** pero **dependen entre sí**: la app móvil consume esta misma API REST.
+
+| | Backend (este repo) | App móvil (`Urbify-Mobile`) |
 |---|---|---|
-| GET | `/api/health` | Estado del servidor; con `?deep=1` consulta también la base de datos y responde `503` si no contesta. Limitado por IP como las lecturas públicas (`429` al superarlo) |
-| POST | `/api/auth/registro` | Registro (`cliente` o `proveedor`): crea la cuenta SIN verificar y envía un código al correo (no devuelve token) |
-| POST | `/api/auth/verificar-correo` | Verifica el código de 6 caracteres (MAYÚSCULAS y números) y abre la sesión |
-| POST | `/api/auth/reenviar-codigo` | Pide un código nuevo (espera de 1 minuto entre envíos) |
-| POST | `/api/auth/ser-proveedor` | Un cliente se habilita como proveedor con la misma cuenta (oficio y categoría); pasa a modo proveedor con token nuevo |
-| POST | `/api/auth/cambiar-modo` | Cambia el modo (cliente/proveedor) de ESTA sesión y devuelve token nuevo; las demás sesiones no se tocan |
-| POST | `/api/auth/login` | Inicio de sesión |
-| POST | `/api/auth/logout` | Cierra la sesión: elimina el token enviado en `Authorization: Bearer` de `tokens_sesion`. Responde `200 {"mensaje"}`; después, ese token recibe `401` (web y app móvil deben llamarla antes de borrar el token local) |
-| POST | `/api/auth/olvido-contrasena` | Envía un código de 6 dígitos al correo (respuesta genérica); ver [`docs/RUTAS_MOVIL.md`](docs/RUTAS_MOVIL.md) |
-| POST | `/api/auth/restablecer-contrasena` | Cambia la contraseña con `{correo, codigo, nueva_contrasena}` y cierra las sesiones |
-| GET | `/api/categorias` | Listar categorías |
-| GET | `/api/servicios/buscar` | Buscar servicios (`q`, `categoria_id`, `disponible`); también `/api/servicios/destacados`, `/api/servicios/categoria/:id` y `/api/servicios/:id`. **Privacidad:** `telefono` y `direccion` del proveedor y sus coordenadas exactas solo se devuelven a usuarios con sesión de `cliente` o `admin`; anónimos y proveedores no reciben `telefono` ni `direccion` y ven latitud/longitud redondeadas a 2 decimales (igual en `/api/proveedores/cercanos`, donde `distancia_km` se redondea a 0,5 km) |
-| POST | `/api/solicitudes` | Crear solicitud (`servicio_id` y `fecha_servicio` futura obligatorios; el proveedor se toma del servicio; fechas en UTC, y una fecha sin zona se toma como hora de Colombia, ver `docs/openapi.yaml`) |
-| GET / POST | `/api/solicitudes/:id/mensajes` | Chat de la solicitud: solo su cliente y su proveedor (`{contenido}`, 1–1000 caracteres) |
-| GET | `/api/proveedores/cercanos` | Proveedores cerca de un punto (`lat`, `lng`, `radio` en km) |
-| GET | `/api/stats` | Estadísticas públicas de la página de inicio (3 cifras) |
-| GET | `/api/stats/admin` | Estadísticas completas del sistema (solo `admin`) |
-| GET | `/api/notificaciones` | Notificaciones del usuario |
+| Se ejecuta con | `docker compose up -d` | Android Studio → emulador |
+| La app apunta a | — | `http://10.0.2.2:4000/api/` (`10.0.2.2` = `localhost` del host visto desde el emulador) |
+| Requisito | — | backend y emulador en la **misma máquina** (si el backend está en otro PC, cambiar `BASE_URL` en `RetrofitClient.kt`) |
 
-Las notificaciones de mensajes de chat incluyen `tipo: "mensaje"` y `solicitud_id`. La web usa esos campos para abrir el chat existente de esa solicitud; las notificaciones antiguas sin esos campos conservan la navegación general a Mis Solicitudes.
+**Al clonar en limpio** se crea una base **nueva y vacía**: el `schema.sql` solo siembra las **8 categorías**, sin usuarios ni servicios. Los datos locales viven en tu volumen `urbify_mysql_data`, nunca en el repositorio.
+
+**Compatibilidad:** los nombres de campo del JSON deben coincidir entre backend y app; usa siempre la versión más reciente de ambos repos. Mientras la app móvil no soporte el **código de inicio** del servicio, `CODIGO_INICIO_OBLIGATORIO=false` permite iniciar servicios sin él. Las rutas que usa la app están en [`docs/RUTAS_MOVIL.md`](docs/RUTAS_MOVIL.md).
 
 ---
 
-## 👩‍💻 Equipo de Desarrollo
+## 📚 Documentación del proyecto
 
-Desarrollado como proyecto integrador del programa **Análisis y Desarrollo de Software (ADSO)** del SENA — Ficha **3223877**.
+**En este repositorio (`docs/`)**
+
+| Documento | Para qué sirve |
+|---|---|
+| [`openapi.yaml`](docs/openapi.yaml) | Contrato de la API (OpenAPI 3.0) |
+| [`DESPLIEGUE_VERCEL.md`](docs/DESPLIEGUE_VERCEL.md) | Publicar y actualizar Urbify en Vercel + TiDB + Gmail |
+| [`DESPLIEGUE.md`](docs/DESPLIEGUE.md) | Comparación de alternativas de hosting |
+| [`PRESENTACION.md`](docs/PRESENTACION.md) | Levantar y comprobar todo antes de una presentación |
+| [`AUTORIZACION.md`](docs/AUTORIZACION.md) | Qué puede hacer cada rol en cada recurso |
+| [`AUTENTICACION_WEB.md`](docs/AUTENTICACION_WEB.md) | Estrategia de sesión de la página web |
+| [`RUTAS_MOVIL.md`](docs/RUTAS_MOVIL.md) | Rutas y cambios que debe seguir la app móvil |
+| [`GUIA_REVISION.md`](docs/GUIA_REVISION.md) y [`VERIFICACION_HITO2.md`](docs/VERIFICACION_HITO2.md) | Historial de la revisión del Hito 2 |
+
+**Entregables académicos (carpeta "Proyecto Urbify" en Drive)**
+
+| Hito | Contenido |
+|---|---|
+| **Hito 1** | Acta de constitución, documento de requerimientos e historias de usuario |
+| **Hito 2** | Diagramas de casos de uso, clases y actividades, y modelo relacional |
+| **Hito 3** | Diagrama de paquetes, diagrama de secuencia, documentación de la API y diagrama de despliegue |
+
+**Scripts útiles (`scripts/`):** `presentacion.ps1`, `desplegar-vercel.ps1` / `.sh` (despliegue manual, con `-Que api|web` y `-Migrar`), `respaldo-bd.sh` y `restaurar-bd.sh`.
+
+---
+
+## 👩‍💻 Equipo
+
+Proyecto integrador del programa **Análisis y Desarrollo de Software (ADSO)** del SENA, Ficha **3223877**, con el acompañamiento del instructor Jaime Zapata.
+
+| Integrante | Rol |
+|---|---|
+| Juan Pablo Serna | Líder del proyecto, planeación y apoyo en backend |
+| Sara Sánchez | Desarrollo y frontend |
+| Cristian Mesa | Backend y base de datos |
+| David Díaz | Análisis y documentación |
 
 ---
 
