@@ -383,3 +383,6 @@
 .ad-acciones-col { display: grid; gap: 4px; justify-items: end; align-content: start; }
 .ad-nota-resolucion { margin-top: 6px; font-size: 0.88rem; }
 
+
+/* Botón "Cerrar" con texto en el panel de detalle de usuario */
+.pl-cerrar.ad-cerrar-texto { font-size: 0.9rem; font-weight: 600; padding: 6px 12px; }
