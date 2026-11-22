@@ -3,7 +3,7 @@ const authController = require('../controllers/auth.controller');
 const { authenticate, authorize } = require('../middleware/auth');
 const {
   registroLimiter, loginLimiters, olvidoLimiters, restablecerLimiters, limitadoresVerificacion, limitadoresEnvioCodigo,
-  cambioModoLimiter, serProveedorLimiter,
+  cambioModoLimiter, serProveedorLimiter, eliminarCuentaLimiter,
 } = require('../middleware/rateLimit');
 const { validarBody, idParams } = require('../middleware/validate');
 
@@ -20,6 +20,7 @@ router.post('/ser-proveedor', authenticate, serProveedorLimiter, validarBody('se
 router.post('/cambiar-modo', authenticate, cambioModoLimiter, validarBody('cambiarModo'), authController.cambiarModo);
 router.get('/perfil', authenticate, authController.perfil);
 router.put('/perfil', authenticate, validarBody('perfil'), authController.actualizarPerfil);
+router.delete('/perfil', authenticate, eliminarCuentaLimiter, validarBody('eliminarCuenta'), authController.eliminarMiCuenta);
 router.get('/', authenticate, authorize('admin'), authController.listarUsuarios);
 router.get('/:id', authenticate, authorize('admin'), authController.usuarioPorId);
 router.delete('/:id', authenticate, authorize('admin'), authController.eliminarUsuario);

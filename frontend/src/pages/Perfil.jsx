@@ -5,7 +5,10 @@ import { useAuth } from '../context/AuthContext';
 import DashboardLayout from '../components/DashboardLayout';
 import CambiarContrasena from '../components/CambiarContrasena';
 import OfrecerServicios from '../components/OfrecerServicios';
+import EliminarCuenta from '../components/EliminarCuenta';
+import CampoDireccion from '../components/CampoDireccion';
 import { logError } from '../utils/log';
+import { geocodificarDireccion, estaDentroDeColombia } from '../utils/colombia';
 import './Perfil.css';
 
 const CAMPOS = ['nombre', 'apellido', 'telefono', 'direccion'];
@@ -52,6 +55,8 @@ export default function Perfil() {
   const rol = usuario?.rol;
 
   const [form, setForm] = useState(VACIO);
+  const [coordsGuardadas, setCoordsGuardadas] = useState(null);
+  const [coords, setCoords] = useState(null); // {lat, lng} de la dirección confirmada en el mapa
   const [guardado, setGuardado] = useState(VACIO); // lo que hay en el servidor, para detectar cambios
   const [cuenta, setCuenta] = useState({ correo: '', fecha_creacion: null });
   const [resumen, setResumen] = useState(null);
@@ -60,6 +65,7 @@ export default function Perfil() {
   const [errorGuardar, setErrorGuardar] = useState('');
   const [aviso, setAviso] = useState('');
   const [cambiandoClave, setCambiandoClave] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
   const [avisoTel, setAvisoTel] = useState('');
   const temporizadorAviso = useRef(null);
   const temporizadorTel = useRef(null);
@@ -72,8 +78,26 @@ export default function Perfil() {
         const u = res.data;
         setForm(desdeUsuario(u));
         setGuardado(desdeUsuario(u));
+        const c = u.latitud != null && u.longitud != null ? { lat: Number(u.latitud), lng: Number(u.longitud) } : null;
+        setCoords(c);
+        setCoordsGuardadas(c);
         setCuenta({ correo: u.correo || '', fecha_creacion: u.fecha_creacion || null });
         setEstado('listo');
+        // Perfiles con dirección pero sin ubicación en el mapa (guardados antes de este arreglo): se ubican solos,
+        // para que el profesional aparezca en el mapa del cliente sin tener que volver a escribir su dirección.
+        const direccion = (u.direccion || '').trim();
+        if (direccion && (u.latitud == null || u.longitud == null)) {
+          geocodificarDireccion(direccion)
+            .then((encontrados) => {
+              const primero = encontrados.find((r) => estaDentroDeColombia(r.lat, r.lon));
+              if (primero) {
+                setCoords({ lat: primero.lat, lng: primero.lon });
+                return api.put('/auth/perfil', { direccion, latitud: primero.lat, longitud: primero.lon });
+              }
+              return null;
+            })
+            .catch((e) => logError(e));
+        }
       })
       .catch((err) => {
         logError('Error al cargar perfil:', err);
@@ -149,11 +173,12 @@ export default function Perfil() {
   const mostrarAviso = (texto) => {
     setAviso(texto);
     clearTimeout(temporizadorAviso.current);
-    temporizadorAviso.current = setTimeout(() => setAviso(''), 2800);
+    temporizadorAviso.current = setTimeout(() => setAviso(''), texto.length > 30 ? 7000 : 2800);
   };
 
   const descartar = () => {
     setForm(guardado);
+    setCoords(coordsGuardadas);
     setErrorGuardar('');
   };
 
@@ -163,11 +188,38 @@ export default function Perfil() {
     setGuardando(true);
     setErrorGuardar('');
     try {
+      // Un profesional debe tener su dirección confirmada en el mapa (elegida de la lista): sin eso los clientes no lo
+      // encuentran cerca. Un cliente puede dejarla vacía o sin confirmar (entonces se intenta ubicar sola).
+      const direccion = form.direccion.trim();
+      let ubicacion = {};
+      let lugar = null;
+      if (rol === 'proveedor' && !direccion) {
+        setErrorGuardar('Escribe tu dirección (calle, barrio y ciudad): los clientes cercanos te encuentran por ella.');
+        setGuardando(false);
+        return;
+      }
+      if (coords) {
+        ubicacion = { latitud: coords.lat, longitud: coords.lng };
+      } else if (direccion && rol === 'proveedor') {
+        setErrorGuardar('Elige tu dirección de la lista de opciones para ubicarla en el mapa. Escribe calle, barrio y ciudad.');
+        setGuardando(false);
+        return;
+      } else if (direccion && direccion !== guardado.direccion) {
+        const encontrados = await geocodificarDireccion(direccion).catch(() => []);
+        const primero = encontrados.find((r) => estaDentroDeColombia(r.lat, r.lon));
+        if (primero) {
+          ubicacion = { latitud: primero.lat, longitud: primero.lon };
+          lugar = primero.display_name.split(',').slice(0, 3).join(',').trim();
+        } else {
+          lugar = '';
+        }
+      }
       const res = await api.put('/auth/perfil', {
         nombre: form.nombre.trim(),
         apellido: form.apellido.trim(),
         telefono: form.telefono.trim(),
-        direccion: form.direccion.trim(),
+        direccion,
+        ...ubicacion,
       });
       // El servidor devuelve el perfil guardado (con el teléfono normalizado): es la fuente de verdad.
       const u = res.data?.usuario;
@@ -181,8 +233,15 @@ export default function Perfil() {
           };
       setForm(nuevo);
       setGuardado(nuevo);
+      if (u && u.latitud != null && u.longitud != null) {
+        const c = { lat: Number(u.latitud), lng: Number(u.longitud) };
+        setCoords(c);
+        setCoordsGuardadas(c);
+      }
       actualizarUsuario({ nombre: nuevo.nombre, apellido: nuevo.apellido });
-      mostrarAviso('Perfil actualizado');
+      if (lugar === '') mostrarAviso('Perfil actualizado, pero no pudimos ubicar la dirección en el mapa. Escribe calle, barrio y ciudad.');
+      else if (lugar) mostrarAviso(`Perfil actualizado. Te ubicamos en: ${lugar}`);
+      else mostrarAviso('Perfil actualizado');
     } catch (err) {
       logError('Error al actualizar perfil:', err);
       setErrorGuardar(err.response?.data?.error || 'No se pudo guardar el perfil. Intenta de nuevo.');
@@ -197,7 +256,7 @@ export default function Perfil() {
 
   return (
     <DashboardLayout titulo="Mi Perfil" subtitulo="Administra tu información personal">
-      <div className="pf">
+      <div className="pf" data-tour={rol === 'proveedor' ? 'proveedor-perfil-inicio' : 'perfil-cliente-inicio'}>
         {estado === 'cargando' && <div className="pf-card pf-estado">Cargando...</div>}
 
         {estado === 'error' && (
@@ -211,15 +270,16 @@ export default function Perfil() {
           <form className="pf-grid" onSubmit={handleSubmit} noValidate>
             <div>
               <div className="pf-card">
-                <div className="pf-head">
-                  <div className="pf-avatar" aria-hidden="true">{inicial}</div>
+                <div data-tour={rol === 'proveedor' ? 'proveedor-perfil-informacion' : 'perfil-cliente-informacion'}>
+                  <div className="pf-head">
+                  <div className="pf-avatar" aria-hidden="true" data-tour={rol === 'proveedor' ? 'proveedor-perfil-avatar' : undefined}>{inicial}</div>
                   <div>
                     <h2 className="pf-name">{nombreCompleto}</h2>
                     {rol && <span className="pf-role">{ROLES[rol] || rol}</span>}
                   </div>
-                </div>
+                  </div>
 
-                <div className="pf-progress">
+                  <div className="pf-progress">
                   <div className="pf-progress-top">
                     <span>Tu perfil está al <b>{porcentaje}%</b></span>
                   </div>
@@ -227,11 +287,13 @@ export default function Perfil() {
                     <i style={{ width: `${porcentaje}%` }} />
                   </div>
                   <p>{faltan.length ? `Te falta: ${faltan.join(', ')}.` : 'Tienes todos tus datos completos.'}</p>
+                  </div>
+
                 </div>
 
                 {errorGuardar && <div className="pf-alert" role="alert">{errorGuardar}</div>}
 
-                <section className="pf-sec">
+                <section className="pf-sec" data-tour={rol === 'proveedor' ? 'proveedor-perfil-datos' : 'perfil-cliente-datos'}>
                   <h3>Datos personales</h3>
                   <p className="pf-sd">Así te verán las personas con las que uses Urbify.</p>
                   <div className="pf-row">
@@ -266,7 +328,7 @@ export default function Perfil() {
                   </div>
                 </section>
 
-                <section className="pf-sec">
+                <section className="pf-sec" data-tour={rol === 'proveedor' ? 'proveedor-perfil-contacto' : 'perfil-cliente-contacto'}>
                   <h3>Contacto y dirección</h3>
                   <p className="pf-sd">Para coordinar tus visitas.</p>
                   <div className="pf-field">
@@ -289,21 +351,22 @@ export default function Perfil() {
                       ? <p className="pf-error" id="pf-telefono-err">{textoErrorTel}</p>
                       : <p className="pf-hint" id="pf-telefono-ayuda">Solo números, de 7 a 15.</p>}
                   </div>
-                  <div className="pf-field">
+                  <div className="pf-field" data-tour={rol === 'proveedor' ? 'proveedor-perfil-ubicacion' : undefined}>
                     <label className="pf-label" htmlFor="pf-direccion">Dirección</label>
-                    <input
+                    <CampoDireccion
                       id="pf-direccion"
                       className="pf-input"
-                      maxLength={255}
-                      autoComplete="street-address"
-                      placeholder="Calle y barrio"
                       value={form.direccion}
-                      onChange={cambiar('direccion')}
+                      onTexto={(t) => setForm((f) => ({ ...f, direccion: t }))}
+                      onUbicacion={(u) => setCoords(u)}
+                      lat={coords?.lat}
+                      lng={coords?.lng}
+                      requerida={rol === 'proveedor'}
                     />
                   </div>
                 </section>
 
-                <section className="pf-sec">
+                <section className="pf-sec" data-tour={rol === 'proveedor' ? 'proveedor-perfil-cuenta' : undefined}>
                   <h3>Cuenta</h3>
                   <div className="pf-acc">
                     <div>
@@ -320,7 +383,7 @@ export default function Perfil() {
                   <span>Tienes cambios sin guardar</span>
                   <div className="pf-savebar-btns">
                     <button type="button" className="pf-btn" onClick={descartar} disabled={guardando}>Descartar</button>
-                    <button type="submit" className="pf-btn pf-btn--primary" disabled={!puedeGuardar}>
+                    <button type="submit" className="pf-btn pf-btn--primary" disabled={!puedeGuardar} data-tour="perfil-cliente-guardar">
                       {guardando ? 'Guardando...' : 'Guardar cambios'}
                     </button>
                   </div>
@@ -329,7 +392,7 @@ export default function Perfil() {
             </div>
 
             <aside className="pf-side">
-              <div className="pf-card">
+              <div className="pf-card" data-tour={rol === 'proveedor' ? 'proveedor-perfil-resumen' : undefined}>
                 <h3>Tu cuenta</h3>
                 <p className="pf-sd">Un vistazo a tu actividad.</p>
                 <div className="pf-st">
@@ -355,16 +418,20 @@ export default function Perfil() {
                 )}
               </div>
               <OfrecerServicios />
-              <div className="pf-card">
+              <div className="pf-card" data-tour={rol === 'proveedor' ? 'proveedor-perfil-seguridad' : undefined}>
                 <h3>Seguridad</h3>
                 <p className="pf-sd">Te enviamos un código a tu correo para confirmar el cambio.</p>
                 <button type="button" className="pf-lnk pf-lnk-btn" onClick={() => setCambiandoClave(true)}>Cambiar contraseña →</button>
+                {usuario?.rol !== 'admin' && (
+                  <button type="button" className="pf-lnk pf-lnk-btn" onClick={() => setEliminando(true)}>Eliminar mi cuenta →</button>
+                )}
               </div>
             </aside>
           </form>
         )}
 
         {cambiandoClave && cuenta?.correo && <CambiarContrasena correo={cuenta.correo} onCerrar={() => setCambiandoClave(false)} />}
+        {eliminando && <EliminarCuenta onCerrar={() => setEliminando(false)} />}
 
         {aviso && <div className="pf-toast" role="status">{aviso}</div>}
       </div>

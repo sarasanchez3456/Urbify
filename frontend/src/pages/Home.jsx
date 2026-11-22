@@ -312,12 +312,12 @@ export default function Home() {
               <p className="footer-desc">La plataforma de servicios urbanos del futuro.</p>
             </div>
             <div className="footer-links">
-              <span>Términos</span>
-              <span>Privacidad</span>
-              <span>Contacto</span>
+              <Link to="/terminos">Términos</Link>
+              <Link to="/privacidad">Privacidad</Link>
+              <Link to="/contacto">Contacto</Link>
             </div>
             <div className="footer-copy">
-              © 2026 Urbify · Servicios Urbanos del Futuro
+              © {new Date().getFullYear()} Urbify · Servicios Urbanos del Futuro
             </div>
           </div>
         </footer>

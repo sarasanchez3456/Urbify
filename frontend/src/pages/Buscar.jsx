@@ -194,15 +194,15 @@ function BuscarContent() {
   return (
     <div className="bs">
       {/* Qué busca */}
-      <div className="bs-barra">
-        <label className="bs-buscador">
+      <div className="bs-barra" data-tour="buscar-servicios-inicio">
+        <label className="bs-buscador" data-tour="buscar-servicios-buscador">
           <span className="bs-solo-lectores">Buscar un servicio</span>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="¿Qué necesitas? Ej: fuga en el baño, un profesional por su nombre, o un barrio" />
           {q && <button type="button" onClick={() => setQ('')} aria-label="Borrar búsqueda">×</button>}
         </label>
         {/* Filtro de categoría: se combina con el texto (ej. "Belén" + Plomería). */}
-        <label className="bs-filtro-categoria">
+        <label className="bs-filtro-categoria" data-tour="buscar-servicios-categorias">
           <span className="bs-solo-lectores">Categoría</span>
           <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)}>
             <option value="">Todas las categorías</option>
@@ -212,7 +212,7 @@ function BuscarContent() {
       </div>
 
       {/* Dónde está */}
-      <form className="bs-ubicacion" onSubmit={confirmarDireccion}>
+      <form className="bs-ubicacion" onSubmit={confirmarDireccion} data-tour="buscar-servicios-ubicacion">
         <div className="bs-dir">
           <label htmlFor="bs-direccion">Tu ubicación</label>
           <div className="bs-dir-campo">
@@ -238,7 +238,7 @@ function BuscarContent() {
         <button type="button" className="bs-btn" onClick={usarMiUbicacion} disabled={localizando}>
           {localizando ? 'Buscando...' : 'Usar mi ubicación'}
         </button>
-        <label className="bs-radio">
+        <label className="bs-radio" data-tour="buscar-servicios-radio">
           <span>Distancia</span>
           <select value={radio} onChange={(e) => setRadio(Number(e.target.value))} disabled={!ubicacion}>
             {RADIOS.map((r) => <option key={r} value={r}>Hasta {r} km</option>)}
@@ -249,7 +249,7 @@ function BuscarContent() {
 
       <div className="bs-cuerpo">
         {/* Lista */}
-        <section className="bs-lista" aria-label="Resultados">
+        <section className="bs-lista" aria-label="Resultados" data-tour="buscar-servicios-resultados">
           <div className="bs-resumen" aria-live="polite">
             <b>{textoResumen}</b>
             {categoriaActual && <span> · {categoriaActual.nombre}</span>}
@@ -278,6 +278,7 @@ function BuscarContent() {
               key={s.id}
               to={`/servicio/${s.id}`}
               className={`bs-tarjeta${resaltado === s.proveedor_id ? ' is-resaltada' : ''}`}
+              data-tour={s.id === resultados[0]?.id ? 'buscar-servicios-abrir-servicio' : undefined}
               onMouseEnter={() => setResaltado(s.proveedor_id)}
               onMouseLeave={() => setResaltado(null)}
               onFocus={() => setResaltado(s.proveedor_id)}
@@ -303,7 +304,7 @@ function BuscarContent() {
         </section>
 
         {/* Mapa */}
-        <div className="bs-mapa" aria-label="Mapa de profesionales">
+        <div className="bs-mapa" aria-label="Mapa de profesionales" data-tour="buscar-servicios-mapa">
           <MapContainer center={COLOMBIA_CENTER} zoom={COLOMBIA_ZOOM} minZoom={5} maxBounds={colombiaBounds} maxBoundsViscosity={1} style={{ width: '100%', height: '100%' }}>
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <AjustarVista ubicacion={ubicacion} radio={radio} puntos={marcadores} />

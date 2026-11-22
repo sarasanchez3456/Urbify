@@ -423,6 +423,33 @@ paths:
                   mensaje: { type: string }
                   usuario: { $ref: '#/components/schemas/Usuario' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+    delete:
+      tags: [Auth]
+      summary: Eliminar la propia cuenta
+      description: |
+        Cada cliente o proveedor puede eliminar su cuenta. Exige la contraseña. Sin historial (solicitudes, calificaciones o
+        reportes) la cuenta se borra; con historial se anonimiza (se borran sus datos personales y sus sesiones, y sus
+        servicios dejan de mostrarse) para que la otra parte conserve su solicitud. Con solicitudes abiertas (pendiente,
+        aceptada o en proceso) responde `409` con `codigo: solicitudes_abiertas`. Contraseña incorrecta: `400` con
+        `codigo: contrasena_incorrecta`. Los administradores no pueden (`403`). Límite por usuario
+        (`RATE_LIMIT_DELETE_ACCOUNT_PER_HOUR`, 429).
+      x-roles: [cliente, proveedor]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [contrasena]
+              properties:
+                contrasena: { type: string, maxLength: 128 }
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
   # ------------------------------------------------------------ Usuarios
   /auth:
@@ -459,7 +486,7 @@ paths:
     delete:
       tags: [Usuarios]
       summary: Eliminar un usuario
-      description: No se puede eliminar la propia cuenta (400) ni a un administrador (403). Con solicitudes o calificaciones asociadas responde 409.
+      description: No se puede eliminar la propia cuenta (400) ni a un administrador (403). Sin historial se borra; con historial se anonimiza (ver `DELETE /auth/perfil`). Con solicitudes abiertas responde 409. El panel usa `DELETE /admin/usuarios/{id}`, que además exige motivo y deja auditoría.
       x-roles: [admin]
       responses:
         '200': { $ref: '#/components/responses/Mensaje' }
@@ -767,7 +794,7 @@ paths:
       description: |
         Solo las partes de la solicitud. Transiciones: `pendiente` → `aceptada`|`cancelada`;
         `aceptada` → `en_proceso`|`cancelada`; `en_proceso` → `completada`; `completada` y `cancelada`
-        son finales. El cliente solo puede cancelar y solo en `pendiente`. Si otra petición cambió el
+        son finales. El cliente solo puede cancelar: en `pendiente`, o en `aceptada` si faltan al menos 2 horas para la cita (si no, responde 400 con `codigo: cancelacion_tardia`). El proveedor puede cancelar en `pendiente` y en `aceptada`. Las solicitudes `pendiente` o `aceptada` cuya hora de visita ya pasó (más 30 minutos de tolerancia, `AUTO_CANCEL_TOLERANCIA_MIN`) se cancelan solas: se avisa a ambas partes y queda un registro en la auditoría. Si otra petición cambió el
         estado en paralelo responde 409.
 
         **Código de inicio (issue #57):** para pasar de `aceptada` a `en_proceso` el proveedor debe enviar
@@ -1230,6 +1257,26 @@ paths:
       responses:
         '200': { description: 'Datos de la cuenta (incluye rol histórico, es_proveedor y modo_activo), conteos de solicitudes y servicios, calificación media y últimas 5 solicitudes' }
         '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Administración]
+      summary: Eliminar una cuenta
+      description: Exige `motivo` (10 a 300 caracteres) y queda en la auditoría. Igual que cuando la elimina su dueño, sin historial se borra y con historial se anonimiza; con solicitudes abiertas responde 409. No se puede eliminar a un administrador ni a uno mismo.
+      x-roles: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [motivo]
+              properties:
+                motivo: { type: string, minLength: 10, maxLength: 300 }
+      responses:
+        '200': { $ref: '#/components/responses/Mensaje' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /admin/usuarios/{id}/estado:
     parameters:
       - $ref: '#/components/parameters/Id'
@@ -1757,6 +1804,7 @@ components:
         es_proveedor: { type: boolean, description: La cuenta puede operar como proveedor. }
         modo_activo: { $ref: '#/components/schemas/ModoActivo' }
         activo: { type: integer }
+        correo_verificado: { type: integer, description: 0 si la persona se registró y aún no escribió su código de verificación (no es una cuenta activa todavía). }
         fecha_creacion: { $ref: '#/components/schemas/Fecha' }
     Categoria:
       type: object

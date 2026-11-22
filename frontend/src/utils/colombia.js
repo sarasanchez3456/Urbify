@@ -43,7 +43,9 @@ export function variantesDeDireccion(texto) {
 
 // Busca la dirección; si no hay resultados prueba con versiones más cortas hasta encontrar algo.
 export async function geocodificarDireccion(texto) {
-  for (const variante of variantesDeDireccion(texto)) {
+  // Error de tipeo muy común: "Call 52A" en vez de "Calle 52A".
+  const corregido = String(texto || '').replace(/\bcall\b\.?/gi, 'Calle');
+  for (const variante of variantesDeDireccion(corregido)) {
     const resultados = await consultarNominatim(variante);
     if (resultados.length > 0) return resultados;
   }

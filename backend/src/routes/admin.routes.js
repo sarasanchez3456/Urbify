@@ -11,6 +11,7 @@ router.use(authenticate, authorize('admin'));
 router.get('/resumen', admin.resumen);
 router.get('/usuarios/:id', admin.detalleUsuario);
 router.put('/usuarios/:id/estado', admin.cambiarEstadoUsuario);
+router.delete('/usuarios/:id', admin.eliminarUsuario);
 router.get('/servicios', admin.listarServicios);
 router.put('/servicios/:id/disponible', admin.cambiarDisponibilidadServicio);
 router.get('/solicitudes', admin.listarSolicitudes);

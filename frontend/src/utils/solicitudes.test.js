@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   indicePaso, estadoDelPaso, formatearDinero, estaSinCalificar, iniciales, fechaServicioLarga, fechaHoraCorta,
-  fechaRelativa, etiquetaDia, claveDia, horaMensaje, ETIQUETA_MOTIVO, MOTIVOS_POSITIVOS, MOTIVOS_NEGATIVOS,
+  fechaRelativa, etiquetaDia, claveDia, horaMensaje, ETIQUETA_MOTIVO, MOTIVOS_POSITIVOS, MOTIVOS_NEGATIVOS, clientePuedeCancelar,
 } from './solicitudes';
 
 afterEach(() => vi.useRealTimers());
@@ -96,5 +96,22 @@ describe('fechas (siempre en hora de Colombia, UTC-5)', () => {
     expect(etiquetaDia('2026-11-20T13:00:00Z')).toBe('Hoy');
     expect(etiquetaDia('2026-11-19T13:00:00Z')).toBe('Ayer');
     expect(etiquetaDia('2026-11-10T13:00:00Z')).toMatch(/10 (de )?nov/);
+  });
+});
+
+describe('clientePuedeCancelar', () => {
+  const ahora = Date.parse('2026-11-18T12:00:00Z');
+  const enHoras = (h) => new Date(ahora + h * 3600 * 1000).toISOString();
+  it('una solicitud pendiente siempre se puede cancelar', () => {
+    expect(clientePuedeCancelar({ estado: 'pendiente', fecha_servicio: enHoras(0.5) }, ahora)).toBe(true);
+  });
+  it('una aceptada se puede cancelar con 2 horas o más de anticipación', () => {
+    expect(clientePuedeCancelar({ estado: 'aceptada', fecha_servicio: enHoras(2) }, ahora)).toBe(true);
+    expect(clientePuedeCancelar({ estado: 'aceptada', fecha_servicio: enHoras(1.9) }, ahora)).toBe(false);
+  });
+  it('en proceso, completada o cancelada no se pueden cancelar', () => {
+    for (const estado of ['en_proceso', 'completada', 'cancelada']) {
+      expect(clientePuedeCancelar({ estado, fecha_servicio: enHoras(48) }, ahora)).toBe(false);
+    }
   });
 });

@@ -8,7 +8,7 @@ import CalificarClientePanel from './CalificarClientePanel';
 import { TarjetaCodigoCliente, IniciarConCodigo } from './CodigoInicio';
 import {
   ETIQUETAS_ESTADO, ETIQUETA_MOTIVO, PASOS, TIPO_TARIFA_LARGO, estadoDelPaso, estaSinCalificar, formatearDinero, fechaServicioLarga,
-  fechaRelativa, fechaHoraCorta, iniciales, horaMensaje, etiquetaDia, claveDia,
+  fechaRelativa, fechaHoraCorta, iniciales, horaMensaje, etiquetaDia, claveDia, clientePuedeCancelar, ANTICIPACION_CANCELAR_HORAS,
 } from '../utils/solicitudes';
 import { logError } from '../utils/log';
 import './SolicitudPaneles.css';
@@ -168,6 +168,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
   const [pidiendoCodigo, setPidiendoCodigo] = useState(pedirCodigoAlAbrir && pideCodigo && solicitud.estado === 'aceptada');
   const [procesando, setProcesando] = useState(false);
   const esCliente = rol === 'cliente';
+  const esProveedor = rol === 'proveedor';
   const contraparte = datosContraparte(solicitud, rol);
   const primerNombre = contraparte.nombre.split(' ')[0] || contraparte.etiqueta.toLowerCase();
   const cancelada = solicitud.estado === 'cancelada';
@@ -258,7 +259,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
         />
       ) : (
       <>
-      <div className="pl-cabecera">
+      <div className="pl-cabecera" data-tour={esProveedor ? 'proveedor-solicitudes-detalle-cabecera' : undefined}>
         <div className="pl-cabecera-fila">
           <span className={`sp-etiqueta-estado sp-estado--${solicitud.estado}`}>{ETIQUETAS_ESTADO[solicitud.estado] || solicitud.estado}</span>
           <button type="button" className="pl-cerrar" onClick={onCerrar} aria-label="Cerrar" data-autofocus>×</button>
@@ -274,7 +275,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
         {esCliente && solicitud.estado === 'aceptada' && <TarjetaCodigoCliente solicitudId={solicitud.id} />}
 
         {cambioPendiente && ['pendiente', 'aceptada'].includes(solicitud.estado) && (
-          <div className="sp-cambio" role="status">
+          <div className="sp-cambio" role="status" data-tour={esProveedor ? 'proveedor-solicitudes-detalle-cambio' : undefined}>
             {esCliente ? (
               <>
                 <p><b>Pediste cambiar la cita al {fechaServicioLarga(cambioPendiente.fecha)}</b> · Esperando la respuesta del profesional; mientras tanto tu cita sigue en la fecha actual.</p>
@@ -294,7 +295,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
           </div>
         )}
 
-        <div>
+        <div data-tour={esProveedor ? 'proveedor-solicitudes-detalle-seguimiento' : undefined}>
           <h3>Seguimiento</h3>
           {cancelada ? (
             <div className="pl-aviso pl-aviso--info">Esta solicitud fue cancelada.</div>
@@ -317,7 +318,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
           )}
         </div>
 
-        <div>
+        <div data-tour={esProveedor ? 'proveedor-solicitudes-detalle-cliente' : undefined}>
           <h3>{contraparte.etiqueta}</h3>
           <div className="sp-contexto">
             <div className="sp-avatar" aria-hidden="true">{iniciales(contraparte.nombre, contraparte.apellido)}</div>
@@ -335,7 +336,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
           </div>
         </div>
 
-        <div>
+        <div data-tour={esProveedor ? 'proveedor-solicitudes-detalle-datos' : undefined}>
           <h3>{esCliente ? 'Tu solicitud' : 'Lo que pidió el cliente'}</h3>
           <dl className="sp-datos">
             <div><dt>Descripción</dt><dd>{solicitud.descripcion || 'Sin descripción'}</dd></div>
@@ -363,12 +364,12 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
           {solicitud.reporte_id ? (
             <span>Ya reportaste esta solicitud. La administración la está revisando.</span>
           ) : (
-            <button type="button" onClick={() => setVista('reportar')}>Reportar un problema con este servicio</button>
+            <button type="button" onClick={() => setVista('reportar')} data-tour="mis-solicitudes-reportar">Reportar un problema con este servicio</button>
           )}
         </div>
       )}
 
-      <div className="pl-pie">
+      <div className="pl-pie" data-tour={esProveedor ? 'proveedor-solicitudes-detalle-acciones' : undefined}>
         {pidiendoCodigo && solicitud.estado === 'aceptada' ? (
           <IniciarConCodigo
             procesando={procesando}
@@ -377,7 +378,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
           />
         ) : confirmando ? (
           <div className="sp-confirmar">
-            <p>¿Cancelar esta solicitud? No se puede deshacer.</p>
+            <p>{solicitud.estado === 'aceptada' ? '¿Cancelar esta cita? Se avisará a la otra persona y no se puede deshacer.' : '¿Cancelar esta solicitud? No se puede deshacer.'}</p>
             <div>
               <button type="button" className="pl-boton pl-boton--peligro-solido" onClick={() => cambiar('cancelada')} disabled={procesando} data-autofocus>
                 {procesando ? 'Cancelando...' : 'Sí, cancelar'}
@@ -391,7 +392,7 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
               <button type="button" className="pl-boton pl-boton--principal" onClick={() => onCalificar(solicitud)}>Calificar</button>
             )}
             {!esCliente && solicitud.estado === 'completada' && (solicitud.cliente_calificado === null || solicitud.cliente_calificado === undefined) && (
-              <button type="button" className="pl-boton pl-boton--principal" onClick={() => setVista('calificarCliente')}>Calificar al cliente</button>
+              <button type="button" className="pl-boton pl-boton--principal" onClick={() => setVista('calificarCliente')} data-tour="proveedor-solicitudes-detalle-calificar">Calificar al cliente</button>
             )}
 
             {!esCliente && solicitud.estado === 'pendiente' && (
@@ -411,20 +412,27 @@ export default function SolicitudDrawer({ solicitud, rol, onCerrar, onCambiarEst
               type="button"
               className={`pl-boton${!sinCalificar && esCliente && solicitud.estado !== 'pendiente' ? ' pl-boton--principal' : ''}`}
               onClick={() => setVista('chat')}
+              data-tour={esCliente ? 'mis-solicitudes-chat' : esProveedor ? 'proveedor-solicitudes-detalle-chat' : undefined}
             >
               Escribir a {primerNombre}
             </button>
 
             {puedeReprogramar && (
-              <button type="button" className="pl-boton" onClick={() => setVista('reprogramar')}>Reprogramar cita</button>
+              <button type="button" className="pl-boton" onClick={() => setVista('reprogramar')} data-tour="mis-solicitudes-reprogramar">Reprogramar cita</button>
             )}
 
             {esCliente && solicitud.estado === 'pendiente' && solicitud.servicio_categoria_id && (
               <Link className="pl-boton" to={`/buscar?categoria_id=${solicitud.servicio_categoria_id}`} onClick={onCerrar}>Ver otros profesionales</Link>
             )}
 
-            {esCliente && solicitud.estado === 'pendiente' && (
-              <button type="button" className="pl-boton pl-boton--peligro" onClick={() => setConfirmando(true)}>Cancelar solicitud</button>
+            {esCliente && clientePuedeCancelar(solicitud) && (
+              <button type="button" className="pl-boton pl-boton--peligro" onClick={() => setConfirmando(true)} data-tour="mis-solicitudes-cancelar">{solicitud.estado === 'aceptada' ? 'Cancelar cita' : 'Cancelar solicitud'}</button>
+            )}
+            {esCliente && solicitud.estado === 'aceptada' && !clientePuedeCancelar(solicitud) && (
+              <p className="sp-nota">Faltan menos de {ANTICIPACION_CANCELAR_HORAS} horas para la cita: ya no se puede cancelar. Escríbele al profesional o pídele otra fecha.</p>
+            )}
+            {!esCliente && solicitud.estado === 'aceptada' && (
+              <button type="button" className="pl-boton pl-boton--peligro" onClick={() => setConfirmando(true)}>Cancelar cita</button>
             )}
           </>
         )}

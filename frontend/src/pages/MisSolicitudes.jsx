@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import DashboardLayout from '../components/DashboardLayout';
 import SolicitudDrawer from '../components/SolicitudDrawer';
 import CalificarPanel from '../components/CalificarPanel';
+import { EVENTO_DETALLE_PROVEEDOR_ABIERTO } from '../tours/proveedor/misSolicitudes';
 import {
   ETIQUETAS_ESTADO, ESTADOS_EN_CURSO, TIPO_TARIFA, estadoDelPaso, estaSinCalificar, formatearDinero,
   fechaServicioCorta, fechaRelativa,
@@ -32,7 +33,7 @@ function textoEstado(sol, esCliente) {
   }
 }
 
-function Fila({ sol, esCliente, ocupada, onDetalle, onCalificar, onAccion, onCambio, onIniciar }) {
+function Fila({ sol, esCliente, ocupada, esPrimeraVisible, esPrimeraCalificable, onDetalle, onCalificar, onAccion,onCambio, onIniciar }) {
   const contraparte = esCliente
     ? `${sol.proveedor_nombre || ''} ${sol.proveedor_apellido || ''}`.trim()
     : `${sol.cliente_nombre || ''} ${sol.cliente_apellido || ''}`.trim();
@@ -41,7 +42,7 @@ function Fila({ sol, esCliente, ocupada, onDetalle, onCalificar, onAccion, onCam
   const cambioPendiente = Boolean(sol.reprogramacion_id) && ['pendiente', 'aceptada'].includes(sol.estado);
 
   return (
-    <div className="ms-fila">
+    <div className="ms-fila" data-tour={esPrimeraVisible && !esCliente ? 'proveedor-solicitudes-informacion' : undefined}>
       <div className="ms-fila-info">
         <h4>
           <button type="button" className="ms-fila-titulo" onClick={() => onDetalle(sol.id)}>{sol.servicio_titulo}</button>
@@ -56,7 +57,7 @@ function Fila({ sol, esCliente, ocupada, onDetalle, onCalificar, onAccion, onCam
         )}
       </div>
 
-      <div className="ms-fila-estado">
+      <div className="ms-fila-estado" data-tour={esPrimeraVisible ? (esCliente ? 'mis-solicitudes-estado' : 'proveedor-solicitudes-estado') : undefined}>
         {!cancelada && (
           <div className="ms-pasos" role="img" aria-label={`Estado: ${ETIQUETAS_ESTADO[sol.estado]}`}>
             {[0, 1, 2, 3].map((i) => <i key={i} className={`ms-paso ms-paso--${estadoDelPaso(sol.estado, i)}`} />)}
@@ -70,9 +71,9 @@ function Fila({ sol, esCliente, ocupada, onDetalle, onCalificar, onAccion, onCam
         {TIPO_TARIFA[sol.tipo_tarifa_acordada] && <small>{TIPO_TARIFA[sol.tipo_tarifa_acordada]}</small>}
       </div>
 
-      <div className="ms-fila-acciones">
+      <div className="ms-fila-acciones" data-tour={esPrimeraVisible && !esCliente ? 'proveedor-solicitudes-acciones' : undefined}>
         {sinCalificar && (
-          <button type="button" className="ms-btn ms-btn--principal" onClick={() => onCalificar(sol.id)}>Calificar</button>
+          <button type="button" className="ms-btn ms-btn--principal" onClick={() => onCalificar(sol.id)} data-tour={esPrimeraCalificable ? 'mis-solicitudes-calificar' : undefined}>Calificar</button>
         )}
         {!esCliente && sol.estado === 'pendiente' && (
           <>
@@ -92,7 +93,7 @@ function Fila({ sol, esCliente, ocupada, onDetalle, onCalificar, onAccion, onCam
         {!esCliente && sol.estado === 'en_proceso' && (
           <button type="button" className="ms-btn ms-btn--principal" disabled={ocupada} onClick={() => onAccion(sol.id, 'completada')}>Marcar completada</button>
         )}
-        <button type="button" className="ms-btn" onClick={() => onDetalle(sol.id)}>Ver detalle</button>
+        <button type="button" className="ms-btn" onClick={() => onDetalle(sol.id)} data-tour={esPrimeraVisible ? (esCliente ? 'mis-solicitudes-detalle' : 'proveedor-solicitudes-detalle') : undefined}>Ver detalle</button>
       </div>
     </div>
   );
@@ -229,6 +230,11 @@ export default function MisSolicitudes() {
     setAbiertaId(sol.id);
   };
 
+  const abrirDetalle = useCallback((id) => {
+    setAbiertaId(id);
+    if (!esCliente) window.dispatchEvent(new Event(EVENTO_DETALLE_PROVEEDOR_ABIERTO));
+  }, [esCliente]);
+
   const abrirCalificar = (id) => {
     setAbiertaId(null);
     setCalificandoId(id);
@@ -268,13 +274,18 @@ export default function MisSolicitudes() {
     return elegidos.filter((g) => g.items.length > 0);
   }, [listas, filtro, esCliente]);
 
+  const primeraSolicitudVisibleId = grupos[0]?.items[0]?.id ?? null;
+  const primeraCalificableId = esCliente
+    ? grupos.flatMap((grupo) => grupo.items).find(estaSinCalificar)?.id ?? null
+    : null;
+
   const abierta = solicitudes.find((s) => s.id === abiertaId) || null;
   const calificando = solicitudes.find((s) => s.id === calificandoId) || null;
   const subtitulo = esCliente ? 'Solicitudes que has realizado' : 'Solicitudes que has recibido';
 
   return (
     <DashboardLayout titulo="Mis Solicitudes" subtitulo={subtitulo}>
-      <div className="ms">
+      <div className="ms" data-tour={esCliente ? 'mis-solicitudes-inicio' : 'proveedor-solicitudes-inicio'}>
         {estado === 'cargando' && <div className="ms-tarjeta ms-estado">Cargando...</div>}
 
         {estado === 'error' && (
@@ -285,7 +296,7 @@ export default function MisSolicitudes() {
         )}
 
         {estado === 'listo' && solicitudes.length === 0 && (
-          <div className="ms-tarjeta ms-estado">
+          <div className="ms-tarjeta ms-estado" data-tour={esCliente ? 'mis-solicitudes-listado' : 'proveedor-solicitudes-listado'}>
             <h3>No hay solicitudes</h3>
             <p>{esCliente ? 'Busca servicios y solicita un profesional' : 'Aún no has recibido solicitudes'}</p>
             {esCliente && <Link to="/buscar" className="ms-btn ms-btn--principal ms-enlace">Buscar Servicios</Link>}
@@ -294,7 +305,7 @@ export default function MisSolicitudes() {
 
         {estado === 'listo' && solicitudes.length > 0 && (
           <>
-            <div className="ms-tabs" role="tablist" aria-label="Filtrar solicitudes">
+            <div className="ms-tabs" role="tablist" aria-label="Filtrar solicitudes" data-tour={esCliente ? 'mis-solicitudes-filtros' : 'proveedor-solicitudes-filtros'}>
               {FILTROS.map(([clave, etiqueta]) => (
                 <button
                   key={clave}
@@ -314,14 +325,16 @@ export default function MisSolicitudes() {
             {grupos.map((g) => (
               <section className="ms-grupo" key={g.clave} aria-label={g.titulo}>
                 <h3>{g.titulo}<span>{g.items.length}</span></h3>
-                <div className={`ms-lista${g.destacado ? ' ms-lista--destacada' : ''}`}>
+                <div className={`ms-lista${g.destacado ? ' ms-lista--destacada' : ''}`} data-tour={g.items.some((s) => s.id === primeraSolicitudVisibleId) ? (esCliente ? 'mis-solicitudes-listado' : 'proveedor-solicitudes-listado') : undefined}>
                   {g.items.map((s) => (
                     <Fila
                       key={s.id}
                       sol={s}
                       esCliente={esCliente}
                       ocupada={accionandoId === s.id}
-                      onDetalle={setAbiertaId}
+                      esPrimeraVisible={s.id === primeraSolicitudVisibleId}
+                      esPrimeraCalificable={s.id === primeraCalificableId}
+                      onDetalle={abrirDetalle}
                       onCalificar={abrirCalificar}
                       onAccion={accionar}
                       onCambio={accionarCambio}

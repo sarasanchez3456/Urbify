@@ -8,6 +8,7 @@ const { enviarCorreo } = require('../utils/correo');
 const { plantillaCorreo } = require('../utils/plantillaCorreo');
 const { enTransaccion } = require('../utils/transaccion');
 const { mantenerVivo } = require('../utils/segundoPlano');
+const { eliminarCuenta, SQL_SIN_ELIMINADAS } = require('../utils/eliminarCuenta');
 const { generarCodigo, normalizarCodigo, hashDeCodigo, codigoCoincide } = require('../utils/codigoVerificacion');
 const { dominioPuedeRecibirCorreo } = require('../utils/dominioCorreo');
 const { normalizarTelefono, MENSAJE_TELEFONO } = require('../utils/telefono');
@@ -512,13 +513,23 @@ exports.actualizarPerfil = async (req, res, next) => {
       if (!telefonoLimpio) return res.status(400).json({ error: MENSAJE_TELEFONO });
     }
 
+    // Si la dirección cambia pero no llegan coordenadas nuevas, las anteriores ya no corresponden a ella: se borran
+    // (así el profesional no aparece en el mapa en un sitio donde ya no está). Con coordenadas nuevas, se guardan.
+    const [filaActual] = await query('SELECT direccion FROM usuarios WHERE id = ?', [req.usuarioId]);
+    const actual = filaActual[0];
+    const direccionCambio = typeof direccion === 'string' && direccion.trim() !== '' && direccion.trim() !== (actual?.direccion || '');
+    const sinCoordenadasNuevas = (latitud === undefined || latitud === null) && (longitud === undefined || longitud === null);
+    const borrarCoordenadas = direccionCambio && sinCoordenadasNuevas;
+
     await query(
       `UPDATE usuarios SET nombre = COALESCE(?, nombre), apellido = COALESCE(?, apellido),
        telefono = COALESCE(?, telefono), direccion = COALESCE(?, direccion),
-       latitud = COALESCE(?, latitud), longitud = COALESCE(?, longitud),
+       latitud = ${borrarCoordenadas ? 'NULL' : 'COALESCE(?, latitud)'}, longitud = ${borrarCoordenadas ? 'NULL' : 'COALESCE(?, longitud)'},
        foto_url = COALESCE(?, foto_url), oficio = COALESCE(?, oficio)
        WHERE id = ?`,
-      [nombre, apellido, telefonoLimpio, direccion, latitud, longitud, foto_url, oficio, req.usuarioId]
+      borrarCoordenadas
+        ? [nombre, apellido, telefonoLimpio, direccion, foto_url, oficio, req.usuarioId]
+        : [nombre, apellido, telefonoLimpio, direccion, latitud, longitud, foto_url, oficio, req.usuarioId]
     );
 
     const [usuarios] = await query(
@@ -534,8 +545,10 @@ exports.actualizarPerfil = async (req, res, next) => {
 
 exports.listarUsuarios = async (req, res, next) => {
   try {
+    // correo_verificado: una cuenta que aún no escribió su código no es una cuenta activa todavía (el panel lo muestra).
     const [usuarios] = await query(
-      'SELECT id, nombre, apellido, correo, telefono, rol, es_proveedor, modo_activo, activo, fecha_creacion FROM usuarios ORDER BY fecha_creacion DESC'
+      `SELECT id, nombre, apellido, correo, telefono, rol, es_proveedor, modo_activo, activo, correo_verificado, fecha_creacion
+         FROM usuarios WHERE ${SQL_SIN_ELIMINADAS} ORDER BY fecha_creacion DESC`
     );
     res.json(usuarios.map(presentarUsuario));
   } catch (err) {
@@ -547,7 +560,7 @@ exports.usuarioPorId = async (req, res, next) => {
   try {
     const { id } = req.params;
     const [usuarios] = await query(
-      'SELECT id, nombre, apellido, correo, telefono, rol, es_proveedor, modo_activo, foto_url, direccion, latitud, longitud, oficio, activo, fecha_creacion FROM usuarios WHERE id = ?',
+      'SELECT id, nombre, apellido, correo, telefono, rol, es_proveedor, modo_activo, foto_url, direccion, latitud, longitud, oficio, activo, correo_verificado, fecha_creacion FROM usuarios WHERE id = ?',
       [id]
     );
     if (usuarios.length === 0) {
@@ -574,13 +587,37 @@ exports.eliminarUsuario = async (req, res, next) => {
     if (existe[0].rol === 'admin') {
       return res.status(403).json({ error: 'No se puede eliminar a un administrador desde la API' });
     }
-    await query('DELETE FROM usuarios WHERE id = ?', [id]);
+    const r = await enTransaccion((conn) => eliminarCuenta(conn, Number(id)));
+    if (r.resultado === 'con_solicitudes_abiertas') {
+      return res.status(409).json({
+        error: 'La cuenta tiene solicitudes abiertas. Cancélalas o espera a que terminen antes de eliminarla.',
+        codigo: 'solicitudes_abiertas',
+      });
+    }
     res.json({ mensaje: 'Usuario eliminado exitosamente' });
   } catch (err) {
-    console.error('Error al eliminar usuario:', err);
-    if (err.errno === 1451) {
-      return res.status(409).json({ error: 'No se puede eliminar el usuario porque tiene solicitudes o calificaciones asociadas' });
+    return next(err);
+  }
+};
+
+// Cada persona puede eliminar SU cuenta (cliente o proveedor). Exige la contraseña, para que una sesión abierta
+// en un equipo ajeno no pueda borrarla. Los administradores solo se gestionan desde el servidor.
+exports.eliminarMiCuenta = async (req, res, next) => {
+  try {
+    const [filas] = await query('SELECT id, rol, contrasena FROM usuarios WHERE id = ?', [req.usuarioId]);
+    if (filas.length === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (filas[0].rol === 'admin') return res.status(403).json({ error: 'Los administradores solo se gestionan desde el servidor' });
+    const correcta = await hasher.compare(String(req.body.contrasena), filas[0].contrasena);
+    if (!correcta) return res.status(400).json({ error: 'La contraseña no es correcta', codigo: 'contrasena_incorrecta' });
+    const r = await enTransaccion((conn) => eliminarCuenta(conn, req.usuarioId));
+    if (r.resultado === 'con_solicitudes_abiertas') {
+      return res.status(409).json({
+        error: 'Tienes solicitudes abiertas (pendientes, aceptadas o en proceso). Cancélalas o espera a que terminen para eliminar tu cuenta.',
+        codigo: 'solicitudes_abiertas',
+      });
     }
+    res.json({ mensaje: 'Tu cuenta fue eliminada' });
+  } catch (err) {
     return next(err);
   }
 };

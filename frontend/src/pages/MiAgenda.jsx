@@ -142,7 +142,7 @@ export default function MiAgenda() {
 
   return (
     <DashboardLayout titulo="Mi agenda" subtitulo="Las horas en las que atiendes">
-      <div className="ag">
+      <div className="ag" data-tour="proveedor-agenda-inicio">
         {estado === 'cargando' && <div className="ag-tarjeta ag-estado">Cargando...</div>}
         {estado === 'error' && (
           <div className="ag-tarjeta ag-estado" role="alert">
@@ -153,26 +153,26 @@ export default function MiAgenda() {
 
         {estado === 'listo' && (
           <>
-            <div className="ag-tarjeta ag-intro">
+            <div className="ag-tarjeta ag-intro" data-tour="proveedor-agenda-horario-semanal">
               <h3>Tu horario semanal</h3>
               <p>
                 Los clientes solo pueden pedirte citas dentro de estas horas, y cada cita ocupa una hora. Cuando alguien reserva o te pide
                 cambiar la fecha, esa hora deja de aparecer libre para los demás.
               </p>
               {!configurado && (
-                <p className="ag-nota">Aún no has configurado tu horario: mientras tanto se ofrece todos los días de 8:00 a. m. a 6:00 p. m.</p>
+                <p className="ag-nota" data-tour="proveedor-agenda-sin-configurar">Aún no has configurado tu horario: mientras tanto se ofrece todos los días de 8:00 a. m. a 6:00 p. m.</p>
               )}
             </div>
 
-            <div className="ag-tarjeta">
-              <ul className="ag-dias">
+            <div className="ag-tarjeta" data-tour="proveedor-agenda-configuracion">
+              <ul className="ag-dias" data-tour="proveedor-agenda-dias">
                 {DIAS.map((d) => {
                   const lista = porDia[d.n] || [];
                   const activo = lista.length > 0;
                   return (
                     <li key={d.n} className="ag-dia">
                       <div className="ag-dia-cabecera">
-                        <label className="ag-interruptor">
+                        <label className="ag-interruptor" data-tour="proveedor-agenda-activar-dia">
                           <input type="checkbox" checked={activo} onChange={() => alternarDia(d.n)} />
                           <span className="ag-interruptor-pista" aria-hidden="true" />
                           <b>{d.nombre}</b>
@@ -183,25 +183,25 @@ export default function MiAgenda() {
                       {activo && (
                         <div className="ag-franjas">
                           {lista.map((f, i) => (
-                            <div className="ag-franja" key={i}>
+                            <div className="ag-franja" key={i} data-tour="proveedor-agenda-franja">
                               <label>
                                 <span className="ag-solo-lectores">{d.nombre}, franja {i + 1}: desde</span>
-                                <select value={f.inicio} onChange={(e) => cambiarFranja(d.n, i, 'inicio', e.target.value)}>
+                                <select value={f.inicio} onChange={(e) => cambiarFranja(d.n, i, 'inicio', e.target.value)} data-tour="proveedor-agenda-hora-inicio">
                                   {HORAS.slice(0, -1).map((h) => <option key={h} value={h}>{etiquetaHora(h)}</option>)}
                                 </select>
                               </label>
                               <span aria-hidden="true">a</span>
                               <label>
                                 <span className="ag-solo-lectores">{d.nombre}, franja {i + 1}: hasta</span>
-                                <select value={f.fin} onChange={(e) => cambiarFranja(d.n, i, 'fin', e.target.value)}>
+                                <select value={f.fin} onChange={(e) => cambiarFranja(d.n, i, 'fin', e.target.value)} data-tour="proveedor-agenda-hora-fin">
                                   {HORAS.slice(1).map((h) => <option key={h} value={h}>{etiquetaHora(h)}</option>)}
                                 </select>
                               </label>
-                              <button type="button" className="ag-quitar" onClick={() => quitarFranja(d.n, i)} aria-label={`Quitar franja ${i + 1} de ${d.nombre}`}>×</button>
+                              <button type="button" className="ag-quitar" onClick={() => quitarFranja(d.n, i)} aria-label={`Quitar franja ${i + 1} de ${d.nombre}`} data-tour="proveedor-agenda-quitar-franja">×</button>
                             </div>
                           ))}
                           {lista.length < MAX_FRANJAS_POR_DIA && (
-                            <button type="button" className="ag-agregar" onClick={() => agregarFranja(d.n)}>+ Agregar otra franja</button>
+                            <button type="button" className="ag-agregar" onClick={() => agregarFranja(d.n)} data-tour="proveedor-agenda-agregar-franja">+ Agregar otra franja</button>
                           )}
                           {errores[d.n] && <p className="ag-error" role="alert">{errores[d.n]}</p>}
                         </div>
@@ -211,8 +211,8 @@ export default function MiAgenda() {
                 })}
               </ul>
 
-              <div className="ag-pie">
-                <button type="button" className="ag-btn ag-btn--principal" onClick={() => guardar()} disabled={!hayCambios || hayErrores || guardando}>
+              <div className="ag-pie" data-tour="proveedor-agenda-acciones">
+                <button type="button" className="ag-btn ag-btn--principal" onClick={() => guardar()} disabled={!hayCambios || hayErrores || guardando} data-tour="proveedor-agenda-guardar">
                   {guardando ? 'Guardando...' : 'Guardar horario'}
                 </button>
                 {hayCambios && <button type="button" className="ag-btn" onClick={() => setPorDia(JSON.parse(guardado))} disabled={guardando}>Descartar cambios</button>}
@@ -223,12 +223,12 @@ export default function MiAgenda() {
               </div>
             </div>
 
-            <div className="ag-tarjeta">
+            <div className="ag-tarjeta" data-tour="proveedor-agenda-visitas">
               <h3>Tus próximas visitas</h3>
               {visitas === null ? <p className="ag-nota-chica">Cargando...</p> : visitas.length === 0 ? (
                 <p className="ag-nota-chica">No tienes visitas programadas.</p>
               ) : (
-                <div className="ag-visitas">
+                <div className="ag-visitas" data-tour="proveedor-agenda-visitas-programadas">
                   {visitas.map(([dia, lista]) => (
                     <div key={dia}>
                       <h4>{etiquetaDiaLarga(lista[0].fecha_servicio)}</h4>
@@ -248,7 +248,7 @@ export default function MiAgenda() {
             </div>
 
             {usuario?.id && (
-              <div className="ag-tarjeta">
+              <div className="ag-tarjeta" data-tour="proveedor-agenda-vista-cliente">
                 <h3>Así lo ven tus clientes</h3>
                 <p className="ag-nota-chica">Estas son las horas que se ofrecen en los próximos 14 días. Las que no aparecen están fuera de tu horario; las tachadas ya tienen cita.</p>
                 <SelectorHorario proveedorId={usuario.id} valor="" onElegir={() => {}} recarga={vista} soloLectura />
