@@ -890,3 +890,46 @@
 .uy-step:nth-child(2) { animation: fadeUp 0.6s 0.12s ease both; }
 .uy-step:nth-child(3) { animation: fadeUp 0.6s 0.19s ease both; }
 .uy-step:nth-child(4) { animation: fadeUp 0.6s 0.26s ease both; }
+
+/* ── MÓVIL Y TABLETA ──
+   Antes las secciones mantenían sus rejillas de escritorio (6, 3 y 4 columnas) y el relleno de 52 px a cada lado,
+   y en un celular el contenido se aplastaba y se cortaba por la derecha. */
+@media (max-width: 900px) {
+  .stats-band { padding: 36px 20px; }
+  .stats-inner { gap: 14px; }
+  .stat-number { font-size: 1.9rem; }
+  .stat-label { font-size: 0.78rem; letter-spacing: 0.08em; text-align: center; }
+  .stat-divider { height: 36px; }
+
+  .uy-sec, .sec-services, .sec-map { padding: 56px 20px; }
+  .uy-sec-head, .sec-head { margin-bottom: 32px; }
+  .uy-sec-head p { font-size: 1.1rem; }
+  .sec-tag, .uy-sec-head .uy-tag { font-size: 0.9rem; letter-spacing: 0.2em; }
+
+  .uy-cats { grid-template-columns: repeat(3, 1fr); }
+  .services-grid { grid-template-columns: repeat(2, 1fr); }
+  .map-wrap { grid-template-columns: 1fr; gap: 20px; }
+  .map-info { padding: 26px 22px; }
+  .map-vis { height: 260px; }
+
+  .uy-steps { grid-template-columns: repeat(2, 1fr); row-gap: 36px; column-gap: 20px; }
+  .uy-steps::before { display: none; }
+  .uy-step { padding: 0; }
+  .uy-step h3 { font-size: 1.25rem; }
+  .uy-step p { font-size: 1rem; }
+
+  .footer-inner { padding: 32px 20px; flex-direction: column; text-align: center; }
+}
+
+@media (max-width: 600px) {
+  .stats-inner { flex-wrap: wrap; row-gap: 20px; }
+  .stat-divider { display: none; }
+  .stat-item { flex: 1 1 40%; }
+
+  .uy-cats { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .uy-cat { padding: 24px 10px 20px; }
+  .uy-cat-name { font-size: 0.9rem; letter-spacing: 0.04em; }
+
+  .services-grid { grid-template-columns: 1fr; max-width: 380px; }
+  .uy-steps { grid-template-columns: 1fr; }
+}
